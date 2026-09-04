@@ -9,6 +9,7 @@ import {
 
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
+import { setIconMessage } from '../security/safeDom.js';
 
 const API_BASE = '/api';
 
@@ -32,7 +33,7 @@ function showToast(message, type = 'success') {
   
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info')}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info'), message);
   
   container.appendChild(toast);
   lucide.createIcons();

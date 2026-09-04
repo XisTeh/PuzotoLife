@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { setIconMessage } from '../security/safeDom.js';
 /**
  * Puzoto Life — Importar Dados
  */
@@ -17,7 +18,7 @@ function showToast(message, type = 'success') {
   if (!c) { c = document.createElement('div'); c.id = 'toast-container'; c.className = 'toast-container'; document.body.appendChild(c); }
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(t, type === 'success' ? 'check-circle' : 'alert-circle', message);
   c.appendChild(t);
   if (typeof lucide !== 'undefined') lucide.createIcons();
   setTimeout(() => { t.style.animation = 'slideOutRight 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3000);

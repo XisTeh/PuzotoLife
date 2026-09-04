@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
 
@@ -30,7 +31,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => {
@@ -72,14 +73,14 @@ async function loadCategorias() {
     // Popula select formulário
     const selectForm = document.getElementById('form-rec-categoria');
     if (selectForm) {
-      selectForm.innerHTML = categorias.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+      selectForm.innerHTML = categorias.map(c => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`).join('');
     }
     
     // Popula select filtro
     const selectFiltro = document.getElementById('rec-filtro-categoria');
     if (selectFiltro) {
       selectFiltro.innerHTML = '<option value="todas">Todas Categorias</option>' + 
-        categorias.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+        categorias.map(c => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`).join('');
     }
   } catch (err) {
     console.error('Erro ao carregar categorias:', err);
@@ -93,7 +94,7 @@ async function loadOrigens() {
     // Popula datalist form
     const datalist = document.getElementById('origens-list');
     if (datalist) {
-      datalist.innerHTML = origens.map(o => `<option value="${o}">`).join('') +
+      datalist.innerHTML = origens.map(o => `<option value="${escapeHtml(o)}">`).join('') +
         `<option value="Trabalho"><option value="Reembolso"><option value="Venda"><option value="Renda Extra"><option value="Salário"><option value="Presente"><option value="Devolução"><option value="Outros">`;
     }
     
@@ -101,7 +102,7 @@ async function loadOrigens() {
     const selectFiltro = document.getElementById('rec-filtro-origem');
     if (selectFiltro) {
       selectFiltro.innerHTML = '<option value="todas">Todas Origens</option>' + 
-        origens.map(o => `<option value="${o}">${o}</option>`).join('');
+        origens.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
     }
   } catch (err) {
     console.error('Erro ao carregar origens:', err);
@@ -237,8 +238,8 @@ function renderProximasReceitas() {
     html += `
       <div style="padding: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${r.descricao}</div>
-          <div style="font-size: 0.8rem; color: ${corDias}; font-weight: 500;">${r.origem} - ${diasTexto} (${formatarDataBR(r.data)})</div>
+          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${escapeHtml(r.descricao)}</div>
+          <div style="font-size: 0.8rem; color: ${corDias}; font-weight: 500;">${escapeHtml(r.origem)} - ${diasTexto} (${formatarDataBR(r.data)})</div>
         </div>
         <div style="font-weight: 600; color: var(--color-blue);">
           ${formatarMoedaBR(r.valor)}
@@ -265,7 +266,7 @@ function renderTabela() {
     if (r.status === 'recebido') badgeColor = 'var(--color-teal)';
     if (r.status === 'cancelado') badgeColor = 'var(--text-muted)';
 
-    let badgeOrigem = r.origem;
+    let badgeOrigem = escapeHtml(r.origem);
     if (r.vinculado_trabalho) {
       badgeOrigem = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; padding:2px 6px; border-radius:4px; background:rgba(59, 130, 246, 0.1); color:var(--color-blue); border:1px solid rgba(59, 130, 246, 0.2);"><i data-lucide="briefcase" style="width:12px; height:12px;"></i> Trabalho</span><br><span style="font-size:0.75rem; color:var(--text-muted);">${r.referencia_trabalho_tipo === 'laudo_ranon' ? 'Dr. Ranon' : 'Lançamento'} #${r.referencia_trabalho_id}</span>`;
     }
@@ -273,18 +274,18 @@ function renderTabela() {
     html += `
       <tr>
         <td>${formatarDataBR(r.data)}</td>
-        <td style="font-weight: 500;">${r.descricao}</td>
+        <td style="font-weight: 500;">${escapeHtml(r.descricao)}</td>
         <td>${badgeOrigem}</td>
-        <td><span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle);">${r.categoria_nome}</span></td>
+        <td><span style="font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle);">${escapeHtml(r.categoria_nome)}</span></td>
         <td style="font-weight: 600; color: var(--color-teal);">${formatarMoedaBR(r.valor)}</td>
         <td>
           <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; padding: 4px 10px; border-radius: 100px; background: var(--bg-surface); border: 1px solid var(--border-subtle); font-weight: 500; text-transform: uppercase;">
             <span style="width: 6px; height: 6px; border-radius: 50%; background: ${badgeColor};"></span>
-            ${r.status}
+            ${escapeHtml(r.status)}
           </span>
         </td>
         <td>${r.recebido_em ? formatarDataBR(r.recebido_em.split(' ')[0]) : '-'}</td>
-        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${r.observacao || ''}">${r.observacao || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(r.observacao || '')}">${escapeHtml(r.observacao || '-')}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             ${r.status === 'previsto' ? `<button class="btn-icon" style="color: var(--color-teal);" onclick="window.receberRec(${r.id})" title="Marcar como Recebida"><i data-lucide="check"></i></button>` : ''}

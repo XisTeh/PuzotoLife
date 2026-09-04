@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compileLegacyHandler, escapeHtml, legacyStringArgument } from '../src/security/legacyHandlers.js';
+import { compileLegacyHandler, legacyStringArgument } from '../src/security/legacyHandlers.js';
+import { escapeHtml } from '../src/security/safeDom.js';
 
 function fakeElement(value = '') {
   return { value, ownerDocument: { getElementById: () => null } };

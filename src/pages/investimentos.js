@@ -3,16 +3,11 @@ import {
   registrarMovimentoInvestimento, ajustarSaldoInvestimento
 } from '../services/api.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 
 let cofreAtual = null;
 let movimentos = [];
 let saldoCorrecaoPendente = null;
-
-function escapeHtml(valor) {
-  return String(valor ?? '').replace(/[&<>'"]/g, caractere => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  })[caractere]);
-}
 
 function lerMoeda(valor) {
   let texto = String(valor ?? '').trim();
@@ -35,7 +30,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i><span>${escapeHtml(message)}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   if (window.lucide) window.lucide.createIcons();
   setTimeout(() => toast.remove(), 3500);

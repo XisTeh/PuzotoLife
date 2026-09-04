@@ -13,6 +13,7 @@ import {
 } from '../services/api.js';
 
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 
 let empresasCache = [];
 let loteAtual = [];
@@ -33,7 +34,7 @@ function showToast(message, type = 'success') {
   
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info')}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info'), message);
   
   container.appendChild(toast);
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -118,7 +119,7 @@ function renderOptionsEmpresa() {
   if (!select) return;
   
   select.innerHTML = empresasCache.map(e => `
-    <option value="${e.nome}">${e.nome}</option>
+    <option value="${escapeHtml(e.nome)}">${escapeHtml(e.nome)}</option>
   `).join('');
 }
 

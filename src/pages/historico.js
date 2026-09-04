@@ -1,6 +1,7 @@
 import { apiFetch } from '../services/http.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 
 const API_BASE = '/api';
 
@@ -27,7 +28,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => {
@@ -58,7 +59,7 @@ async function loadEmpresas() {
     const select = document.getElementById('hist-filtro-empresa');
     if (select) {
       select.innerHTML = '<option value="todas">Todas Empresas</option>' +
-        empresas.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+        empresas.map(e => `<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('');
     }
   } catch (e) {
     console.error('Erro ao carregar empresas:', e);

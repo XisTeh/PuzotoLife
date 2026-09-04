@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { appState } from '../state.js';
 import { formatarMoedaBR } from '../utils/formatters.js';
 import { checkHealth } from '../services/api.js';
@@ -21,7 +22,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => {
@@ -150,7 +151,7 @@ function preencherFormularios() {
   // Trabalho
   const selectTrabalhoEmpresa = document.getElementById('cfg-trabalho-empresa');
   if (selectTrabalhoEmpresa) {
-    selectTrabalhoEmpresa.innerHTML = empresas.filter(e => e.ativa === 1).map(e => `<option value="${e.nome}" ${configAtual.ultima_empresa_trabalho === e.nome ? 'selected' : ''}>${e.nome}</option>`).join('');
+    selectTrabalhoEmpresa.innerHTML = empresas.filter(e => e.ativa === 1).map(e => `<option value="${escapeHtml(e.nome)}" ${configAtual.ultima_empresa_trabalho === e.nome ? 'selected' : ''}>${escapeHtml(e.nome)}</option>`).join('');
   }
   
   const chkEdicao = document.getElementById('cfg-trabalho-edicao');
@@ -429,7 +430,7 @@ window.abrirModalNovaEmpresa = function() {
   const selPag = document.getElementById('modal-emp-pagador');
   if (selPag) {
     const pags = window._pagadoresList || [];
-    selPag.innerHTML = '<option value="">Selecione...</option>' + pags.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+    selPag.innerHTML = '<option value="">Selecione...</option>' + pags.map(p => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`).join('');
   }
   document.getElementById('modal-empresa').style.display = 'flex';
 };
@@ -447,7 +448,7 @@ window.editarEmpresa = function(id) {
   const selPag = document.getElementById('modal-emp-pagador');
   if (selPag) {
     const pags = window._pagadoresList || [];
-    selPag.innerHTML = '<option value="">Selecione...</option>' + pags.map(p => `<option value="${p.id}" ${e.pagador_id === p.id ? 'selected' : ''}>${p.nome}</option>`).join('');
+    selPag.innerHTML = '<option value="">Selecione...</option>' + pags.map(p => `<option value="${p.id}" ${e.pagador_id === p.id ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('');
   }
   document.getElementById('modal-empresa').style.display = 'flex';
 };

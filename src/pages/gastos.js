@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { Chart, registerables } from 'chart.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 
@@ -22,7 +23,7 @@ function showToast(message, type) {
   var toast = document.createElement('div');
   toast.className = 'toast ' + type;
   var iconName = type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info');
-  toast.innerHTML = '<i data-lucide="' + iconName + '"></i> <span>' + message + '</span>';
+  setIconMessage(toast, iconName, message);
   container.appendChild(toast);
   if (window.lucide) window.lucide.createIcons();
   setTimeout(function() {
@@ -149,7 +150,7 @@ function getStatusBadge(status) {
   if (status === 'pago') return '<span class="status-badge" style="background: rgba(34,197,94,0.15); color: #4ade80;">Pago</span>';
   if (status === 'pendente') return '<span class="status-badge" style="background: rgba(234,179,8,0.15); color: #facc15;">Pendente</span>';
   if (status === 'cancelado') return '<span class="status-badge" style="background: rgba(100,116,139,0.15); color: #94a3b8;">Cancelado</span>';
-  return status;
+  return escapeHtml(status);
 }
 
 function renderTabela() {
@@ -165,7 +166,7 @@ function renderTabela() {
   for (var i = 0; i < gastosAtuais.length; i++) {
     var g = gastosAtuais[i];
     var rowStyle = g.status === 'cancelado' ? 'opacity: 0.5;' : '';
-    var obsHtml = g.observacao ? '<div style="font-size: 0.8rem; color: var(--text-muted);">' + g.observacao + '</div>' : '';
+    var obsHtml = g.observacao ? '<div style="font-size: 0.8rem; color: var(--text-muted);">' + escapeHtml(g.observacao) + '</div>' : '';
     var valorColor = g.status === 'pago' ? 'var(--text-primary)' : 'var(--text-secondary)';
 
     var btnEditar = '';
@@ -175,9 +176,9 @@ function renderTabela() {
 
     html += '<tr style="' + rowStyle + '">';
     html += '<td style="color: var(--text-secondary);">' + formatarDataBR(g.data) + '</td>';
-    html += '<td><div style="font-weight: 500; color: var(--text-primary);">' + g.descricao + '</div>' + obsHtml + '</td>';
-    html += '<td><div style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background: var(--border-subtle);"></span>' + g.categoria_nome + '</div></td>';
-    html += '<td style="color: var(--text-secondary);">' + g.forma_pagamento + '</td>';
+    html += '<td><div style="font-weight: 500; color: var(--text-primary);">' + escapeHtml(g.descricao) + '</div>' + obsHtml + '</td>';
+    html += '<td><div style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background: var(--border-subtle);"></span>' + escapeHtml(g.categoria_nome) + '</div></td>';
+    html += '<td style="color: var(--text-secondary);">' + escapeHtml(g.forma_pagamento) + '</td>';
     html += '<td style="font-weight: 600; color: ' + valorColor + ';">' + formatarMoedaBR(g.valor) + '</td>';
     html += '<td>' + getStatusBadge(g.status) + '</td>';
     html += '<td style="text-align: right;">' + btnEditar;

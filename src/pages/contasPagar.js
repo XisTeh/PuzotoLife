@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
 
@@ -28,7 +29,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => {
@@ -66,13 +67,13 @@ async function loadCategorias() {
     const selFiltro = document.getElementById('cp-filtro-categoria');
     if (selFiltro) {
       selFiltro.innerHTML = '<option value="todas">Todas as Categorias</option>' + 
-        categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+        categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
     }
 
     // Select do Formulário
     const selForm = document.getElementById('form-cp-categoria');
     if (selForm) {
-      selForm.innerHTML = categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      selForm.innerHTML = categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
     }
   } catch (err) {
     showToast('Erro ao carregar categorias: ' + err.message, 'error');
@@ -196,7 +197,7 @@ function renderProximosVencimentos() {
     html += `
       <div style="padding: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${c.nome}</div>
+          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${escapeHtml(c.nome)}</div>
           <div style="font-size: 0.8rem; color: ${corDias}; font-weight: 500;">${diasTexto} (${formatarDataBR(c.vencimento)})</div>
         </div>
         <div style="font-weight: 600; color: var(--text-primary);">
@@ -232,20 +233,20 @@ function renderTabela() {
     if (c.status === 'pago') badgeColor = 'var(--color-teal)';
     if (c.status === 'cancelado') badgeColor = 'var(--text-muted)';
 
-    const recorrenciaStr = c.recorrente ? `<span style="color: var(--color-purple); font-size: 0.8rem; font-weight: 500;">${c.frequencia} (${c.parcela_atual}/${c.total_parcelas})</span>` : '<span style="color: var(--text-muted); font-size: 0.8rem;">Única</span>';
+    const recorrenciaStr = c.recorrente ? `<span style="color: var(--color-purple); font-size: 0.8rem; font-weight: 500;">${escapeHtml(c.frequencia)} (${c.parcela_atual}/${c.total_parcelas})</span>` : '<span style="color: var(--text-muted); font-size: 0.8rem;">Única</span>';
 
     html += `
       <tr>
         <td style="${c.status === 'atrasado' ? 'color: var(--color-red); font-weight: 600;' : ''}">${formatarDataBR(c.vencimento)}</td>
-        <td style="font-weight: 500;">${c.nome}</td>
-        <td>${c.categoria_nome}</td>
-        <td>${c.forma_pagamento || '-'}</td>
+        <td style="font-weight: 500;">${escapeHtml(c.nome)}</td>
+        <td>${escapeHtml(c.categoria_nome)}</td>
+        <td>${escapeHtml(c.forma_pagamento || '-')}</td>
         <td style="font-weight: 600;">${formatarMoedaBR(c.valor)}</td>
         <td>${recorrenciaStr}</td>
         <td>
           <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; padding: 4px 10px; border-radius: 100px; background: var(--bg-surface); border: 1px solid var(--border-subtle); font-weight: 500; text-transform: uppercase;">
             <span style="width: 6px; height: 6px; border-radius: 50%; background: ${badgeColor};"></span>
-            ${c.status}
+            ${escapeHtml(c.status)}
           </span>
         </td>
         <td>
