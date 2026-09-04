@@ -12,7 +12,7 @@ Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado, t
 
 Issue #6: sidebar com bordas arredondadas, superfícies escuras, navegação móvel, foco/teclado, lazy loading por página, skeleton de navegação, feedback e reduced motion. Inicializadores das páginas passam a ser aguardados, removendo atrasos artificiais. Revisão visual usa dados sintéticos; não publicar screenshots com registros pessoais.
 
-Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. **Ainda falta a revisão completa de HTML interpolado e handlers inline do legado, validação de todos os payloads e revisão das operações sensíveis.** CSP mantém uma exceção temporária para handlers inline; não anunciar XSS como resolvido. Produção e bind externo bloqueados até a revisão e a migração.
+Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. A branch `codex/security-hardening` bloqueia IDs inválidos, poluição de protótipo, parâmetros duplicados, payloads excessivamente complexos e tipos de conteúdo inesperados antes dos serviços. **Ainda falta validar os campos de cada operação e concluir a revisão de HTML interpolado e handlers inline do legado.** CSP mantém uma exceção temporária para handlers inline; não anunciar XSS como resolvido. Produção e bind externo continuam bloqueados até a revisão e a migração.
 
 Issue #9: deploy não realizado. Definir hospedagem compatível e ambiente protegido após concluir migração, segurança e revisão. Este projeto não é um site estático; hospedar apenas dist não oferece persistência nem login funcional.
 
@@ -49,3 +49,9 @@ Refs #5; depende do PR #11. PR encadeado contra codex/cloud-foundation-design, s
 - Limitações: PGlite não comprova TLS nem conectividade PostgreSQL do Supabase. Nenhuma migração real executada. Backup/restauração remotos, importação JSON pela interface e armazenamento persistente de anexos seguem pendentes. O roundtrip de login real com senha, XSS/validação completa e jurídico continuam abertos.
 
 A base pessoal continua SQLite no loopback. Info não foi alterado. Antes da migração final, criar novo snapshot consistente se houver lançamentos posteriores ao Info.
+
+## Validação HTTP — branch codex/security-hardening
+
+Refs #7; depende do PR PostgreSQL. A camada central limita profundidade, quantidade de nós, tamanho de textos e parâmetros de consulta sem alterar valores válidos. Chaves de poluição de protótipo, query duplicada, corpo que não seja objeto JSON, `Content-Type` incorreto, IDs fora do intervalo e nomes de backup que não possam ter sido gerados pelo sistema recebem 400/415 antes de acessar persistência. O identificador especial `dp_N` fica restrito ao fluxo de dívidas parceladas.
+
+Os testes são executados em servidor isolado e não usam o banco pessoal. Esta etapa é defesa de borda; não substitui schemas por operação nem resolve os pontos XSS do frontend. A exceção CSP para atributos inline permanece até a conversão dos eventos e a revisão visual dos fluxos.

@@ -4,6 +4,7 @@
  */
 
 import express, { Router } from 'express';
+import { validateBackupFilenameParam, validateIdParam, validateTextParam } from '../security/requestValidation.js';
 
 // Serviços
 import { listarEmpresas, listarTodasEmpresas, obterEmpresaPorNome, obterEmpresaPorId, criarEmpresa, atualizarEmpresa, desativarEmpresa, ativarEmpresa } from '../services/empresas.js';
@@ -87,6 +88,11 @@ import {
 } from '../services/pagadores.js';
 
 const router = Router();
+router.param('id', validateIdParam);
+router.param('filename', validateBackupFilenameParam);
+router.param('nome', validateTextParam('Nome'));
+router.param('chave', validateTextParam('Chave', 100));
+router.param('referencia', validateTextParam('Referência', 20));
 
 
 // Helper para try/catch uniforme (suporta sync e async)
