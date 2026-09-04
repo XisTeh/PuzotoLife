@@ -1,0 +1,47 @@
+{
+  "name": "puzoto-life",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "server": "node server/index.js",
+    "dev": "vite",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "start": "npm run dev:all",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:investimentos": "node --test test/investimentos.test.js",
+    "test": "node --test test/*.test.js",
+    "lint": "biome lint .",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check:budget": "node scripts/check-budget.mjs",
+    "test:e2e": "playwright test",
+    "quality": "npm run lint && npm run check:architecture && npm test && npm run build && npm run check:budget"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.62.1",
+    "concurrently": "^9.2.1",
+    "vite": "^6.3.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.115.0",
+    "better-sqlite3": "^12.9.0",
+    "chart.js": "^4.5.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "lucide": "^1.41.0",
+    "pg": "^8.23.0"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  }
+}

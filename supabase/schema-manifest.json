@@ -1,0 +1,1415 @@
+{
+  "source": "SQLite schema only",
+  "tables": [
+    {
+      "name": "ajustes_retroativos",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "fechamento_mensal_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "referencia",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "empresa",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "quantidade",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_unitario",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "auditoria",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "dados_antes",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "dados_depois",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "cartoes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "banco",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "limite",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "dia_fechamento",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "dia_vencimento",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "cor",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "icone",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "ativo",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "categorias",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "cor",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "icone",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "ativa",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "compras_cartao",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "cartao_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "cartao_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "data_compra",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "quantidade_parcelas",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "configuracoes",
+      "columns": [
+        {
+          "name": "chave",
+          "type": "TEXT",
+          "primaryKey": true
+        },
+        {
+          "name": "valor",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "contas_pagar",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "vencimento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "recorrente",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "frequencia",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "parcela_atual",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_parcelas",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "grupo_recorrencia_id",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "pago_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "dividas_parceladas_grupos",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome_pessoa",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "motivo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_parcela",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_total_original",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "total_parcelas",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "parcelas_pagas",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "parcelas_restantes",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "dia_vencimento",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "competencia_inicio",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "empresas",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_padrao",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "ativa",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "cor",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "icone",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "pagador_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "faturas_cartao",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "cartao_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "cartao_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "competencia",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "vencimento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "pago_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao_pagamento",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "fechamentos_diarios",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "total_quantidade",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_valor",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "resumo_json",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "fechamentos_mensais",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "referencia",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "qtd_diagnostico",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_diagnostico",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "qtd_perfecta",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_perfecta",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "qtd_email",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_email",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "qtd_padrao",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_padrao",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "qtd_ranon",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_ranon",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "qtd_global",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_global",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "fechado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "snapshot_json",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "gastos",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "conta_carteira",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "investimento_movimentos",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "investimento_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "investimentos",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "instituicao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "conta_titular",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "ativo",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "lancamentos_trabalho",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "empresa_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "empresa_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "quantidade",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_unitario",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "horario",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "recebido_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "origem_fechamento_dia_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "laudos_ranon",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "registro_paciente",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_unitario",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "horario",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "arquivo_excel_backup",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "recebido_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "quantidade",
+          "type": "INTEGER",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "laudos_ranon_pendentes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "registro_paciente",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_unitario",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "horario",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "quantidade",
+          "type": "INTEGER",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "lotes_trabalho_pendentes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "empresa_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "empresa_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "quantidade",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_unitario",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "horario",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "pagadores",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo_pessoa",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "documento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "email",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "telefone",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "ativo",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo_recebimento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "conta_destino",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "parcelas_cartao",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "compra_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "cartao_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "cartao_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "numero_parcela",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_parcelas",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "valor_parcela",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "competencia",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "vencimento",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "pessoas_dividas",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "nome_pessoa",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "motivo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "data_combinada",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "pago_recebido_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "parcela_atual",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "total_parcelas",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "grupo_parcelas_id",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    },
+    {
+      "name": "receitas",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "valor",
+          "type": "REAL",
+          "primaryKey": false
+        },
+        {
+          "name": "origem",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "categoria_nome",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "recebido_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "vinculado_trabalho",
+          "type": "BOOLEAN",
+          "primaryKey": false
+        },
+        {
+          "name": "referencia_trabalho_tipo",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "referencia_trabalho_id",
+          "type": "INTEGER",
+          "primaryKey": false
+        },
+        {
+          "name": "observacao",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "criado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "atualizado_em",
+          "type": "TEXT",
+          "primaryKey": false
+        }
+      ]
+    }
+  ]
+}

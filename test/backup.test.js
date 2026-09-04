@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+
+test('backup WAL concluído e exportação incluem todas as tabelas', async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'puzoto-backup-'));
+  process.env.PUZOTO_LIFE_DB_PATH = path.join(dir, 'test.db');
+  const { initializeDatabase } = await import('../server/database/init.js');
+  const { getDatabase, closeDatabase } = await import('../server/database/connection.js');
+  const { criarBackupManual, exportarJSON, restaurarBackup } = await import('../server/services/backup.js');
+  t.after(() => { closeDatabase(); fs.rmSync(dir, { recursive: true, force: true }); });
+  initializeDatabase();
+  const db = getDatabase();
+  db.prepare("INSERT INTO laudos_ranon (registro_paciente, quantidade, valor_unitario, total, data) VALUES ('SINTETICO', 1, 2, 2, '2026-01-01')").run();
+  const backup = await criarBackupManual();
+  const snapshot = new Database(backup.caminho, { readonly: true });
+  assert.equal(snapshot.pragma('integrity_check', { simple: true }), 'ok');
+  assert.equal(snapshot.prepare('SELECT COUNT(*) as n FROM laudos_ranon').get().n, 1);
+  snapshot.close();
+  const exported = exportarJSON();
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+  assert.equal(exported._meta.totalTabelas, tables.length);
+  assert.equal(exported.laudos_ranon[0].registro_paciente, 'SINTETICO');
+  assert.ok(Array.isArray(exported.pagadores));
+  assert.ok(Array.isArray(exported.lotes_trabalho_pendentes));
+  assert.throws(() => restaurarBackup(backup.nomeArquivo, 'SIM'));
+  assert.throws(() => restaurarBackup('../unsafe.db', 'RESTAURAR'));
+  db.prepare('DELETE FROM laudos_ranon').run();
+  restaurarBackup(backup.nomeArquivo, 'RESTAURAR');
+  assert.equal(getDatabase().prepare('SELECT COUNT(*) as n FROM laudos_ranon').get().n, 1);
+});

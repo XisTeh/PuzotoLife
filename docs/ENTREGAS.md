@@ -1,0 +1,39 @@
+# Entregas e estado real
+
+## Fundação local — branch codex/cloud-foundation-design
+
+Issue #1: backup Info consistente, integridade OK, 23 tabelas e 5.382 registros; 92 arquivos preservados com SHA-256. Backup manual aguarda a conclusão; exportação passa a incluir as tabelas que faltavam. Teste de restauração em banco temporário.
+
+Issues #2 e #3: AGENTS.md, templates de Issue/PR, Biome, contratos de arquitetura, proteção de arquivos privados, testes Node, Playwright, auditoria de dependências e orçamento gzip. Não levar o histórico local com bancos e node_modules para o repositório público. O commit da entrega deve ter somente o histórico remoto sanitizado como ancestral.
+
+Issue #4: backend de login Supabase e sessão HttpOnly, autorização pelo UUID de proprietário, recuperação, logout e rate limit implementados. Testes locais usam cliente simulado. Credenciais e teste real ainda necessários; integração de Auth não conclui a migração do banco.
+
+Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado, testado em PostgreSQL local via PGlite. Importador transacional com paridade de valores e pré-validação do snapshot. **Ainda falta portar os serviços SQL síncronos para PostgreSQL, testar concorrência, definir papel de runtime e migrar/validar no Supabase real.** Não manter SQLite como fonte de verdade após o lançamento.
+
+Issue #6: sidebar com bordas arredondadas, superfícies escuras, navegação móvel, foco/teclado, lazy loading por página, skeleton de navegação, feedback e reduced motion. Inicializadores das páginas passam a ser aguardados, removendo atrasos artificiais. Revisão visual usa dados sintéticos; não publicar screenshots com registros pessoais.
+
+Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. **Ainda falta a revisão completa de HTML interpolado e handlers inline do legado, validação de todos os payloads e revisão das operações sensíveis.** CSP mantém uma exceção temporária para handlers inline; não anunciar XSS como resolvido. Produção e bind externo bloqueados até a revisão e a migração.
+
+Issue #9: deploy não realizado. Definir hospedagem compatível e ambiente protegido após concluir migração, segurança e revisão. Este projeto não é um site estático; hospedar apenas dist não oferece persistência nem login funcional.
+
+Issue #10: checklist para minutas, revisão e aprovação jurídica humana pendentes. Não há termos juridicamente aprovados.
+
+## Critérios de conclusão
+
+Uma Issue só pode ser fechada quando todos os seus critérios forem cumpridos. Usar `Refs #N` no PR para trabalho parcial e `Closes #N` apenas quando o merge concluir todo o escopo. Nunca fechar #4, #5, #7, #9 ou #10 só por arquivos preparatórios.
+
+## Ferramentas e proporcionalidade
+
+| Área | Adotado nesta etapa | Decisão para próximas etapas |
+| --- | --- | --- |
+| Qualidade | Biome e contratos de arquitetura locais | arch-contract não é necessário para os contratos simples atuais; ampliar regras conforme migração |
+| Testes | Node unitários/integração, Playwright desktop/mobile, PGlite para schema | Cobertura e Codecov quando critérios por domínio estiverem definidos; Stryker nas regras financeiras críticas |
+| Código não usado | Lazy loading e revisão de imports | Knip após normalizar os handlers globais; hoje geraria falsos positivos no legado |
+| Commits | Mensagens convencionais nas entregas | Commitlint ao ampliar colaboração; não duplicar regras no pipeline sem benefício |
+| E2E | Playwright versionado e reproduzível | Endtest seria redundante nesta etapa |
+| Observabilidade | Correlation ID, status e duração sem dados privados | Sentry ou OpenTelemetry após definir destino/retencão; Datadog e New Relic seriam redundantes agora |
+| Jurídico | Escopo de revisão documentado | Aprovação depende de profissional responsável, não de agente |
+
+## Rollback
+
+Enquanto a publicação não acontece, continuar usando o SQLite local. Para reverter código, usar o PR/commit anterior e preservar o banco. Para restaurar dados, parar todos os processos e usar snapshot validado; nunca copiar arquivo SQLite em uso ignorando WAL. O Info não substitui uma cópia externa protegida contra falha do disco.
