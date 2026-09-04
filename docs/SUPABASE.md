@@ -11,7 +11,7 @@ Login e serviços assíncronos PostgreSQL estão implementados. Testes sintétic
 1. Abra **Authentication → Users → Add user → Create new user**.
 2. Informe seu e-mail e senha exclusiva. Faça você mesmo a entrada e confirmação da senha; não a envie no chat.
 3. Copie o UUID do usuário para identificar o proprietário. Outro usuário autenticado não poderá abrir seu acervo.
-4. Em **Authentication → Sign In / Providers**, desabilite cadastro público e acesso anônimo.
+4. Em **Authentication → Sign In / Providers**, cadastro público e acesso anônimo já foram desativados. E-mail é o único provedor habilitado.
 
 ## 2. Configure o arquivo privado
 
@@ -20,13 +20,13 @@ Login e serviços assíncronos PostgreSQL estão implementados. Testes sintétic
 3. Em **Project Settings → API Keys**, copie a chave **publishable** para `SUPABASE_PUBLISHABLE_KEY`. Login não precisa de service_role nem secret key.
 4. Coloque seu UUID em `SUPABASE_OWNER_ID`.
 5. Mantenha `PUZOTO_DATABASE=sqlite`, `APP_ORIGIN=http://localhost:5174`, `HOST=127.0.0.1` e `PORT=3210` durante a preparação.
-6. Reinicie `npm run server`, execute `npm run dev` e abra `http://localhost:5174`. Valide login e logout.
+6. O `.env` local já contém URL, chave publishable e UUID do proprietário; o banco permanece `sqlite`. Backend e frontend foram reiniciados. Abra `http://localhost:5174` e valide login e logout com sua senha.
 
 O nome correto é `.env`; `.inv` também está ignorado para proteger contra erro de digitação. Senhas e chaves secretas nunca entram em `VITE_*`, código, prints, Issues ou PRs. Cookies são HttpOnly, SameSite Strict e Secure em produção. Tokens ficam na memória do backend: reiniciar exige novo login. Não usar múltiplas réplicas antes de compartilhar sessões e rate limit.
 
 ## 3. Recuperação de senha
 
-Em **Authentication → URL Configuration**, autorize exatamente a URL de desenvolvimento; depois inclua o domínio HTTPS final. Evite curingas. “Esqueci minha senha” usa e-mail do Supabase; produção exige configurar e testar SMTP próprio. O link abre uma sessão restrita de recuperação, sem liberar dados antes de novo login.
+Em **Authentication → URL Configuration**, Site URL e redirect já estão definidos exatamente como `http://localhost:5174`, sem curingas. Trocar/adicionar o domínio HTTPS final antes do deploy. “Esqueci minha senha” usa e-mail do Supabase; produção exige configurar e testar SMTP próprio. O link abre uma sessão restrita de recuperação, sem liberar dados antes de novo login.
 
 ## 4. Migração — depois da revisão dos PRs
 
