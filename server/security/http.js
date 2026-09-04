@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
+import { allowedRequestOrigins, isLoopbackHostname } from './origin.js';
 
 export function installHttpSecurity(app, env = process.env) {
-  const origin = new URL(env.APP_ORIGIN || 'http://localhost:5174').origin;
+  const allowedOrigins = allowedRequestOrigins(env);
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"], scriptSrc: ["'self'"], scriptSrcAttr: ["'none'"],
@@ -12,10 +13,9 @@ export function installHttpSecurity(app, env = process.env) {
     upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
   } }, strictTransportSecurity: env.NODE_ENV === 'production' ? undefined : false }));
   app.use((req, res, next) => {
-    if (env.NODE_ENV !== 'production' && !['localhost', '127.0.0.1', '[::1]'].includes(req.hostname)) return res.sendStatus(403);
+    if (env.NODE_ENV !== 'production' && !isLoopbackHostname(req.hostname)) return res.sendStatus(403);
     const requestOrigin = req.get('Origin');
-    const allowed = [origin, `http://127.0.0.1:${env.PORT || 3210}`, `http://localhost:${env.PORT || 3210}`];
-    if (requestOrigin && !allowed.includes(requestOrigin)) return res.status(403).json({ ok: false, error: 'Origem não autorizada.' });
+    if (requestOrigin && !allowedOrigins.has(requestOrigin)) return res.status(403).json({ ok: false, error: 'Origem não autorizada.' });
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.get('X-Puzoto-Request') !== '1') return res.status(403).json({ ok: false, error: 'Requisição não autorizada.' });
     if (req.get('Sec-Fetch-Site') === 'cross-site') return res.sendStatus(403);
     const id = randomUUID();

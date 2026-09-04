@@ -3,15 +3,18 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import { createAuth, authConfigured } from '../server/security/auth.js';
 import { installHttpSecurity } from '../server/security/http.js';
+import { allowedRequestOrigins } from '../server/security/origin.js';
 
 const owner = '11111111-1111-4111-8111-111111111111';
 const env = { NODE_ENV: 'test', SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'public-test', SUPABASE_OWNER_ID: owner, APP_ORIGIN: 'http://localhost:5174' };
 async function fixture(t, userId = owner) {
   let revoked = false;
+  let recoveryRequest;
   const auth = createAuth(env, () => ({ auth: {
     signInWithPassword: async ({ password }) => password === 'correct-password' ? { data: { user: { id: userId } } } : { error: true, data: {} },
     getUser: async () => revoked ? { error: true, data: {} } : { data: { user: { id: userId } } },
     signOut: async () => { revoked = true; },
+    resetPasswordForEmail: async (email, options) => { recoveryRequest = { email, options }; return { data: {}, error: null }; },
   } }));
   const app = express();
   installHttpSecurity(app, env);
@@ -23,7 +26,7 @@ async function fixture(t, userId = owner) {
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const request = (url, options = {}) => fetch(`http://127.0.0.1:${server.address().port}${url}`, options);
   const login = (password = 'correct-password') => request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Puzoto-Request': '1' }, body: JSON.stringify({ email: 'owner@example.com', password }) });
-  return { request, login, revoke: () => { revoked = true; } };
+  return { request, login, revoke: () => { revoked = true; }, recoveryRequest: () => recoveryRequest };
 }
 test('configuração incompleta de Auth falha fechada', () => {
   assert.equal(authConfigured({}), false);
@@ -63,6 +66,19 @@ test('origem externa e mutação sem header de proteção são bloqueadas', asyn
   const { request } = await fixture(t);
   assert.equal((await request('/api/auth/login', { method: 'POST', headers: { Origin: 'https://evil.example', 'X-Puzoto-Request': '1' } })).status, 403);
   assert.equal((await request('/api/auth/login', { method: 'POST' })).status, 403);
+});
+test('aliases locais são aceitos no desenvolvimento e recuperação usa origem canônica', async (t) => {
+  const { request, recoveryRequest } = await fixture(t);
+  const headers = { Origin: 'http://127.0.0.1:5174', 'Content-Type': 'application/json', 'X-Puzoto-Request': '1' };
+  const loginResponse = await request('/api/auth/login', { method: 'POST', headers, body: JSON.stringify({ email: 'owner@example.com', password: 'correct-password' }) });
+  assert.equal(loginResponse.status, 200);
+  const response = await request('/api/auth/forgot-password', { method: 'POST', headers, body: JSON.stringify({ email: 'owner@example.com' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(recoveryRequest(), { email: 'owner@example.com', options: { redirectTo: 'http://localhost:5174/' } });
+});
+test('produção aceita somente a origem configurada', () => {
+  const allowed = allowedRequestOrigins({ ...env, NODE_ENV: 'production' });
+  assert.deepEqual([...allowed], ['http://localhost:5174']);
 });
 test('rate limit de login e headers de proteção', async (t) => {
   const { login } = await fixture(t);
