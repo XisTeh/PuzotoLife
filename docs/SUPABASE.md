@@ -24,6 +24,8 @@ Login e serviços assíncronos PostgreSQL estão implementados. Testes sintétic
 
 O nome correto é `.env`; `.inv` também está ignorado para proteger contra erro de digitação. Senhas e chaves secretas nunca entram em `VITE_*`, código, prints, Issues ou PRs. Cookies são HttpOnly, SameSite Strict e Secure em produção. Tokens ficam na memória do backend: reiniciar exige novo login. Não usar múltiplas réplicas antes de compartilhar sessões e rate limit.
 
+O Security Advisor do projeto registra zero erros. O único aviso é “Leaked Password Protection Disabled”; o Supabase disponibiliza essa verificação somente no plano Pro. O backend exige pelo menos 12 caracteres ao definir uma nova senha, e cadastro público continua bloqueado.
+
 ## 3. Recuperação de senha
 
 Em **Authentication → URL Configuration**, Site URL e redirect já estão definidos exatamente como `http://localhost:5174`, sem curingas. Trocar/adicionar o domínio HTTPS final antes do deploy. “Esqueci minha senha” usa e-mail do Supabase; produção exige configurar e testar SMTP próprio. O link abre uma sessão restrita de recuperação, sem liberar dados antes de novo login.
