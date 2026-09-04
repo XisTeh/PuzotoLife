@@ -122,8 +122,8 @@ table { font-variant-numeric: tabular-nums; }
   .app-layout { padding: 0; gap: 0; }
   .main-content { height: 100dvh; width: 100%; }
   .mobile-menu { display: flex; }
-  .sidebar { display: flex; position: fixed; top: 10px; bottom: 10px; left: 10px; width: min(296px, calc(100vw - 48px)); min-width: 0; height: calc(100dvh - 20px); transform: translateX(calc(-100% - 16px)); visibility: hidden; transition: transform 220ms cubic-bezier(.22,1,.36,1), visibility 220ms; }
-  .sidebar.is-open { transform: translateX(0); visibility: visible; }
+  .sidebar { display: flex; position: fixed; top: 10px; bottom: 10px; left: 10px; width: min(296px, calc(100vw - 48px)); min-width: 0; height: calc(100dvh - 20px); transform: translateX(calc(-100% - 16px)); transition: transform 220ms cubic-bezier(.22,1,.36,1); }
+  .sidebar.is-open { transform: translateX(0); }
   .sidebar-close { position: absolute; right: 8px; top: 8px; }
   .sidebar__brand { padding-right: 45px; }
   .sidebar__app-name { font-size: 1.2rem; }

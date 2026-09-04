@@ -21,6 +21,7 @@ export function renderHeader(session = { mode: 'local' }) {
   const toggle = header.querySelector('#openMenu');
   function closeMenu() {
     sidebar.classList.remove('is-open');
+    sidebar.inert = matchMedia('(max-width: 900px)').matches;
     backdrop.classList.remove('is-visible');
     toggle.setAttribute('aria-expanded', 'false');
     document.getElementById('mainContent').inert = false;
@@ -28,10 +29,11 @@ export function renderHeader(session = { mode: 'local' }) {
     sidebar.removeAttribute('aria-modal');
   }
   toggle.addEventListener('click', () => {
+    sidebar.inert = false;
     sidebar.classList.add('is-open'); backdrop.classList.add('is-visible'); toggle.setAttribute('aria-expanded', 'true');
     sidebar.setAttribute('role', 'dialog'); sidebar.setAttribute('aria-modal', 'true'); sidebar.setAttribute('aria-label', 'Navegação principal');
     document.getElementById('mainContent').inert = true;
-    requestAnimationFrame(() => sidebar.querySelector('#closeMenu')?.focus());
+    sidebar.querySelector('#closeMenu')?.focus({ preventScroll: true });
   });
   sidebar.querySelector('#closeMenu')?.addEventListener('click', () => { closeMenu(); toggle.focus(); });
   backdrop.onclick = () => { closeMenu(); toggle.focus(); };
@@ -48,6 +50,7 @@ export function renderHeader(session = { mode: 'local' }) {
     }
   }, { signal: keyboardController.signal });
   matchMedia('(min-width: 901px)').addEventListener('change', closeMenu);
+  closeMenu();
 }
 export function updateHeaderTitle(title) {
   const label = document.getElementById('headerPageTitle');
