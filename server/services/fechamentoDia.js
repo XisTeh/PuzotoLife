@@ -1,3 +1,4 @@
+import { atomic, snapshot } from '../database/connection.js';
 /**
  * Serviço de Fechamento do Dia
  * 
@@ -14,16 +15,17 @@ import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 import { dataHojeLocal } from '../utils/dataLocal.js';
 
-export function fecharDiaTrabalho(dataFechamento = null) {
+export async function fecharDiaTrabalho(dataFechamento = null) {
+  return atomic(async () => {
   const db = getDatabase();
 
   // Data do fechamento (padrão: hoje)
   const data = dataFechamento || dataHojeLocal();
 
   // 1. Ler todos os itens pendentes
-  const itensPendentes = db.prepare(
+  const itensPendentes = (await db.prepare(
     'SELECT * FROM lotes_trabalho_pendentes ORDER BY empresa_nome, criado_em'
-  ).all();
+  ).all());
 
   // 2. Se vazio, retorna aviso
   if (itensPendentes.length === 0) {
@@ -38,7 +40,7 @@ export function fecharDiaTrabalho(dataFechamento = null) {
   //    (o usuário pode lançar novos itens e fechar novamente)
 
   // Executar tudo em transação
-  const resultado = db.transaction(() => {
+  const resultado = (await db.transaction(async () => {
     // Calcular totais
     let totalQuantidade = 0;
     let totalValor = 0;
@@ -56,7 +58,7 @@ export function fecharDiaTrabalho(dataFechamento = null) {
     }
 
     // 4. Criar registro em fechamentos_diarios
-    const fechamento = db.prepare(`
+    const fechamento = (await db.prepare(`
       INSERT INTO fechamentos_diarios (data, total_quantidade, total_valor, resumo_json)
       VALUES (@data, @total_quantidade, @total_valor, @resumo_json)
     `).run({
@@ -64,7 +66,7 @@ export function fecharDiaTrabalho(dataFechamento = null) {
       total_quantidade: totalQuantidade,
       total_valor: totalValor,
       resumo_json: JSON.stringify(resumoPorEmpresa)
-    });
+    }));
 
     const fechamentoId = fechamento.lastInsertRowid;
 
@@ -77,7 +79,7 @@ export function fecharDiaTrabalho(dataFechamento = null) {
     `);
 
     for (const item of itensPendentes) {
-      insertLancamento.run({
+      (await insertLancamento.run({
         empresa_id: item.empresa_id,
         empresa_nome: item.empresa_nome,
         quantidade: item.quantidade,
@@ -87,21 +89,21 @@ export function fecharDiaTrabalho(dataFechamento = null) {
         horario: item.horario,
         observacao: item.observacao,
         fechamento_id: fechamentoId
-      });
+      }));
     }
 
     // 6. Zerar lotes_trabalho_pendentes
-    db.prepare('DELETE FROM lotes_trabalho_pendentes').run();
+    (await db.prepare('DELETE FROM lotes_trabalho_pendentes').run());
 
     // 7. Registrar auditoria
-    registrarAuditoria('fechamento_dia', `Fechamento do dia ${data}`, null, {
+    (await registrarAuditoria('fechamento_dia', `Fechamento do dia ${data}`, null, {
       data,
       fechamento_id: fechamentoId,
       total_itens: itensPendentes.length,
       total_quantidade: totalQuantidade,
       total_valor: totalValor,
       resumo: resumoPorEmpresa
-    });
+    }));
 
     return {
       sucesso: true,
@@ -113,34 +115,40 @@ export function fecharDiaTrabalho(dataFechamento = null) {
       total_valor: totalValor,
       resumo: resumoPorEmpresa
     };
-  })();
+  })());
 
   return resultado;
+  });
 }
 
-export function listarFechamentosDiarios() {
+export async function listarFechamentosDiarios() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM fechamentos_diarios ORDER BY data DESC').all();
+  return (await db.prepare('SELECT * FROM fechamentos_diarios ORDER BY data DESC').all());
+  });
 }
 
-export function obterFechamentoDiario(data) {
+export async function obterFechamentoDiario(data) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM fechamentos_diarios WHERE data = ?').get(data);
+  return (await db.prepare('SELECT * FROM fechamentos_diarios WHERE data = ?').get(data));
+  });
 }
 
-export function desfazerFechamentoDia(fechamentoId) {
+export async function desfazerFechamentoDia(fechamentoId) {
+  return atomic(async () => {
   const db = getDatabase();
   
   // Verifica se o fechamento existe
-  const fechamento = db.prepare('SELECT * FROM fechamentos_diarios WHERE id = ?').get(fechamentoId);
+  const fechamento = (await db.prepare('SELECT * FROM fechamentos_diarios WHERE id = ?').get(fechamentoId));
   if (!fechamento) {
     return { sucesso: false, mensagem: 'Fechamento não encontrado.' };
   }
   
   // Transação para desfazer
-  const resultado = db.transaction(() => {
+  const resultado = (await db.transaction(async () => {
     // 1. Move os lançamentos definitivos de volta para o lote temporário
-    const lancamentos = db.prepare('SELECT * FROM lancamentos_trabalho WHERE origem_fechamento_dia_id = ?').all(fechamentoId);
+    const lancamentos = (await db.prepare('SELECT * FROM lancamentos_trabalho WHERE origem_fechamento_dia_id = ?').all(fechamentoId));
     
     const insertLote = db.prepare(`
       INSERT INTO lotes_trabalho_pendentes 
@@ -150,7 +158,7 @@ export function desfazerFechamentoDia(fechamentoId) {
     `);
     
     for (const item of lancamentos) {
-      insertLote.run({
+      (await insertLote.run({
         empresa_id: item.empresa_id,
         empresa_nome: item.empresa_nome,
         quantidade: item.quantidade,
@@ -159,23 +167,24 @@ export function desfazerFechamentoDia(fechamentoId) {
         data: item.data,
         horario: item.horario,
         observacao: item.observacao
-      });
+      }));
     }
     
     // 2. Apaga os lançamentos definitivos atrelados a este fechamento
-    db.prepare('DELETE FROM lancamentos_trabalho WHERE origem_fechamento_dia_id = ?').run(fechamentoId);
+    (await db.prepare('DELETE FROM lancamentos_trabalho WHERE origem_fechamento_dia_id = ?').run(fechamentoId));
     
     // 3. Apaga o registro de fechamento diário
-    db.prepare('DELETE FROM fechamentos_diarios WHERE id = ?').run(fechamentoId);
+    (await db.prepare('DELETE FROM fechamentos_diarios WHERE id = ?').run(fechamentoId));
     
     // 4. Registra na auditoria
-    registrarAuditoria('desfazer_fechamento_dia', `Desfeito fechamento do dia ${fechamento.data}`, fechamento, null);
+    (await registrarAuditoria('desfazer_fechamento_dia', `Desfeito fechamento do dia ${fechamento.data}`, fechamento, null));
     
     return {
       sucesso: true,
       mensagem: `Fechamento do dia ${fechamento.data} foi desfeito com sucesso. Os itens retornaram ao lote temporário.`
     };
-  })();
+  })());
   
   return resultado;
+  });
 }

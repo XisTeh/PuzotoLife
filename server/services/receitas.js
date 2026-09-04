@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 
@@ -6,7 +7,8 @@ function dataIsoHoje() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function listarReceitas(filtros) {
+export async function listarReceitas(filtros) {
+  return snapshot(async () => {
   const db = getDatabase();
   let sql = 'SELECT * FROM receitas WHERE 1=1';
   const params = [];
@@ -32,10 +34,12 @@ export function listarReceitas(filtros) {
 
   sql += ' ORDER BY data DESC';
   const stmt = db.prepare(sql);
-  return stmt.all(...params);
+  return (await stmt.all(...params));
+  });
 }
 
-export function criarReceita(dados) {
+export async function criarReceita(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   
   if (!dados.data || !dados.descricao || !dados.valor || !dados.origem || !dados.categoria_nome) {
@@ -54,7 +58,7 @@ export function criarReceita(dados) {
     VALUES (@data, @descricao, @valor, @origem, @categoria_nome, @status, @recebido_em, @observacao)
   `);
 
-  const info = stmt.run({
+  const info = (await stmt.run({
     data: dados.data,
     descricao: dados.descricao,
     valor: parseFloat(dados.valor),
@@ -63,15 +67,17 @@ export function criarReceita(dados) {
     status: status,
     recebido_em: recebidoEm,
     observacao: dados.observacao || ''
-  });
+  }));
 
-  registrarAuditoria('RECEITA_CRIADA', `Receita ${dados.descricao} de ${dados.valor} registrada`);
+  (await registrarAuditoria('RECEITA_CRIADA', `Receita ${dados.descricao} de ${dados.valor} registrada`));
   return { sucesso: true, id: info.lastInsertRowid };
+  });
 }
 
-export function atualizarReceita(id, dados) {
+export async function atualizarReceita(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
-  const registro = db.prepare('SELECT id, status FROM receitas WHERE id = ?').get(id);
+  const registro = (await db.prepare('SELECT id, status FROM receitas WHERE id = ?').get(id));
   
   if (!registro) throw new Error('Receita não encontrada');
 
@@ -82,7 +88,7 @@ export function atualizarReceita(id, dados) {
     WHERE id = @id
   `);
 
-  stmt.run({
+  (await stmt.run({
     id: id,
     data: dados.data,
     descricao: dados.descricao,
@@ -91,54 +97,62 @@ export function atualizarReceita(id, dados) {
     categoria_nome: dados.categoria_nome,
     status: dados.status || registro.status,
     observacao: dados.observacao || ''
-  });
+  }));
 
-  registrarAuditoria('RECEITA_ATUALIZADA', `Receita ${id} atualizada`);
+  (await registrarAuditoria('RECEITA_ATUALIZADA', `Receita ${id} atualizada`));
   return { sucesso: true };
+  });
 }
 
-export function marcarReceitaComoRecebida(id) {
+export async function marcarReceitaComoRecebida(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const registro = db.prepare('SELECT id, status FROM receitas WHERE id = ?').get(id);
+  const registro = (await db.prepare('SELECT id, status FROM receitas WHERE id = ?').get(id));
   
   if (!registro) throw new Error('Receita não encontrada');
   if (registro.status === 'recebido') throw new Error('Receita já está recebida');
 
-  db.prepare(`
+  (await db.prepare(`
     UPDATE receitas 
     SET status = 'recebido', recebido_em = datetime('now', 'localtime'), atualizado_em = datetime('now', 'localtime')
     WHERE id = ?
-  `).run(id);
+  `).run(id));
 
-  registrarAuditoria('RECEITA_RECEBIDA', `Receita ${id} marcada como recebida`);
+  (await registrarAuditoria('RECEITA_RECEBIDA', `Receita ${id} marcada como recebida`));
   return { sucesso: true };
+  });
 }
 
-export function cancelarReceita(id) {
+export async function cancelarReceita(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const registro = db.prepare('SELECT id, status FROM receitas WHERE id = ?').get(id);
+  const registro = (await db.prepare('SELECT id, status FROM receitas WHERE id = ?').get(id));
   
   if (!registro) throw new Error('Receita não encontrada');
   if (registro.status === 'cancelado') throw new Error('Receita já está cancelada');
 
-  db.prepare(`
+  (await db.prepare(`
     UPDATE receitas 
     SET status = 'cancelado', atualizado_em = datetime('now', 'localtime')
     WHERE id = ?
-  `).run(id);
+  `).run(id));
 
-  registrarAuditoria('RECEITA_CANCELADA', `Receita ${id} cancelada`);
+  (await registrarAuditoria('RECEITA_CANCELADA', `Receita ${id} cancelada`));
   return { sucesso: true };
+  });
 }
 
-export function removerReceita(id) {
+export async function removerReceita(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  db.prepare('DELETE FROM receitas WHERE id = ?').run(id);
-  registrarAuditoria('RECEITA_EXCLUIDA', `Receita ${id} excluída fisicamente`);
+  (await db.prepare('DELETE FROM receitas WHERE id = ?').run(id));
+  (await registrarAuditoria('RECEITA_EXCLUIDA', `Receita ${id} excluída fisicamente`));
   return { sucesso: true };
+  });
 }
 
-export function calcularResumoReceitas(mes) {
+export async function calcularResumoReceitas(mes) {
+  return snapshot(async () => {
   const db = getDatabase();
   const mesParams = mes ? [mes + '-%'] : ['%'];
   
@@ -152,7 +166,7 @@ export function calcularResumoReceitas(mes) {
     origens: [] // para o grafico
   };
 
-  const registros = db.prepare(`SELECT * FROM receitas WHERE data LIKE ? AND status != 'cancelado'`).all(mesParams[0]);
+  const registros = (await db.prepare(`SELECT * FROM receitas WHERE data LIKE ? AND status != 'cancelado'`).all(mesParams[0]));
   
   let origensMap = {};
 
@@ -190,24 +204,30 @@ export function calcularResumoReceitas(mes) {
   }
 
   return resumo;
+  });
 }
 
-export function listarOrigensReceitaUnicas() {
+export async function listarOrigensReceitaUnicas() {
+  return snapshot(async () => {
   const db = getDatabase();
-  const rows = db.prepare("SELECT DISTINCT origem FROM receitas WHERE origem IS NOT NULL AND origem != '' ORDER BY origem ASC").all();
+  const rows = (await db.prepare("SELECT DISTINCT origem FROM receitas WHERE origem IS NOT NULL AND origem != '' ORDER BY origem ASC").all());
   return rows.map(r => r.origem);
+  });
 }
 
-export function verificarReceitaVinculada(tipo, id) {
+export async function verificarReceitaVinculada(tipo, id) {
+  return snapshot(async () => {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT id, status FROM receitas 
     WHERE vinculado_trabalho = 1 AND referencia_trabalho_tipo = ? AND referencia_trabalho_id = ? AND status != 'cancelado'
   `);
-  return stmt.get(tipo, id);
+  return (await stmt.get(tipo, id));
+  });
 }
 
-export function criarReceitaAutomaticaTrabalho(dados) {
+export async function criarReceitaAutomaticaTrabalho(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   
   const stmt = db.prepare(`
@@ -215,7 +235,7 @@ export function criarReceitaAutomaticaTrabalho(dados) {
     VALUES (@data, @descricao, @valor, @origem, @categoria_nome, @status, @recebido_em, 1, @referencia_trabalho_tipo, @referencia_trabalho_id, @observacao)
   `);
 
-  const info = stmt.run({
+  const info = (await stmt.run({
     data: dados.data,
     descricao: dados.descricao,
     valor: parseFloat(dados.valor),
@@ -226,8 +246,9 @@ export function criarReceitaAutomaticaTrabalho(dados) {
     referencia_trabalho_tipo: dados.referencia_trabalho_tipo,
     referencia_trabalho_id: dados.referencia_trabalho_id,
     observacao: dados.observacao || ''
-  });
+  }));
 
-  registrarAuditoria('RECEITA_AUTOMATICA_CRIADA', `Receita gerada a partir do Trabalho: ${dados.descricao}`);
+  (await registrarAuditoria('RECEITA_AUTOMATICA_CRIADA', `Receita gerada a partir do Trabalho: ${dados.descricao}`));
   return { id: info.lastInsertRowid };
+  });
 }

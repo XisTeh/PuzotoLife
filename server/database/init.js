@@ -4,7 +4,7 @@
  * Seguro para rodar múltiplas vezes (IF NOT EXISTS).
  */
 
-import { getDatabase } from './connection.js';
+import { getLocalDatabase as getDatabase } from './connection.js';
 
 // ═══════════════════════════════════════
 // SCHEMA — Criação de Tabelas

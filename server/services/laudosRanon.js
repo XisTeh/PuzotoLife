@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Laudos Dr. Ranon / RX
  * Lote pendente + Histórico definitivo
@@ -12,15 +13,18 @@ import { dataHojeLocal } from '../utils/dataLocal.js';
 // LOTE PENDENTE (temporário)
 // ═══════════════════════════════════════
 
-export function listarLaudosRanonPendentes() {
+export async function listarLaudosRanonPendentes() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT * FROM laudos_ranon_pendentes 
     ORDER BY data DESC, criado_em DESC
-  `).all();
+  `).all());
+  });
 }
 
-export function adicionarLaudoRanonPendente(dados) {
+export async function adicionarLaudoRanonPendente(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { registro_paciente, quantidade, valor_unitario, data, horario, observacao } = dados;
   const qtd = quantidade ? parseInt(quantidade, 10) : 1;
@@ -33,7 +37,7 @@ export function adicionarLaudoRanonPendente(dados) {
       (@registro_paciente, @quantidade, @valor_unitario, @total, @data, @horario, @observacao)
   `);
 
-  const result = stmt.run({
+  const result = (await stmt.run({
     registro_paciente: String(registro_paciente).replace(/\D/g, ''),
     quantidade: qtd,
     valor_unitario: valor_unitario || 2.00,
@@ -41,19 +45,21 @@ export function adicionarLaudoRanonPendente(dados) {
     data,
     horario: horario || null,
     observacao: observacao || null
-  });
+  }));
 
   return { id: result.lastInsertRowid, total };
+  });
 }
 
-export function atualizarLaudoRanonPendente(id, dados) {
+export async function atualizarLaudoRanonPendente(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { registro_paciente, quantidade, valor_unitario, data, horario, observacao } = dados;
   
   let total = undefined;
   if (quantidade !== undefined || valor_unitario !== undefined) {
      // Para atualizar total precisamos do valor atual ou fornecido
-     const atual = db.prepare('SELECT quantidade, valor_unitario FROM laudos_ranon_pendentes WHERE id = ?').get(id);
+     const atual = (await db.prepare('SELECT quantidade, valor_unitario FROM laudos_ranon_pendentes WHERE id = ?').get(id));
      if (atual) {
        const qtd = quantidade !== undefined ? parseInt(quantidade, 10) : atual.quantidade;
        const vu = valor_unitario !== undefined ? parseFloat(valor_unitario) : atual.valor_unitario;
@@ -74,7 +80,7 @@ export function atualizarLaudoRanonPendente(id, dados) {
     WHERE id = @id
   `);
 
-  return stmt.run({
+  return (await stmt.run({
     id,
     registro_paciente: registro_paciente ? String(registro_paciente).replace(/\D/g, '') : null,
     quantidade: quantidade !== undefined ? parseInt(quantidade, 10) : null,
@@ -83,24 +89,30 @@ export function atualizarLaudoRanonPendente(id, dados) {
     data: data || null,
     horario: horario || null,
     observacao: observacao || null
+  }));
   });
 }
 
-export function removerLaudoRanonPendente(id) {
+export async function removerLaudoRanonPendente(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare('DELETE FROM laudos_ranon_pendentes WHERE id = ?').run(id);
+  return (await db.prepare('DELETE FROM laudos_ranon_pendentes WHERE id = ?').run(id));
+  });
 }
 
-export function limparLaudosRanonPendentes() {
+export async function limparLaudosRanonPendentes() {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare('DELETE FROM laudos_ranon_pendentes').run();
+  return (await db.prepare('DELETE FROM laudos_ranon_pendentes').run());
+  });
 }
 
 // ═══════════════════════════════════════
 // HISTÓRICO DEFINITIVO
 // ═══════════════════════════════════════
 
-export function listarLaudosRanonHistorico(filtros = {}) {
+export async function listarLaudosRanonHistorico(filtros = {}) {
+  return snapshot(async () => {
   const db = getDatabase();
   let sql = 'SELECT * FROM laudos_ranon WHERE 1=1';
   const params = {};
@@ -122,10 +134,12 @@ export function listarLaudosRanonHistorico(filtros = {}) {
 
   sql += ' ORDER BY data DESC, criado_em DESC';
 
-  return db.prepare(sql).all(params);
+  return (await db.prepare(sql).all(params));
+  });
 }
 
-export function salvarLaudoRanonHistorico(dados) {
+export async function salvarLaudoRanonHistorico(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const {
     registro_paciente, quantidade, valor_unitario, data, horario,
@@ -141,7 +155,7 @@ export function salvarLaudoRanonHistorico(dados) {
       (@registro_paciente, @quantidade, @valor_unitario, @total, @data, @horario, @status, @arquivo_excel_backup, @observacao)
   `);
 
-  const result = stmt.run({
+  const result = (await stmt.run({
     registro_paciente: String(registro_paciente).replace(/\D/g, ''),
     quantidade: qtd,
     valor_unitario,
@@ -151,33 +165,37 @@ export function salvarLaudoRanonHistorico(dados) {
     status: status || 'produzido',
     arquivo_excel_backup: arquivo_excel_backup || null,
     observacao: observacao || null
-  });
+  }));
 
   return { id: result.lastInsertRowid, total };
+  });
 }
 
-export function atualizarStatusLaudoRanon(id, status, recebido_em = null) {
+export async function atualizarStatusLaudoRanon(id, status, recebido_em = null) {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare(`
+  return (await db.prepare(`
     UPDATE laudos_ranon SET
       status = @status,
       recebido_em = @recebido_em,
       atualizado_em = datetime('now', 'localtime')
     WHERE id = @id
-  `).run({ id, status, recebido_em });
+  `).run({ id, status, recebido_em }));
+  });
 }
 
-export function marcarLaudoRanonComoRecebido(id) {
+export async function marcarLaudoRanonComoRecebido(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const laudo = db.prepare('SELECT * FROM laudos_ranon WHERE id = ?').get(id);
+  const laudo = (await db.prepare('SELECT * FROM laudos_ranon WHERE id = ?').get(id));
 
   if (!laudo) throw new Error('Laudo não encontrado');
   if (laudo.status === 'cancelado') throw new Error('Laudo cancelado não pode ser recebido');
 
-  const existente = verificarReceitaVinculada('laudo_ranon', id);
+  const existente = (await verificarReceitaVinculada('laudo_ranon', id));
   if (existente) {
     if (laudo.status !== 'recebido') {
-      atualizarStatusLaudoRanon(id, 'recebido', laudo.recebido_em || dataHojeLocal());
+      (await atualizarStatusLaudoRanon(id, 'recebido', laudo.recebido_em || dataHojeLocal()));
     }
     return { success: true, message: 'Este laudo já estava recebido e já possui receita vinculada.', receita: existente };
   }
@@ -185,29 +203,31 @@ export function marcarLaudoRanonComoRecebido(id) {
   const recebidoEm = dataHojeLocal();
   
   const desc = `Recebimento Dr. Ranon / RX - Registro ${laudo.registro_paciente}`;
-  const rec = criarReceitaAutomaticaTrabalho({
+  const rec = (await criarReceitaAutomaticaTrabalho({
     data: recebidoEm,
     descricao: desc,
     valor: laudo.total,
     referencia_trabalho_tipo: 'laudo_ranon',
     referencia_trabalho_id: id,
     observacao: `Laudo original ID: ${id} da data ${laudo.data}`
-  });
+  }));
 
-  atualizarStatusLaudoRanon(id, 'recebido', recebidoEm);
+  (await atualizarStatusLaudoRanon(id, 'recebido', recebidoEm));
 
-  const laudoAtualizado = db.prepare('SELECT * FROM laudos_ranon WHERE id = ?').get(id);
+  const laudoAtualizado = (await db.prepare('SELECT * FROM laudos_ranon WHERE id = ?').get(id));
 
-  registrarAuditoria('recebimento_ranon', 'Laudo Dr. Ranon / RX marcado como recebido', laudo, { laudo: laudoAtualizado, receita_id: rec.id });
+  (await registrarAuditoria('recebimento_ranon', 'Laudo Dr. Ranon / RX marcado como recebido', laudo, { laudo: laudoAtualizado, receita_id: rec.id }));
 
   return { success: true, message: 'Laudo marcado como recebido e receita criada.', receita: rec };
+  });
 }
 
 // ═══════════════════════════════════════
 // RESUMO
 // ═══════════════════════════════════════
 
-export function calcularResumoRanon(mes = null) {
+export async function calcularResumoRanon(mes = null) {
+  return snapshot(async () => {
   const db = getDatabase();
   let where = '';
   const params = {};
@@ -217,19 +237,20 @@ export function calcularResumoRanon(mes = null) {
     params.mes = mes;
   }
 
-  const pendentes = db.prepare(`
+  const pendentes = (await db.prepare(`
     SELECT 
       COALESCE(SUM(quantidade), COUNT(*)) as total_laudos,
       COALESCE(SUM(total), 0) as total_valor
     FROM laudos_ranon_pendentes
-  `).get();
+  `).get());
 
-  const historico = db.prepare(`
+  const historico = (await db.prepare(`
     SELECT 
       COALESCE(SUM(quantidade), COUNT(*)) as total_laudos,
       COALESCE(SUM(total), 0) as total_valor
     FROM laudos_ranon ${where}
-  `).get(params);
+  `).get(params));
 
   return { pendentes, historico };
+  });
 }

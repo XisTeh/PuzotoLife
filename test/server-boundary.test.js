@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createApp } from '../server/index.js';
+process.env.NODE_ENV = 'test';
+process.env.PUZOTO_DATABASE = 'sqlite';
+const { createApp } = await import('../server/index.js');
 
 test('backend legado não inicia em produção nem em interface externa', () => {
   assert.throws(() => createApp({ NODE_ENV: 'production' }), /Publicação bloqueada/);

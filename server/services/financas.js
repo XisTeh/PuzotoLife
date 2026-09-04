@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 
@@ -5,7 +6,8 @@ import { registrarAuditoria } from './auditoria.js';
 // CATEGORIAS
 // ═══════════════════════════════════════
 
-export function listarCategorias(filtros = {}) {
+export async function listarCategorias(filtros = {}) {
+  return snapshot(async () => {
   const db = getDatabase();
   let query = "SELECT * FROM categorias WHERE 1=1";
   const params = {};
@@ -20,24 +22,28 @@ export function listarCategorias(filtros = {}) {
   }
 
   query += " ORDER BY nome ASC";
-  return db.prepare(query).all(params);
+  return (await db.prepare(query).all(params));
+  });
 }
 
-export function criarCategoria(dados) {
+export async function criarCategoria(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const insert = db.prepare(`
     INSERT INTO categorias (nome, tipo, cor, icone)
     VALUES (@nome, @tipo, @cor, @icone)
   `);
 
-  const result = insert.run(dados);
-  registrarAuditoria('CATEGORIA_CRIADA', `Categoria "${dados.nome}" criada.`, null, { ...dados, id: result.lastInsertRowid });
+  const result = (await insert.run(dados));
+  (await registrarAuditoria('CATEGORIA_CRIADA', `Categoria "${dados.nome}" criada.`, null, { ...dados, id: result.lastInsertRowid }));
   return result.lastInsertRowid;
+  });
 }
 
-export function atualizarCategoria(id, dados) {
+export async function atualizarCategoria(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
-  const categoriaAntiga = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+  const categoriaAntiga = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(id));
   if (!categoriaAntiga) throw new Error('Categoria não encontrada');
 
   const update = db.prepare(`
@@ -51,42 +57,48 @@ export function atualizarCategoria(id, dados) {
   `);
 
   const params = { id, ...dados };
-  update.run(params);
+  (await update.run(params));
 
-  const categoriaAtualizada = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
-  registrarAuditoria('CATEGORIA_ATUALIZADA', `Categoria "${categoriaAntiga.nome}" atualizada.`, categoriaAntiga, categoriaAtualizada);
+  const categoriaAtualizada = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(id));
+  (await registrarAuditoria('CATEGORIA_ATUALIZADA', `Categoria "${categoriaAntiga.nome}" atualizada.`, categoriaAntiga, categoriaAtualizada));
   
   // Atualiza nome da categoria nos gastos vinculados
   if (dados.nome && dados.nome !== categoriaAntiga.nome) {
-    db.prepare('UPDATE gastos SET categoria_nome = @nome WHERE categoria_id = @id').run({ nome: dados.nome, id });
+    (await db.prepare('UPDATE gastos SET categoria_nome = @nome WHERE categoria_id = @id').run({ nome: dados.nome, id }));
   }
 
   return categoriaAtualizada;
+  });
 }
 
-export function desativarCategoria(id) {
+export async function desativarCategoria(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const categoria = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+  const categoria = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(id));
   if (!categoria) throw new Error('Categoria não encontrada');
 
-  db.prepare('UPDATE categorias SET ativa = 0, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id);
-  registrarAuditoria('CATEGORIA_DESATIVADA', `Categoria "${categoria.nome}" desativada.`, categoria, { ...categoria, ativa: 0 });
+  (await db.prepare('UPDATE categorias SET ativa = 0, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id));
+  (await registrarAuditoria('CATEGORIA_DESATIVADA', `Categoria "${categoria.nome}" desativada.`, categoria, { ...categoria, ativa: 0 }));
+  });
 }
 
-export function ativarCategoria(id) {
+export async function ativarCategoria(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const categoria = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+  const categoria = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(id));
   if (!categoria) throw new Error('Categoria não encontrada');
 
-  db.prepare('UPDATE categorias SET ativa = 1, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id);
-  registrarAuditoria('CATEGORIA_ATIVADA', `Categoria "${categoria.nome}" ativada.`, categoria, { ...categoria, ativa: 1 });
+  (await db.prepare('UPDATE categorias SET ativa = 1, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id));
+  (await registrarAuditoria('CATEGORIA_ATIVADA', `Categoria "${categoria.nome}" ativada.`, categoria, { ...categoria, ativa: 1 }));
+  });
 }
 
 // ═══════════════════════════════════════
 // GASTOS
 // ═══════════════════════════════════════
 
-export function listarGastos(filtros = {}) {
+export async function listarGastos(filtros = {}) {
+  return snapshot(async () => {
   const db = getDatabase();
   let query = "SELECT * FROM gastos WHERE 1=1";
   const params = {};
@@ -116,10 +128,12 @@ export function listarGastos(filtros = {}) {
   }
 
   query += " ORDER BY data DESC, id DESC";
-  return db.prepare(query).all(params);
+  return (await db.prepare(query).all(params));
+  });
 }
 
-export function criarGasto(dados) {
+export async function criarGasto(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   
   const insert = db.prepare(`
@@ -127,7 +141,7 @@ export function criarGasto(dados) {
     VALUES (@data, @descricao, @valor, @categoria_id, @categoria_nome, @forma_pagamento, @conta_carteira, @status, @observacao)
   `);
 
-  const result = insert.run({
+  const result = (await insert.run({
     data: dados.data,
     descricao: dados.descricao,
     valor: dados.valor,
@@ -137,17 +151,19 @@ export function criarGasto(dados) {
     conta_carteira: dados.conta_carteira || 'Principal',
     status: dados.status || 'pago',
     observacao: dados.observacao || null
-  });
+  }));
 
-  const gastoCriado = db.prepare('SELECT * FROM gastos WHERE id = ?').get(result.lastInsertRowid);
-  registrarAuditoria('GASTO_CRIADO', `Gasto "${dados.descricao}" criado.`, null, gastoCriado);
+  const gastoCriado = (await db.prepare('SELECT * FROM gastos WHERE id = ?').get(result.lastInsertRowid));
+  (await registrarAuditoria('GASTO_CRIADO', `Gasto "${dados.descricao}" criado.`, null, gastoCriado));
   
   return gastoCriado;
+  });
 }
 
-export function atualizarGasto(id, dados) {
+export async function atualizarGasto(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
-  const gastoAntigo = db.prepare('SELECT * FROM gastos WHERE id = ?').get(id);
+  const gastoAntigo = (await db.prepare('SELECT * FROM gastos WHERE id = ?').get(id));
   if (!gastoAntigo) throw new Error('Gasto não encontrado');
 
   const update = db.prepare(`
@@ -178,24 +194,28 @@ export function atualizarGasto(id, dados) {
     observacao: dados.observacao !== undefined ? dados.observacao : null
   };
 
-  update.run(params);
+  (await update.run(params));
 
-  const gastoAtualizado = db.prepare('SELECT * FROM gastos WHERE id = ?').get(id);
-  registrarAuditoria('GASTO_ATUALIZADO', `Gasto "${gastoAntigo.descricao}" atualizado.`, gastoAntigo, gastoAtualizado);
+  const gastoAtualizado = (await db.prepare('SELECT * FROM gastos WHERE id = ?').get(id));
+  (await registrarAuditoria('GASTO_ATUALIZADO', `Gasto "${gastoAntigo.descricao}" atualizado.`, gastoAntigo, gastoAtualizado));
   
   return gastoAtualizado;
+  });
 }
 
-export function removerGasto(id) {
+export async function removerGasto(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const gasto = db.prepare('SELECT * FROM gastos WHERE id = ?').get(id);
+  const gasto = (await db.prepare('SELECT * FROM gastos WHERE id = ?').get(id));
   if (!gasto) throw new Error('Gasto não encontrado');
 
-  db.prepare('DELETE FROM gastos WHERE id = ?').run(id);
-  registrarAuditoria('GASTO_EXCLUIDO', `Gasto "${gasto.descricao}" excluído.`, gasto, null);
+  (await db.prepare('DELETE FROM gastos WHERE id = ?').run(id));
+  (await registrarAuditoria('GASTO_EXCLUIDO', `Gasto "${gasto.descricao}" excluído.`, gasto, null));
+  });
 }
 
-export function calcularResumoGastos(filtros = {}) {
+export async function calcularResumoGastos(filtros = {}) {
+  return snapshot(async () => {
   const db = getDatabase();
   let queryBase = "SELECT * FROM gastos WHERE 1=1";
   const params = {};
@@ -205,7 +225,7 @@ export function calcularResumoGastos(filtros = {}) {
     params.mes = `${filtros.mes}%`;
   }
 
-  const gastos = db.prepare(queryBase).all(params);
+  const gastos = (await db.prepare(queryBase).all(params));
 
   let totalPago = 0;
   let totalPendente = 0;
@@ -259,4 +279,5 @@ export function calcularResumoGastos(filtros = {}) {
     mediaPorDia,
     gastosPorCategoria: arrCategorias
   };
+  });
 }

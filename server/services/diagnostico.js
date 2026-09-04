@@ -3,7 +3,12 @@ import path from 'path';
 import { getDatabase, getDatabasePath } from '../database/connection.js';
 import { obterTodasConfiguracoes } from './configuracoes.js';
 
-export function executarDiagnostico() {
+export async function executarDiagnostico() {
+  if (getDatabase().dialect === 'postgres') {
+    const { initializeStorage } = await import('../database/initialize.js');
+    await initializeStorage();
+    return { success: true, status_geral: 'ok', checks: [{ grupo: 'Banco de Dados', nome: 'PostgreSQL', status: 'ok', mensagem: 'Conexão, papel restrito, estrutura e RLS validados.' }], resumo: { total: 1, ok: 1, alertas: 0, erros: 0 }, gerado_em: new Date().toISOString() };
+  }
   const dbPath = getDatabasePath();
   const dataPath = path.join(process.cwd(), 'data');
   const checks = [];
@@ -34,7 +39,7 @@ export function executarDiagnostico() {
   try {
     const db = getDatabase();
     addCheck('Banco de Dados', 'Banco SQLite abre corretamente', 'ok', 'Conexão com o SQLite estabelecida.');
-    const res = db.prepare('SELECT 1 as result').get();
+    const res = (await db.prepare('SELECT 1 as result').get());
     if (res && res.result === 1) {
       addCheck('Banco de Dados', 'Conexão consegue executar SELECT 1', 'ok', 'Consulta básica executada com sucesso.');
     } else {
@@ -73,7 +78,7 @@ export function executarDiagnostico() {
   if (db) {
     for (const t of tabelas) {
       try {
-        const info = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(t);
+        const info = (await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(t));
         if (info) {
           addCheck('Tabelas', `Tabela ${t} existe`, 'ok', 'Tabela estrutural encontrada.');
         } else {
@@ -88,7 +93,7 @@ export function executarDiagnostico() {
   // CONFIGURAÇÕES
   if (db) {
     try {
-      const cfgs = obterTodasConfiguracoes() || {};
+      const cfgs = (await obterTodasConfiguracoes()) || {};
       const reqs = [
         'preco_padrao_ranon', 
         'chave_pix', 
@@ -121,7 +126,7 @@ export function executarDiagnostico() {
   // DADOS INICIAIS
   if (db) {
     try {
-      const emps = db.prepare('SELECT nome FROM empresas').all().map(x => x.nome);
+      const emps = (await db.prepare('SELECT nome FROM empresas').all()).map(x => x.nome);
       const expectedEmps = ['Diagnóstico', 'Perfecta', 'E-Mail', 'Padrão', 'Dr. Ranon / RX'];
       let empsFound = 0;
       for (const e of expectedEmps) {
@@ -133,7 +138,7 @@ export function executarDiagnostico() {
         addCheck('Dados Iniciais', 'Empresas iniciais existem', 'alerta', `Faltam empresas básicas. Encontradas: ${empsFound}/${expectedEmps.length}`);
       }
 
-      const cats = db.prepare('SELECT nome FROM categorias').all().map(x => x.nome);
+      const cats = (await db.prepare('SELECT nome FROM categorias').all()).map(x => x.nome);
       const expectedCats = ['Alimentação', 'Transporte', 'Casa', 'Saúde', 'Outros'];
       let catsFound = 0;
       for (const c of expectedCats) {
@@ -182,19 +187,19 @@ export function executarDiagnostico() {
   // INTEGRIDADE
   if (db) {
     try {
-      let orfaosGastos = db.prepare(`SELECT count(*) as c FROM gastos WHERE categoria_id IS NOT NULL AND categoria_id NOT IN (SELECT id FROM categorias)`).get().c;
+      let orfaosGastos = (await db.prepare(`SELECT count(*) as c FROM gastos WHERE categoria_id IS NOT NULL AND categoria_id NOT IN (SELECT id FROM categorias)`).get()).c;
       
       // Checar se tabelas de cartão e compras existem antes de consultar para evitar erros fatais
-      let cartoesCheck = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='cartoes'`).get();
+      let cartoesCheck = (await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='cartoes'`).get());
       let orfaosCompras = 0;
       let orfaosParcelas = 0;
       
       if (cartoesCheck) {
-        orfaosCompras = db.prepare(`SELECT count(*) as c FROM compras_cartao WHERE cartao_id NOT IN (SELECT id FROM cartoes)`).get().c;
-        orfaosParcelas = db.prepare(`SELECT count(*) as c FROM parcelas_cartao WHERE compra_id NOT IN (SELECT id FROM compras_cartao)`).get().c;
+        orfaosCompras = (await db.prepare(`SELECT count(*) as c FROM compras_cartao WHERE cartao_id NOT IN (SELECT id FROM cartoes)`).get()).c;
+        orfaosParcelas = (await db.prepare(`SELECT count(*) as c FROM parcelas_cartao WHERE compra_id NOT IN (SELECT id FROM compras_cartao)`).get()).c;
       }
       
-      let orfaosReceitas = db.prepare(`SELECT count(*) as c FROM receitas WHERE origem='trabalho' AND referencia_trabalho_id IS NULL`).get().c;
+      let orfaosReceitas = (await db.prepare(`SELECT count(*) as c FROM receitas WHERE origem='trabalho' AND referencia_trabalho_id IS NULL`).get()).c;
 
       const totalOrfaos = orfaosGastos + orfaosCompras + orfaosParcelas + orfaosReceitas;
       if (totalOrfaos === 0) {

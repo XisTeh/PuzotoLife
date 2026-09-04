@@ -1,15 +1,15 @@
+import './environment.js';
 import express from 'express';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initializeDatabase } from './database/init.js';
+import { initializeStorage } from './database/initialize.js';
+import { databaseDialect } from './database/connection.js';
 import { garantirConfiguracoesPadrao } from './services/configuracoes.js';
 import apiRoutes from './routes/api.js';
 import { createAuth } from './security/auth.js';
 import { installHttpSecurity } from './security/http.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-if (fs.existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.env'));
 
 export function createApp(env = process.env, authFactory = createAuth) {
   if (env.NODE_ENV === 'production' || (env.HOST && !['127.0.0.1', 'localhost', '::1'].includes(env.HOST))) {
@@ -20,7 +20,8 @@ export function createApp(env = process.env, authFactory = createAuth) {
   app.use(express.json({ limit: '1mb' }));
   const auth = authFactory(env);
   app.use('/api/auth', auth.router);
-  app.get('/api/health', (_req, res) => res.json({ ok: true, status: 'online', storage: 'sqlite', auth: auth.configured ? 'supabase' : 'local' }));
+  if (databaseDialect() === 'postgres' && !auth.configured && env.NODE_ENV !== 'test') throw new Error('PostgreSQL exige autenticação Supabase e proprietário configurados.');
+  app.get('/api/health', (_req, res) => res.json({ ok: true, status: 'online', storage: databaseDialect(), auth: auth.configured ? 'supabase' : 'local' }));
   app.use('/api', auth.guard, apiRoutes);
   app.use('/api', (_req, res) => res.status(404).json({ ok: false, error: 'Rota não encontrada.' }));
   app.use((req, res, next) => {
@@ -38,8 +39,8 @@ export function createApp(env = process.env, authFactory = createAuth) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const app = createApp();
-  initializeDatabase();
-  garantirConfiguracoesPadrao();
+  await initializeStorage();
+  if (databaseDialect() === 'sqlite') await garantirConfiguracoesPadrao();
   const port = Number(process.env.PORT || 3210);
   const server = app.listen(port, process.env.HOST || '127.0.0.1', () => console.log('Puzoto Life: http://127.0.0.1:' + port));
   server.requestTimeout = 30000;

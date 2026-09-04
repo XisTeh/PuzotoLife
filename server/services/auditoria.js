@@ -1,3 +1,4 @@
+import { atomic, snapshot } from '../database/connection.js';
 /**
  * Serviço de Auditoria
  * Registra edições, exclusões, fechamentos e ajustes retroativos.
@@ -5,7 +6,8 @@
 
 import { getDatabase } from '../database/connection.js';
 
-export function registrarAuditoria(tipo, descricao, dados_antes = null, dados_depois = null) {
+export async function registrarAuditoria(tipo, descricao, dados_antes = null, dados_depois = null) {
+  return atomic(async () => {
   const db = getDatabase();
 
   const stmt = db.prepare(`
@@ -13,15 +15,17 @@ export function registrarAuditoria(tipo, descricao, dados_antes = null, dados_de
     VALUES (@tipo, @descricao, @dados_antes, @dados_depois)
   `);
 
-  return stmt.run({
+  return (await stmt.run({
     tipo,
     descricao,
     dados_antes: dados_antes ? JSON.stringify(dados_antes) : null,
     dados_depois: dados_depois ? JSON.stringify(dados_depois) : null
+  }));
   });
 }
 
-export function listarAuditoria(filtros = {}) {
+export async function listarAuditoria(filtros = {}) {
+  return snapshot(async () => {
   const db = getDatabase();
   let sql = 'SELECT * FROM auditoria WHERE 1=1';
   const params = {};
@@ -38,5 +42,6 @@ export function listarAuditoria(filtros = {}) {
     sql += ' ORDER BY criado_em DESC LIMIT 100';
   }
 
-  return db.prepare(sql).all(params);
+  return (await db.prepare(sql).all(params));
+  });
 }

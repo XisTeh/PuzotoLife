@@ -43,3 +43,11 @@ Lazy loading por página, skeletons, estados vazios/erro/progresso, proteção c
 ## Situação da modernização
 
 Consultar `docs/ENTREGAS.md` e `docs/SUPABASE.md`. Diferenciar implementado localmente, validado e pendente de serviço externo. Manter estes documentos atualizados junto das entregas.
+
+## Persistência assíncrona (Issue #5)
+
+- Todos os serviços de domínio e chamadas SQL são assíncronos: aguardar a conclusão antes de responder HTTP. Não usar callbacks síncronos em transações.
+- Usar `atomic` para operações que leem e gravam; a leitura que decide pagamento/resgate/fechamento deve ocorrer dentro da transação. `snapshot` agrupa leituras consistentes. Não iniciar gravação dentro de snapshot.
+- PostgreSQL usa conexão dedicada por transação, papel `puzoto_runtime` sem DDL/bypass de RLS, TLS validado e lock transacional do acervo pessoal. Não usar usuário administrador no runtime. SQLite fica restrito ao modo local.
+- Testes locais usam SQLite temporário e PGlite; CI também usa PostgreSQL com conexões independentes. `TEST_POSTGRES_URL` só pode apontar ao loopback. Nunca apontar testes à base Supabase pessoal.
+- A branch `codex/supabase-postgres` depende de `codex/cloud-foundation-design`. Manter PRs encadeados enquanto a entrega anterior aguarda revisão; não contornar a proteção de main.

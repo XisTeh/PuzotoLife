@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Lançamentos de Trabalho (histórico definitivo)
  */
@@ -7,7 +8,8 @@ import { verificarReceitaVinculada, criarReceitaAutomaticaTrabalho } from './rec
 import { registrarAuditoria } from './auditoria.js';
 import { dataHojeLocal } from '../utils/dataLocal.js';
 
-export function listarLancamentosTrabalho(filtros = {}) {
+export async function listarLancamentosTrabalho(filtros = {}) {
+  return snapshot(async () => {
   const db = getDatabase();
   let sql = `
     SELECT * 
@@ -38,10 +40,12 @@ export function listarLancamentosTrabalho(filtros = {}) {
 
   sql += ' ORDER BY data DESC, criado_em DESC';
 
-  return db.prepare(sql).all(params);
+  return (await db.prepare(sql).all(params));
+  });
 }
 
-export function criarLancamentoTrabalho(dados) {
+export async function criarLancamentoTrabalho(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const {
     empresa_id, empresa_nome, quantidade, valor_unitario,
@@ -56,7 +60,7 @@ export function criarLancamentoTrabalho(dados) {
       (@empresa_id, @empresa_nome, @quantidade, @valor_unitario, @total, @data, @horario, @status, @observacao, @origem_fechamento_dia_id)
   `);
 
-  const result = stmt.run({
+  const result = (await stmt.run({
     empresa_id,
     empresa_nome,
     quantidade,
@@ -67,12 +71,14 @@ export function criarLancamentoTrabalho(dados) {
     status: status || 'produzido',
     observacao: observacao || null,
     origem_fechamento_dia_id: origem_fechamento_dia_id || null
-  });
+  }));
 
   return { id: result.lastInsertRowid, total };
+  });
 }
 
-export function atualizarStatusLancamento(id, status, recebido_em = null) {
+export async function atualizarStatusLancamento(id, status, recebido_em = null) {
+  return atomic(async () => {
   const db = getDatabase();
   const stmt = db.prepare(`
     UPDATE lancamentos_trabalho SET
@@ -81,22 +87,24 @@ export function atualizarStatusLancamento(id, status, recebido_em = null) {
       atualizado_em = datetime('now', 'localtime')
     WHERE id = @id
   `);
-  return stmt.run({ id, status, recebido_em });
+  return (await stmt.run({ id, status, recebido_em }));
+  });
 }
 
-export function marcarLancamentoTrabalhoComoRecebido(id) {
+export async function marcarLancamentoTrabalhoComoRecebido(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const lancamento = db.prepare('SELECT * FROM lancamentos_trabalho WHERE id = ?').get(id);
+  const lancamento = (await db.prepare('SELECT * FROM lancamentos_trabalho WHERE id = ?').get(id));
 
   if (!lancamento) throw new Error('Lançamento não encontrado');
   if (lancamento.status === 'cancelado') throw new Error('Lançamento cancelado não pode ser recebido');
 
   // Verifica se já existe receita
-  const existente = verificarReceitaVinculada('lancamento_trabalho', id);
+  const existente = (await verificarReceitaVinculada('lancamento_trabalho', id));
   if (existente) {
     // Se não estivesse recebido, atualiza só para garantir
     if (lancamento.status !== 'recebido') {
-      atualizarStatusLancamento(id, 'recebido', lancamento.recebido_em || dataHojeLocal());
+      (await atualizarStatusLancamento(id, 'recebido', lancamento.recebido_em || dataHojeLocal()));
     }
     return { success: true, message: 'Este lançamento já estava recebido e já possui receita vinculada.', receita: existente };
   }
@@ -106,28 +114,30 @@ export function marcarLancamentoTrabalhoComoRecebido(id) {
   
   // Cria receita automática
   const desc = `Recebimento ${lancamento.empresa_nome} - ${lancamento.quantidade} exames`;
-  const rec = criarReceitaAutomaticaTrabalho({
+  const rec = (await criarReceitaAutomaticaTrabalho({
     data: recebidoEm,
     descricao: desc,
     valor: lancamento.total,
     referencia_trabalho_tipo: 'lancamento_trabalho',
     referencia_trabalho_id: id,
     observacao: `Lançamento original ID: ${id} da data ${lancamento.data}`
-  });
+  }));
 
   // Atualiza status
-  atualizarStatusLancamento(id, 'recebido', recebidoEm);
+  (await atualizarStatusLancamento(id, 'recebido', recebidoEm));
 
   // Pega atualizado
-  const lancAtualizado = db.prepare('SELECT * FROM lancamentos_trabalho WHERE id = ?').get(id);
+  const lancAtualizado = (await db.prepare('SELECT * FROM lancamentos_trabalho WHERE id = ?').get(id));
 
   // Auditoria
-  registrarAuditoria('recebimento_trabalho', 'Lançamento de trabalho marcado como recebido', lancamento, { lancamento: lancAtualizado, receita_id: rec.id });
+  (await registrarAuditoria('recebimento_trabalho', 'Lançamento de trabalho marcado como recebido', lancamento, { lancamento: lancAtualizado, receita_id: rec.id }));
 
   return { success: true, message: 'Lançamento marcado como recebido e receita criada.', receita: rec };
+  });
 }
 
-export function calcularResumoLancamentosTrabalho(mes = null) {
+export async function calcularResumoLancamentosTrabalho(mes = null) {
+  return snapshot(async () => {
   const db = getDatabase();
   let where = '';
   const params = {};
@@ -138,17 +148,17 @@ export function calcularResumoLancamentosTrabalho(mes = null) {
   }
 
   // Resumo geral
-  const geral = db.prepare(`
+  const geral = (await db.prepare(`
     SELECT 
       COALESCE(SUM(quantidade), 0) as total_quantidade,
       COALESCE(SUM(total), 0) as total_valor,
       COUNT(id) as total_registros
     FROM lancamentos_trabalho
     ${where}
-  `).get(params);
+  `).get(params));
 
   // Resumo por empresa
-  const porEmpresa = db.prepare(`
+  const porEmpresa = (await db.prepare(`
     SELECT 
       empresa_nome,
       SUM(quantidade) as quantidade,
@@ -158,10 +168,10 @@ export function calcularResumoLancamentosTrabalho(mes = null) {
     ${where}
     GROUP BY empresa_nome
     ORDER BY empresa_nome
-  `).all(params);
+  `).all(params));
 
   // Resumo por status
-  const porStatus = db.prepare(`
+  const porStatus = (await db.prepare(`
     SELECT 
       status,
       SUM(quantidade) as quantidade,
@@ -170,12 +180,14 @@ export function calcularResumoLancamentosTrabalho(mes = null) {
     FROM lancamentos_trabalho
     ${where}
     GROUP BY status
-  `).all(params);
+  `).all(params));
 
   return { geral, porEmpresa, porStatus };
+  });
 }
 
-export function obterResumoHistorico(mes, empresa_id, status) {
+export async function obterResumoHistorico(mes, empresa_id, status) {
+  return snapshot(async () => {
   const db = getDatabase();
   
   let whereLanc = '1=1';
@@ -202,15 +214,15 @@ export function obterResumoHistorico(mes, empresa_id, status) {
     paramsRanon.push(status);
   }
 
-  const lancamentos = db.prepare(`
+  const lancamentos = (await db.prepare(`
     SELECT quantidade, total, status, recebido_em 
     FROM lancamentos_trabalho
     WHERE ${whereLanc}
-  `).all(...paramsLanc);
+  `).all(...paramsLanc));
   
   let laudos = [];
   if (!empresa_id || empresa_id === 'todas') {
-      laudos = db.prepare(`SELECT 1 as quantidade, total, status, recebido_em FROM laudos_ranon WHERE ${whereRanon}`).all(...paramsRanon);
+      laudos = (await db.prepare(`SELECT 1 as quantidade, total, status, recebido_em FROM laudos_ranon WHERE ${whereRanon}`).all(...paramsRanon));
   }
 
   const todos = [...lancamentos, ...laudos];
@@ -223,9 +235,9 @@ export function obterResumoHistorico(mes, empresa_id, status) {
   // Incluir laudos pendentes do Dr. Ranon (não salvos ainda) apenas no "A Receber" e na quantidade
   // Só soma se não há filtro de empresa específica (pois ranon é entidade separada)
   if (!empresa_id || empresa_id === 'todas') {
-    const pendentesRanon = db.prepare(`
+    const pendentesRanon = (await db.prepare(`
       SELECT COALESCE(SUM(quantidade), 0) as qtd, COALESCE(SUM(total), 0) as valor FROM laudos_ranon_pendentes
-    `).get();
+    `).get());
     if (pendentesRanon && pendentesRanon.qtd > 0) {
       aReceber += pendentesRanon.valor;
       quantidadeTotal += pendentesRanon.qtd;
@@ -242,11 +254,11 @@ export function obterResumoHistorico(mes, empresa_id, status) {
     sqlRecLanc += " AND empresa_id = ?";
     paramsRecLanc.push(empresa_id);
   }
-  const recLanc = db.prepare(sqlRecLanc).all(...paramsRecLanc);
+  const recLanc = (await db.prepare(sqlRecLanc).all(...paramsRecLanc));
 
   let recRanon = [];
   if (!empresa_id || empresa_id === 'todas') {
-     recRanon = db.prepare("SELECT total FROM laudos_ranon WHERE status = 'recebido' AND recebido_em LIKE ?").all(mesRec + '%');
+     recRanon = (await db.prepare("SELECT total FROM laudos_ranon WHERE status = 'recebido' AND recebido_em LIKE ?").all(mesRec + '%'));
   }
   
   const recebimentosMes = [...recLanc, ...recRanon].reduce((acc, t) => acc + t.total, 0);
@@ -258,5 +270,6 @@ export function obterResumoHistorico(mes, empresa_id, status) {
     quantidadeTotal,
     recebimentosMes
   };
+  });
 }
 

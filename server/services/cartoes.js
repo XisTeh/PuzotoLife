@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 
@@ -50,12 +51,15 @@ function calcularCompetenciaEVencimento(dataCompraIso, diaFechamento, diaVencime
 // CARTÕES
 // ═══════════════════════════════════════
 
-export function listarCartoes() {
+export async function listarCartoes() {
+  return snapshot(async () => {
   var db = getDatabase();
-  return db.prepare('SELECT * FROM cartoes ORDER BY ativo DESC, nome ASC').all();
+  return (await db.prepare('SELECT * FROM cartoes ORDER BY ativo DESC, nome ASC').all());
+  });
 }
 
-export function criarCartao(dados) {
+export async function criarCartao(dados) {
+  return atomic(async () => {
   var db = getDatabase();
   var nome = dados.nome;
   var banco = dados.banco || '';
@@ -66,23 +70,25 @@ export function criarCartao(dados) {
   var icone = dados.icone || 'credit-card';
 
   // Verificar duplicidade
-  var existe = db.prepare('SELECT id FROM cartoes WHERE ativo = 1 AND nome = ? AND banco = ? AND dia_fechamento = ? AND dia_vencimento = ?').get(nome, banco, dia_fechamento, dia_vencimento);
+  var existe = (await db.prepare('SELECT id FROM cartoes WHERE ativo = 1 AND nome = ? AND banco = ? AND dia_fechamento = ? AND dia_vencimento = ?').get(nome, banco, dia_fechamento, dia_vencimento));
   if (existe) {
     throw new Error('Já existe um cartão ativo com esses mesmos dados.');
   }
 
-  var info = db.prepare(
+  var info = (await db.prepare(
     'INSERT INTO cartoes (nome, banco, limite, dia_fechamento, dia_vencimento, cor, icone) VALUES (@nome, @banco, @limite, @dia_fechamento, @dia_vencimento, @cor, @icone)'
-  ).run({ nome: nome, banco: banco, limite: limite, dia_fechamento: dia_fechamento, dia_vencimento: dia_vencimento, cor: cor, icone: icone });
+  ).run({ nome: nome, banco: banco, limite: limite, dia_fechamento: dia_fechamento, dia_vencimento: dia_vencimento, cor: cor, icone: icone }));
 
-  registrarAuditoria('CARTAO_CRIAR', 'Cartao ' + nome + ' cadastrado');
+  (await registrarAuditoria('CARTAO_CRIAR', 'Cartao ' + nome + ' cadastrado'));
   return { id: info.lastInsertRowid, sucesso: true };
+  });
 }
 
-export function atualizarCartao(id, dados) {
+export async function atualizarCartao(id, dados) {
+  return atomic(async () => {
   var db = getDatabase();
 
-  db.prepare(
+  (await db.prepare(
     'UPDATE cartoes SET nome = COALESCE(@nome, nome), banco = COALESCE(@banco, banco), limite = COALESCE(@limite, limite), dia_fechamento = COALESCE(@dia_fechamento, dia_fechamento), dia_vencimento = COALESCE(@dia_vencimento, dia_vencimento), cor = COALESCE(@cor, cor), icone = COALESCE(@icone, icone), ativo = COALESCE(@ativo, ativo), atualizado_em = datetime(\'now\', \'localtime\') WHERE id = @id'
   ).run({
     id: id,
@@ -94,62 +100,70 @@ export function atualizarCartao(id, dados) {
     cor: dados.cor || null,
     icone: dados.icone || null,
     ativo: dados.ativo != null ? dados.ativo : null
-  });
+  }));
 
-  registrarAuditoria('CARTAO_ATUALIZAR', 'Cartao id=' + id + ' atualizado');
+  (await registrarAuditoria('CARTAO_ATUALIZAR', 'Cartao id=' + id + ' atualizado'));
   return { sucesso: true };
+  });
 }
 
-export function removerCartao(id, forcar = false) {
+export async function removerCartao(id, forcar = false) {
+  return atomic(async () => {
   var db = getDatabase();
-  var cartao = db.prepare('SELECT nome FROM cartoes WHERE id = ?').get(id);
+  var cartao = (await db.prepare('SELECT nome FROM cartoes WHERE id = ?').get(id));
   if (!cartao) throw new Error('Cartão não encontrado');
 
-  var temCompras = db.prepare('SELECT 1 FROM compras_cartao WHERE cartao_id = ? LIMIT 1').get(id);
-  var temParcelas = db.prepare('SELECT 1 FROM parcelas_cartao WHERE cartao_id = ? LIMIT 1').get(id);
-  var temFaturas = db.prepare('SELECT 1 FROM faturas_cartao WHERE cartao_id = ? LIMIT 1').get(id);
+  var temCompras = (await db.prepare('SELECT 1 FROM compras_cartao WHERE cartao_id = ? LIMIT 1').get(id));
+  var temParcelas = (await db.prepare('SELECT 1 FROM parcelas_cartao WHERE cartao_id = ? LIMIT 1').get(id));
+  var temFaturas = (await db.prepare('SELECT 1 FROM faturas_cartao WHERE cartao_id = ? LIMIT 1').get(id));
 
   if ((temCompras || temParcelas || temFaturas) && !forcar) {
-    db.prepare('UPDATE cartoes SET ativo = 0, atualizado_em = datetime(\'now\', \'localtime\') WHERE id = ?').run(id);
-    registrarAuditoria('CARTAO_DESATIVAR', 'Cartão id=' + id + ' desativado por conter histórico');
+    (await db.prepare('UPDATE cartoes SET ativo = 0, atualizado_em = datetime(\'now\', \'localtime\') WHERE id = ?').run(id));
+    (await registrarAuditoria('CARTAO_DESATIVAR', 'Cartão id=' + id + ' desativado por conter histórico'));
     return { sucesso: true, mensagem: 'Este cartão possui histórico. Ele foi desativado em vez de excluído.' };
   }
 
   // Se forçado ou se não houver vínculos, apagar tudo
-  var transaction = db.transaction(function() {
+  var transaction = db.transaction(async function() {
     if (forcar) {
-      db.prepare('DELETE FROM parcelas_cartao WHERE cartao_id = ?').run(id);
-      db.prepare('DELETE FROM compras_cartao WHERE cartao_id = ?').run(id);
-      db.prepare('DELETE FROM faturas_cartao WHERE cartao_id = ?').run(id);
+      (await db.prepare('DELETE FROM parcelas_cartao WHERE cartao_id = ?').run(id));
+      (await db.prepare('DELETE FROM compras_cartao WHERE cartao_id = ?').run(id));
+      (await db.prepare('DELETE FROM faturas_cartao WHERE cartao_id = ?').run(id));
     }
-    db.prepare('DELETE FROM cartoes WHERE id = ?').run(id);
-    registrarAuditoria('CARTAO_EXCLUIR', 'Cartão id=' + id + ' (' + cartao.nome + ') excluído' + (forcar ? ' com limpeza de histórico' : ''));
+    (await db.prepare('DELETE FROM cartoes WHERE id = ?').run(id));
+    (await registrarAuditoria('CARTAO_EXCLUIR', 'Cartão id=' + id + ' (' + cartao.nome + ') excluído' + (forcar ? ' com limpeza de histórico' : '')));
   });
 
-  transaction();
+  (await transaction());
   return { sucesso: true, mensagem: forcar ? 'Cartão e todo seu histórico foram excluídos com sucesso.' : 'Cartão excluído com sucesso.' };
+  });
 }
 
-export function ativarCartao(id, ativo) {
+export async function ativarCartao(id, ativo) {
+  return atomic(async () => {
   var db = getDatabase();
-  db.prepare('UPDATE cartoes SET ativo = ?, atualizado_em = datetime(\'now\', \'localtime\') WHERE id = ?').run(ativo ? 1 : 0, id);
-  registrarAuditoria('CARTAO_STATUS', 'Cartão id=' + id + ' alterado para ativo=' + ativo);
+  (await db.prepare('UPDATE cartoes SET ativo = ?, atualizado_em = datetime(\'now\', \'localtime\') WHERE id = ?').run(ativo ? 1 : 0, id));
+  (await registrarAuditoria('CARTAO_STATUS', 'Cartão id=' + id + ' alterado para ativo=' + ativo));
   return { sucesso: true };
+  });
 }
 
 // ═══════════════════════════════════════
 // COMPRAS E PARCELAS
 // ═══════════════════════════════════════
 
-export function listarComprasCartao(cartaoId) {
+export async function listarComprasCartao(cartaoId) {
+  return snapshot(async () => {
   var db = getDatabase();
   if (cartaoId) {
-    return db.prepare('SELECT * FROM compras_cartao WHERE cartao_id = ? ORDER BY data_compra DESC LIMIT 100').all(cartaoId);
+    return (await db.prepare('SELECT * FROM compras_cartao WHERE cartao_id = ? ORDER BY data_compra DESC LIMIT 100').all(cartaoId));
   }
-  return db.prepare('SELECT * FROM compras_cartao ORDER BY data_compra DESC LIMIT 100').all();
+  return (await db.prepare('SELECT * FROM compras_cartao ORDER BY data_compra DESC LIMIT 100').all());
+  });
 }
 
-export function criarCompraCartao(dados) {
+export async function criarCompraCartao(dados) {
+  return atomic(async () => {
   var db = getDatabase();
   var cartao_id = dados.cartao_id;
   var descricao = dados.descricao;
@@ -161,15 +175,15 @@ export function criarCompraCartao(dados) {
 
   var resultId;
 
-  var transaction = db.transaction(function() {
-    var cartao = db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartao_id);
+  var transaction = db.transaction(async function() {
+    var cartao = (await db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartao_id));
     if (!cartao) throw new Error('Cartao nao encontrado');
 
-    var categoria = db.prepare('SELECT * FROM categorias WHERE id = ?').get(categoria_id);
+    var categoria = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(categoria_id));
     if (!categoria) throw new Error('Categoria nao encontrada');
 
     // 1. Criar Compra
-    var infoCompra = db.prepare(
+    var infoCompra = (await db.prepare(
       'INSERT INTO compras_cartao (cartao_id, cartao_nome, descricao, valor_total, categoria_id, categoria_nome, data_compra, quantidade_parcelas, observacao) VALUES (@cartao_id, @cartao_nome, @descricao, @valor_total, @categoria_id, @categoria_nome, @data_compra, @quantidade_parcelas, @observacao)'
     ).run({
       cartao_id: cartao_id,
@@ -181,7 +195,7 @@ export function criarCompraCartao(dados) {
       data_compra: data_compra,
       quantidade_parcelas: quantidade_parcelas,
       observacao: observacao
-    });
+    }));
 
     resultId = infoCompra.lastInsertRowid;
 
@@ -200,7 +214,7 @@ export function criarCompraCartao(dados) {
 
       var descParcela = quantidade_parcelas > 1 ? descricao + ' (' + (i + 1) + '/' + quantidade_parcelas + ')' : descricao;
 
-      db.prepare(
+      (await db.prepare(
         'INSERT INTO parcelas_cartao (compra_id, cartao_id, cartao_nome, numero_parcela, total_parcelas, valor_parcela, competencia, vencimento, categoria_nome, descricao) VALUES (@compra_id, @cartao_id, @cartao_nome, @numero_parcela, @total_parcelas, @valor_parcela, @competencia, @vencimento, @categoria_nome, @descricao)'
       ).run({
         compra_id: resultId,
@@ -213,7 +227,7 @@ export function criarCompraCartao(dados) {
         vencimento: cv.vencimento,
         categoria_nome: categoria.nome,
         descricao: descParcela
-      });
+      }));
 
       if (competenciasAfetadas.indexOf(cv.competencia) === -1) {
         competenciasAfetadas.push(cv.competencia);
@@ -222,23 +236,24 @@ export function criarCompraCartao(dados) {
 
     // 3. Atualizar/Criar faturas
     for (var j = 0; j < competenciasAfetadas.length; j++) {
-      garantirFatura(db, cartao, competenciasAfetadas[j]);
-      recalcularFaturaTotal(db, cartao_id, competenciasAfetadas[j]);
+      (await garantirFatura(db, cartao, competenciasAfetadas[j]));
+      (await recalcularFaturaTotal(db, cartao_id, competenciasAfetadas[j]));
     }
 
-    registrarAuditoria('CARTAO_COMPRA', 'Compra ' + descricao + ' no cartao ' + cartao.nome);
+    (await registrarAuditoria('CARTAO_COMPRA', 'Compra ' + descricao + ' no cartao ' + cartao.nome));
   });
 
-  transaction();
+  (await transaction());
   return { id: resultId, sucesso: true };
+  });
 }
 
 // ═══════════════════════════════════════
 // FATURAS
 // ═══════════════════════════════════════
 
-function garantirFatura(db, cartao, competencia) {
-  var fatura = db.prepare('SELECT id FROM faturas_cartao WHERE cartao_id = ? AND competencia = ?').get(cartao.id, competencia);
+async function garantirFatura(db, cartao, competencia) {
+  var fatura = (await db.prepare('SELECT id FROM faturas_cartao WHERE cartao_id = ? AND competencia = ?').get(cartao.id, competencia));
   if (!fatura) {
     var partes = competencia.split('-');
     var ano = parseInt(partes[0], 10);
@@ -250,25 +265,26 @@ function garantirFatura(db, cartao, competencia) {
     var dataVenc = new Date(ano, mes, diaVencReal);
     var vencimentoFinal = formatarDataIso(dataVenc);
 
-    db.prepare(
+    (await db.prepare(
       "INSERT INTO faturas_cartao (cartao_id, cartao_nome, competencia, vencimento, total, status) VALUES (?, ?, ?, ?, 0, 'aberta')"
-    ).run(cartao.id, cartao.nome, competencia, vencimentoFinal);
+    ).run(cartao.id, cartao.nome, competencia, vencimentoFinal));
   }
 }
 
-function recalcularFaturaTotal(db, cartao_id, competencia) {
-  var sumQuery = db.prepare(
+async function recalcularFaturaTotal(db, cartao_id, competencia) {
+  var sumQuery = (await db.prepare(
     "SELECT SUM(valor_parcela) as total FROM parcelas_cartao WHERE cartao_id = ? AND competencia = ? AND status != 'cancelada'"
-  ).get(cartao_id, competencia);
+  ).get(cartao_id, competencia));
 
   var total = sumQuery.total || 0;
 
-  db.prepare(
+  (await db.prepare(
     'UPDATE faturas_cartao SET total = ? WHERE cartao_id = ? AND competencia = ?'
-  ).run(total, cartao_id, competencia);
+  ).run(total, cartao_id, competencia));
 }
 
-export function listarFaturasCartao(filtros) {
+export async function listarFaturasCartao(filtros) {
+  return snapshot(async () => {
   var db = getDatabase();
   var query = 'SELECT * FROM faturas_cartao WHERE 1=1';
   var params = [];
@@ -288,19 +304,21 @@ export function listarFaturasCartao(filtros) {
 
   query += ' ORDER BY competencia DESC';
   var stmt = db.prepare(query);
-  return stmt.all.apply(stmt, params);
+  return await stmt.all(...params);
+  });
 }
 
-export function listarFaturasResumo() {
+export async function listarFaturasResumo() {
+  return snapshot(async () => {
   var db = getDatabase();
   var hoje = new Date();
   var compAtual = formatarCompetencia(hoje);
 
-  var atualRow = db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE competencia = ? AND status != 'cancelada'").get(compAtual);
-  var proxRow = db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE competencia > ? AND status != 'cancelada'").get(compAtual);
-  var abertasRow = db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE status IN ('aberta','fechada')").get();
-  var limiteRow = db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE status IN ('aberta','fechada')").get();
-  var proxVenc = db.prepare("SELECT cartao_nome, competencia, vencimento, total FROM faturas_cartao WHERE status IN ('aberta','fechada') ORDER BY vencimento ASC LIMIT 1").get();
+  var atualRow = (await db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE competencia = ? AND status != 'cancelada'").get(compAtual));
+  var proxRow = (await db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE competencia > ? AND status != 'cancelada'").get(compAtual));
+  var abertasRow = (await db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE status IN ('aberta','fechada')").get());
+  var limiteRow = (await db.prepare("SELECT SUM(total) as val FROM faturas_cartao WHERE status IN ('aberta','fechada')").get());
+  var proxVenc = (await db.prepare("SELECT cartao_nome, competencia, vencimento, total FROM faturas_cartao WHERE status IN ('aberta','fechada') ORDER BY vencimento ASC LIMIT 1").get());
 
   return {
     faturaAtual: atualRow && atualRow.val ? atualRow.val : 0,
@@ -309,22 +327,26 @@ export function listarFaturasResumo() {
     limiteUsado: limiteRow && limiteRow.val ? limiteRow.val : 0,
     proximoVencimento: proxVenc ? proxVenc : null
   };
+  });
 }
 
-export function obterFaturaComParcelas(faturaId) {
+export async function obterFaturaComParcelas(faturaId) {
+  return snapshot(async () => {
   var db = getDatabase();
-  var fatura = db.prepare('SELECT * FROM faturas_cartao WHERE id = ?').get(faturaId);
+  var fatura = (await db.prepare('SELECT * FROM faturas_cartao WHERE id = ?').get(faturaId));
   if (!fatura) throw new Error('Fatura nao encontrada');
 
-  var parcelasCompletas = db.prepare(
+  var parcelasCompletas = (await db.prepare(
     'SELECT p.*, c.data_compra FROM parcelas_cartao p JOIN compras_cartao c ON p.compra_id = c.id WHERE p.cartao_id = ? AND p.competencia = ? ORDER BY c.data_compra DESC, p.id DESC'
-  ).all(fatura.cartao_id, fatura.competencia);
+  ).all(fatura.cartao_id, fatura.competencia));
 
   fatura.parcelas = parcelasCompletas;
   return fatura;
+  });
 }
 
-export function marcarFaturaComoPaga(faturaId, opcoes) {
+export async function marcarFaturaComoPaga(faturaId, opcoes) {
+  return atomic(async () => {
   var db = getDatabase();
   var opts = opcoes || {};
   var dataPagamento = opts.data_pagamento || formatarDataIso(new Date());
@@ -333,20 +355,20 @@ export function marcarFaturaComoPaga(faturaId, opcoes) {
 
   var resultado = {};
 
-  var transaction = db.transaction(function() {
-    var fatura = db.prepare('SELECT * FROM faturas_cartao WHERE id = ?').get(faturaId);
+  var transaction = db.transaction(async function() {
+    var fatura = (await db.prepare('SELECT * FROM faturas_cartao WHERE id = ?').get(faturaId));
     if (!fatura) throw new Error('Fatura nao encontrada');
     if (fatura.status === 'paga') throw new Error('Esta fatura ja esta paga.');
 
-    db.prepare(
+    (await db.prepare(
       "UPDATE faturas_cartao SET status = 'paga', pago_em = ?, forma_pagamento = ?, observacao_pagamento = ?, atualizado_em = datetime('now', 'localtime') WHERE id = ?"
-    ).run(dataPagamento, formaPagamento, observacao, faturaId);
+    ).run(dataPagamento, formaPagamento, observacao, faturaId));
 
-    db.prepare(
+    (await db.prepare(
       "UPDATE parcelas_cartao SET status = 'paga', atualizado_em = datetime('now', 'localtime') WHERE cartao_id = ? AND competencia = ? AND status != 'cancelada'"
-    ).run(fatura.cartao_id, fatura.competencia);
+    ).run(fatura.cartao_id, fatura.competencia));
 
-    registrarAuditoria('CARTAO_FATURA_PAGAR', 'Fatura ' + fatura.cartao_nome + ' ' + fatura.competencia + ' paga em ' + dataPagamento + (formaPagamento ? ' via ' + formaPagamento : ''));
+    (await registrarAuditoria('CARTAO_FATURA_PAGAR', 'Fatura ' + fatura.cartao_nome + ' ' + fatura.competencia + ' paga em ' + dataPagamento + (formaPagamento ? ' via ' + formaPagamento : '')));
 
     resultado = {
       sucesso: true,
@@ -356,15 +378,17 @@ export function marcarFaturaComoPaga(faturaId, opcoes) {
     };
   });
 
-  transaction();
+  (await transaction());
   return resultado;
+  });
 }
 
 // ═══════════════════════════════════════
 // COMPRA EM ANDAMENTO
 // ═══════════════════════════════════════
 
-export function criarCompraCartaoEmAndamento(dados) {
+export async function criarCompraCartaoEmAndamento(dados) {
+  return atomic(async () => {
   var db = getDatabase();
   var cartao_id = dados.cartao_id;
   var descricao = dados.descricao;
@@ -380,11 +404,11 @@ export function criarCompraCartaoEmAndamento(dados) {
 
   var resultId;
 
-  var transaction = db.transaction(function() {
-    var cartao = db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartao_id);
+  var transaction = db.transaction(async function() {
+    var cartao = (await db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartao_id));
     if (!cartao) throw new Error('Cartão não encontrado');
 
-    var categoria = db.prepare('SELECT * FROM categorias WHERE id = ?').get(categoria_id);
+    var categoria = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(categoria_id));
     if (!categoria) throw new Error('Categoria não encontrada');
 
     // Calcular data_compra fictícia baseada na competência inicial
@@ -394,7 +418,7 @@ export function criarCompraCartaoEmAndamento(dados) {
     var dataCompra = anoComp + '-' + String(mesComp).padStart(2, '0') + '-01';
 
     // 1. Criar registro de compra
-    var infoCompra = db.prepare(
+    var infoCompra = (await db.prepare(
       'INSERT INTO compras_cartao (cartao_id, cartao_nome, descricao, valor_total, categoria_id, categoria_nome, data_compra, quantidade_parcelas, observacao) VALUES (@cartao_id, @cartao_nome, @descricao, @valor_total, @categoria_id, @categoria_nome, @data_compra, @quantidade_parcelas, @observacao)'
     ).run({
       cartao_id: cartao_id,
@@ -406,7 +430,7 @@ export function criarCompraCartaoEmAndamento(dados) {
       data_compra: dataCompra,
       quantidade_parcelas: quantidade_parcelas,
       observacao: observacao ? ('Em andamento: ' + observacao) : 'Compra em andamento (parcelas ' + parcela_inicial + '-' + (parcela_inicial + quantidade_parcelas - 1) + '/' + total_parcelas_original + ')'
-    });
+    }));
 
     resultId = infoCompra.lastInsertRowid;
 
@@ -429,7 +453,7 @@ export function criarCompraCartaoEmAndamento(dados) {
 
       var descParcela = descricao + ' (' + numParcela + '/' + total_parcelas_original + ')';
 
-      db.prepare(
+      (await db.prepare(
         'INSERT INTO parcelas_cartao (compra_id, cartao_id, cartao_nome, numero_parcela, total_parcelas, valor_parcela, competencia, vencimento, categoria_nome, descricao) VALUES (@compra_id, @cartao_id, @cartao_nome, @numero_parcela, @total_parcelas, @valor_parcela, @competencia, @vencimento, @categoria_nome, @descricao)'
       ).run({
         compra_id: resultId,
@@ -442,7 +466,7 @@ export function criarCompraCartaoEmAndamento(dados) {
         vencimento: vencimentoStr,
         categoria_nome: categoria.nome,
         descricao: descParcela
-      });
+      }));
 
       if (competenciasAfetadas.indexOf(compStr) === -1) {
         competenciasAfetadas.push(compStr);
@@ -451,53 +475,57 @@ export function criarCompraCartaoEmAndamento(dados) {
 
     // 3. Atualizar/Criar faturas
     for (var j = 0; j < competenciasAfetadas.length; j++) {
-      garantirFatura(db, cartao, competenciasAfetadas[j]);
-      recalcularFaturaTotal(db, cartao_id, competenciasAfetadas[j]);
+      (await garantirFatura(db, cartao, competenciasAfetadas[j]));
+      (await recalcularFaturaTotal(db, cartao_id, competenciasAfetadas[j]));
     }
 
-    registrarAuditoria('CARTAO_COMPRA_ANDAMENTO', 'Compra em andamento ' + descricao + ' parcelas ' + parcela_inicial + '-' + (parcela_inicial + quantidade_parcelas - 1) + '/' + total_parcelas_original);
+    (await registrarAuditoria('CARTAO_COMPRA_ANDAMENTO', 'Compra em andamento ' + descricao + ' parcelas ' + parcela_inicial + '-' + (parcela_inicial + quantidade_parcelas - 1) + '/' + total_parcelas_original));
   });
 
-  transaction();
+  (await transaction());
   return { id: resultId, sucesso: true };
+  });
 }
 
 // ═══════════════════════════════════════
 // CRUD COMPRAS PARCELADAS
 // ═══════════════════════════════════════
 
-export function obterCompraCartao(compraId) {
+export async function obterCompraCartao(compraId) {
+  return snapshot(async () => {
   var db = getDatabase();
-  var compra = db.prepare('SELECT * FROM compras_cartao WHERE id = ?').get(compraId);
+  var compra = (await db.prepare('SELECT * FROM compras_cartao WHERE id = ?').get(compraId));
   if (!compra) throw new Error('Compra não encontrada');
 
-  var parcelas = db.prepare('SELECT * FROM parcelas_cartao WHERE compra_id = ? ORDER BY numero_parcela ASC').all(compraId);
+  var parcelas = (await db.prepare('SELECT * FROM parcelas_cartao WHERE compra_id = ? ORDER BY numero_parcela ASC').all(compraId));
   compra.parcelas = parcelas;
 
   var temParcPaga = parcelas.some(function(p) { return p.status === 'paga'; });
   compra.temParcelasPagas = temParcPaga;
 
   return compra;
+  });
 }
 
-export function atualizarCompraCartao(compraId, dados) {
+export async function atualizarCompraCartao(compraId, dados) {
+  return atomic(async () => {
   var db = getDatabase();
 
-  var transaction = db.transaction(function() {
-    var compra = db.prepare('SELECT * FROM compras_cartao WHERE id = ?').get(compraId);
+  var transaction = db.transaction(async function() {
+    var compra = (await db.prepare('SELECT * FROM compras_cartao WHERE id = ?').get(compraId));
     if (!compra) throw new Error('Compra não encontrada');
 
-    var cartao = db.prepare('SELECT * FROM cartoes WHERE id = ?').get(compra.cartao_id);
+    var cartao = (await db.prepare('SELECT * FROM cartoes WHERE id = ?').get(compra.cartao_id));
     if (!cartao) throw new Error('Cartão não encontrado');
 
     var categoria = null;
     if (dados.categoria_id) {
-      categoria = db.prepare('SELECT * FROM categorias WHERE id = ?').get(dados.categoria_id);
+      categoria = (await db.prepare('SELECT * FROM categorias WHERE id = ?').get(dados.categoria_id));
       if (!categoria) throw new Error('Categoria não encontrada');
     }
 
     // Atualizar registro de compra
-    db.prepare(
+    (await db.prepare(
       'UPDATE compras_cartao SET descricao = COALESCE(@descricao, descricao), valor_total = COALESCE(@valor_total, valor_total), categoria_id = COALESCE(@categoria_id, categoria_id), categoria_nome = COALESCE(@categoria_nome, categoria_nome), observacao = COALESCE(@observacao, observacao), atualizado_em = datetime(\'now\', \'localtime\') WHERE id = @id'
     ).run({
       id: compraId,
@@ -506,20 +534,20 @@ export function atualizarCompraCartao(compraId, dados) {
       categoria_id: dados.categoria_id || null,
       categoria_nome: categoria ? categoria.nome : null,
       observacao: dados.observacao !== undefined ? dados.observacao : null
-    });
+    }));
 
     // Se valor_parcela fornecido, atualizar parcelas NÃO pagas
     if (dados.valor_parcela != null) {
-      var parcelas = db.prepare('SELECT * FROM parcelas_cartao WHERE compra_id = ?').all(compraId);
+      var parcelas = (await db.prepare('SELECT * FROM parcelas_cartao WHERE compra_id = ?').all(compraId));
       var competenciasAfetadas = [];
 
       for (var i = 0; i < parcelas.length; i++) {
         var p = parcelas[i];
         if (p.status !== 'paga') {
           var novaDesc = (dados.descricao || compra.descricao) + ' (' + p.numero_parcela + '/' + p.total_parcelas + ')';
-          db.prepare(
+          (await db.prepare(
             'UPDATE parcelas_cartao SET valor_parcela = ?, descricao = ?, categoria_nome = COALESCE(?, categoria_nome), atualizado_em = datetime(\'now\', \'localtime\') WHERE id = ?'
-          ).run(dados.valor_parcela, novaDesc, categoria ? categoria.nome : null, p.id);
+          ).run(dados.valor_parcela, novaDesc, categoria ? categoria.nome : null, p.id));
         }
         if (competenciasAfetadas.indexOf(p.competencia) === -1) {
           competenciasAfetadas.push(p.competencia);
@@ -528,35 +556,37 @@ export function atualizarCompraCartao(compraId, dados) {
 
       // Recalcular faturas afetadas
       for (var j = 0; j < competenciasAfetadas.length; j++) {
-        recalcularFaturaTotal(db, compra.cartao_id, competenciasAfetadas[j]);
+        (await recalcularFaturaTotal(db, compra.cartao_id, competenciasAfetadas[j]));
       }
     } else if (dados.descricao || categoria) {
       // Atualizar apenas descrição/categoria nas parcelas não pagas
-      var parcelas2 = db.prepare("SELECT * FROM parcelas_cartao WHERE compra_id = ? AND status != 'paga'").all(compraId);
+      var parcelas2 = (await db.prepare("SELECT * FROM parcelas_cartao WHERE compra_id = ? AND status != 'paga'").all(compraId));
       for (var k = 0; k < parcelas2.length; k++) {
         var p2 = parcelas2[k];
         var novaDesc2 = (dados.descricao || compra.descricao) + ' (' + p2.numero_parcela + '/' + p2.total_parcelas + ')';
-        db.prepare(
+        (await db.prepare(
           'UPDATE parcelas_cartao SET descricao = ?, categoria_nome = COALESCE(?, categoria_nome), atualizado_em = datetime(\'now\', \'localtime\') WHERE id = ?'
-        ).run(novaDesc2, categoria ? categoria.nome : null, p2.id);
+        ).run(novaDesc2, categoria ? categoria.nome : null, p2.id));
       }
     }
 
-    registrarAuditoria('CARTAO_COMPRA_EDITAR', 'Compra id=' + compraId + ' (' + (dados.descricao || compra.descricao) + ') atualizada');
+    (await registrarAuditoria('CARTAO_COMPRA_EDITAR', 'Compra id=' + compraId + ' (' + (dados.descricao || compra.descricao) + ') atualizada'));
   });
 
-  transaction();
+  (await transaction());
   return { sucesso: true };
+  });
 }
 
-export function excluirCompraCartao(compraId, confirmacao) {
+export async function excluirCompraCartao(compraId, confirmacao) {
+  return atomic(async () => {
   var db = getDatabase();
 
-  var transaction = db.transaction(function() {
-    var compra = db.prepare('SELECT * FROM compras_cartao WHERE id = ?').get(compraId);
+  var transaction = db.transaction(async function() {
+    var compra = (await db.prepare('SELECT * FROM compras_cartao WHERE id = ?').get(compraId));
     if (!compra) throw new Error('Compra não encontrada');
 
-    var parcelas = db.prepare('SELECT * FROM parcelas_cartao WHERE compra_id = ?').all(compraId);
+    var parcelas = (await db.prepare('SELECT * FROM parcelas_cartao WHERE compra_id = ?').all(compraId));
     var temPagas = parcelas.some(function(p) { return p.status === 'paga'; });
 
     if (temPagas && confirmacao !== 'EXCLUIR MESMO ASSIM') {
@@ -576,59 +606,63 @@ export function excluirCompraCartao(compraId, confirmacao) {
     }
 
     // Excluir parcelas
-    db.prepare('DELETE FROM parcelas_cartao WHERE compra_id = ?').run(compraId);
+    (await db.prepare('DELETE FROM parcelas_cartao WHERE compra_id = ?').run(compraId));
 
     // Excluir compra
-    db.prepare('DELETE FROM compras_cartao WHERE id = ?').run(compraId);
+    (await db.prepare('DELETE FROM compras_cartao WHERE id = ?').run(compraId));
 
     // Recalcular faturas afetadas
     for (var j = 0; j < competenciasAfetadas.length; j++) {
-      recalcularFaturaTotal(db, compra.cartao_id, competenciasAfetadas[j]);
+      (await recalcularFaturaTotal(db, compra.cartao_id, competenciasAfetadas[j]));
 
       // Se fatura ficou zerada e não tem mais parcelas, remover
-      var restante = db.prepare(
+      var restante = (await db.prepare(
         "SELECT COUNT(*) as count FROM parcelas_cartao WHERE cartao_id = ? AND competencia = ? AND status != 'cancelada'"
-      ).get(compra.cartao_id, competenciasAfetadas[j]);
+      ).get(compra.cartao_id, competenciasAfetadas[j]));
 
       if (restante.count === 0) {
-        var faturaAtual = db.prepare(
+        var faturaAtual = (await db.prepare(
           "SELECT * FROM faturas_cartao WHERE cartao_id = ? AND competencia = ? AND status != 'paga'"
-        ).get(compra.cartao_id, competenciasAfetadas[j]);
+        ).get(compra.cartao_id, competenciasAfetadas[j]));
         if (faturaAtual) {
-          db.prepare('DELETE FROM faturas_cartao WHERE id = ?').run(faturaAtual.id);
+          (await db.prepare('DELETE FROM faturas_cartao WHERE id = ?').run(faturaAtual.id));
         }
       }
     }
 
-    registrarAuditoria('CARTAO_COMPRA_EXCLUIR', 'Compra id=' + compraId + ' (' + compra.descricao + ') e ' + parcelas.length + ' parcelas excluídas');
+    (await registrarAuditoria('CARTAO_COMPRA_EXCLUIR', 'Compra id=' + compraId + ' (' + compra.descricao + ') e ' + parcelas.length + ' parcelas excluídas'));
   });
 
-  transaction();
+  (await transaction());
   return { sucesso: true, mensagem: 'Compra e parcelas excluídas com sucesso. Faturas recalculadas.' };
+  });
 }
 
 // ═══════════════════════════════════════
 // EXTRAS
 // ═══════════════════════════════════════
 
-export function listarParcelasRecentes() {
+export async function listarParcelasRecentes() {
+  return snapshot(async () => {
   var db = getDatabase();
-  return db.prepare(
+  return (await db.prepare(
     'SELECT p.*, c.data_compra FROM parcelas_cartao p JOIN compras_cartao c ON p.compra_id = c.id ORDER BY c.data_compra DESC, p.id DESC LIMIT 100'
-  ).all();
+  ).all());
+  });
 }
 
-export function listarComprasParceladas() {
+export async function listarComprasParceladas() {
+  return snapshot(async () => {
   var db = getDatabase();
-  var compras = db.prepare('SELECT * FROM compras_cartao ORDER BY data_compra DESC LIMIT 100').all();
+  var compras = (await db.prepare('SELECT * FROM compras_cartao ORDER BY data_compra DESC LIMIT 100').all());
   
   for (var i = 0; i < compras.length; i++) {
     var c = compras[i];
-    var stats = db.prepare(
+    var stats = (await db.prepare(
       "SELECT COUNT(*) as total, SUM(CASE WHEN status = 'paga' THEN 1 ELSE 0 END) as pagas, SUM(CASE WHEN status != 'cancelada' THEN valor_parcela ELSE 0 END) as valor_total_parcelas, SUM(CASE WHEN status = 'aberta' THEN valor_parcela ELSE 0 END) as valor_restante FROM parcelas_cartao WHERE compra_id = ?"
-    ).get(c.id);
+    ).get(c.id));
     
-    var prox = db.prepare("SELECT valor_parcela, competencia FROM parcelas_cartao WHERE compra_id = ? AND status = 'aberta' ORDER BY numero_parcela ASC LIMIT 1").get(c.id);
+    var prox = (await db.prepare("SELECT valor_parcela, competencia FROM parcelas_cartao WHERE compra_id = ? AND status = 'aberta' ORDER BY numero_parcela ASC LIMIT 1").get(c.id));
     
     c.total_parcelas_geradas = stats.total;
     c.parcelas_pagas = stats.pagas;
@@ -639,22 +673,23 @@ export function listarComprasParceladas() {
   }
   
   return compras;
+  });
 }
 
 // ═══════════════════════════════════════
 // ANTECIPAÇÃO DE PARCELAS
 // ═══════════════════════════════════════
 
-function obterCompetenciaAlvoAntecipacao(db, cartaoId) {
-  var faturaAberta = db.prepare(
+async function obterCompetenciaAlvoAntecipacao(db, cartaoId) {
+  var faturaAberta = (await db.prepare(
     "SELECT competencia FROM faturas_cartao WHERE cartao_id = ? AND status = 'aberta' ORDER BY competencia ASC LIMIT 1"
-  ).get(cartaoId);
+  ).get(cartaoId));
   
   if (faturaAberta) {
     return faturaAberta.competencia;
   }
   
-  var cartao = db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartaoId);
+  var cartao = (await db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartaoId));
   if (!cartao) throw new Error('Cartão não encontrado');
   
   var hoje = new Date();
@@ -671,7 +706,8 @@ function obterCompetenciaAlvoAntecipacao(db, cartaoId) {
   return formatarCompetencia(dataCompetencia);
 }
 
-export function anteciparParcelas(dados) {
+export async function anteciparParcelas(dados) {
+  return atomic(async () => {
   var db = getDatabase();
   var ids = dados.ids;
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -680,9 +716,9 @@ export function anteciparParcelas(dados) {
 
   var resultado = { sucesso: true, atualizados: 0 };
 
-  var transaction = db.transaction(function() {
+  var transaction = db.transaction(async function() {
     var placeholders = ids.map(function() { return '?'; }).join(',');
-    var parcelas = db.prepare('SELECT * FROM parcelas_cartao WHERE id IN (' + placeholders + ')').all(ids);
+    var parcelas = (await db.prepare('SELECT * FROM parcelas_cartao WHERE id IN (' + placeholders + ')').all(ids));
 
     if (parcelas.length === 0) {
       throw new Error('Nenhuma parcela encontrada para os IDs fornecidos.');
@@ -703,10 +739,10 @@ export function anteciparParcelas(dados) {
     var cartaoIds = Object.keys(parcelasPorCartao);
     for (var c = 0; c < cartaoIds.length; c++) {
       var cartaoId = Number(cartaoIds[c]);
-      var cartao = db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartaoId);
+      var cartao = (await db.prepare('SELECT * FROM cartoes WHERE id = ?').get(cartaoId));
       if (!cartao) throw new Error('Cartão não encontrado.');
 
-      var compAlvo = obterCompetenciaAlvoAntecipacao(db, cartaoId);
+      var compAlvo = (await obterCompetenciaAlvoAntecipacao(db, cartaoId));
       
       var partes = compAlvo.split('-');
       var compAno = Number(partes[0]);
@@ -716,7 +752,7 @@ export function anteciparParcelas(dados) {
       var dataVencimento = new Date(compAno, compMes, diaVencReal);
       var vencimentoAlvo = formatarDataIso(dataVencimento);
 
-      garantirFatura(db, cartao, compAlvo);
+      (await garantirFatura(db, cartao, compAlvo));
 
       var compsOriginal = [];
       var parcelasDoCartao = parcelasPorCartao[cartaoId];
@@ -732,37 +768,38 @@ export function anteciparParcelas(dados) {
           compsOriginal.push(parcela.competencia);
         }
 
-        db.prepare(
+        (await db.prepare(
           "UPDATE parcelas_cartao SET competencia = ?, vencimento = ?, descricao = '[Antecipada] ' || descricao, atualizado_em = datetime('now', 'localtime') WHERE id = ?"
-        ).run(compAlvo, vencimentoAlvo, parcela.id);
+        ).run(compAlvo, vencimentoAlvo, parcela.id));
         
         resultado.atualizados++;
       }
 
-      recalcularFaturaTotal(db, cartaoId, compAlvo);
+      (await recalcularFaturaTotal(db, cartaoId, compAlvo));
 
       for (var o = 0; o < compsOriginal.length; o++) {
         var compOrig = compsOriginal[o];
-        recalcularFaturaTotal(db, cartaoId, compOrig);
+        (await recalcularFaturaTotal(db, cartaoId, compOrig));
 
-        var restante = db.prepare(
+        var restante = (await db.prepare(
           "SELECT COUNT(*) as count FROM parcelas_cartao WHERE cartao_id = ? AND competencia = ? AND status != 'cancelada'"
-        ).get(cartaoId, compOrig);
+        ).get(cartaoId, compOrig));
 
         if (restante.count === 0) {
-          var faturaOrig = db.prepare(
+          var faturaOrig = (await db.prepare(
             "SELECT * FROM faturas_cartao WHERE cartao_id = ? AND competencia = ? AND status != 'paga'"
-          ).get(cartaoId, compOrig);
+          ).get(cartaoId, compOrig));
           if (faturaOrig) {
-            db.prepare('DELETE FROM faturas_cartao WHERE id = ?').run(faturaOrig.id);
+            (await db.prepare('DELETE FROM faturas_cartao WHERE id = ?').run(faturaOrig.id));
           }
         }
       }
 
-      registrarAuditoria('CARTAO_PARCELAS_ANTECIPAR', 'Antecipadas ' + parcelasDoCartao.length + ' parcelas do cartao ' + cartao.nome + ' para a competencia ' + compAlvo);
+      (await registrarAuditoria('CARTAO_PARCELAS_ANTECIPAR', 'Antecipadas ' + parcelasDoCartao.length + ' parcelas do cartao ' + cartao.nome + ' para a competencia ' + compAlvo));
     }
   });
 
-  transaction();
+  (await transaction());
   return resultado;
+  });
 }

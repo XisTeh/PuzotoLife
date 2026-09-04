@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Fechamento Mensal
  * Gera snapshot vitalício somando todas as empresas.
@@ -10,11 +11,12 @@ import { registrarAuditoria } from './auditoria.js';
  * Prepara o snapshot mensal somando lançamentos por empresa.
  * @param {string} referencia - Formato 'YYYY-MM' (ex: '2026-05')
  */
-export function gerarPreviewMensal(mes) {
+export async function gerarPreviewMensal(mes) {
+  return snapshot(async () => {
   const db = getDatabase();
 
-  const somarPorEmpresa = (nomeEmpresa) => {
-    return db.prepare(`
+  const somarPorEmpresa = async (nomeEmpresa) => {
+    return (await db.prepare(`
       SELECT 
         COALESCE(SUM(quantidade), 0) as qtd,
         COALESCE(SUM(total), 0) as total
@@ -22,24 +24,24 @@ export function gerarPreviewMensal(mes) {
       WHERE data LIKE @ref || '%' 
         AND empresa_nome = @nome
         AND status != 'cancelado'
-    `).get({ ref: mes, nome: nomeEmpresa });
+    `).get({ ref: mes, nome: nomeEmpresa }));
   };
 
-  const somarRanon = () => {
-    return db.prepare(`
+  const somarRanon = async () => {
+    return (await db.prepare(`
       SELECT 
         COALESCE(SUM(quantidade), 0) as qtd,
         COALESCE(SUM(total), 0) as total
       FROM laudos_ranon 
       WHERE data LIKE @ref || '%'
-    `).get({ ref: mes });
+    `).get({ ref: mes }));
   };
 
-  const diagnostico = somarPorEmpresa('Diagnóstico');
-  const perfecta = somarPorEmpresa('Perfecta');
-  const email = somarPorEmpresa('E-Mail');
-  const padrao = somarPorEmpresa('Padrão');
-  const ranon = somarRanon();
+  const diagnostico = (await somarPorEmpresa('Diagnóstico'));
+  const perfecta = (await somarPorEmpresa('Perfecta'));
+  const email = (await somarPorEmpresa('E-Mail'));
+  const padrao = (await somarPorEmpresa('Padrão'));
+  const ranon = (await somarRanon());
 
   const qtd_global = diagnostico.qtd + perfecta.qtd + email.qtd + padrao.qtd + ranon.qtd;
   const total_global = diagnostico.total + perfecta.total + email.total + padrao.total + ranon.total;
@@ -49,14 +51,16 @@ export function gerarPreviewMensal(mes) {
     diagnostico, perfecta, email, padrao, ranon,
     qtd_global, total_global
   };
+  });
 }
 
-export function fecharMesTrabalho(mes, referencia) {
+export async function fecharMesTrabalho(mes, referencia) {
+  return atomic(async () => {
   const db = getDatabase();
 
-  const existente = db.prepare(
+  const existente = (await db.prepare(
     'SELECT * FROM fechamentos_mensais WHERE referencia = ?'
-  ).get(referencia);
+  ).get(referencia));
 
   if (existente) {
     return {
@@ -66,7 +70,7 @@ export function fecharMesTrabalho(mes, referencia) {
     };
   }
 
-  const preview = gerarPreviewMensal(mes);
+  const preview = (await gerarPreviewMensal(mes));
   preview.referencia = referencia;
   
   const snapshotData = {
@@ -74,7 +78,7 @@ export function fecharMesTrabalho(mes, referencia) {
     gerado_em: new Date().toISOString()
   };
 
-  const resultado = db.transaction(() => {
+  const resultado = (await db.transaction(async () => {
     const stmt = db.prepare(`
       INSERT INTO fechamentos_mensais 
         (referencia, qtd_diagnostico, total_diagnostico, qtd_perfecta, total_perfecta,
@@ -86,7 +90,7 @@ export function fecharMesTrabalho(mes, referencia) {
          @qtd_global, @total_global, datetime('now', 'localtime'), @snapshot_json)
     `);
 
-    const insert = stmt.run({
+    const insert = (await stmt.run({
       referencia,
       qtd_diagnostico: preview.diagnostico.qtd,
       total_diagnostico: preview.diagnostico.total,
@@ -101,9 +105,9 @@ export function fecharMesTrabalho(mes, referencia) {
       qtd_global: preview.qtd_global,
       total_global: preview.total_global,
       snapshot_json: JSON.stringify(snapshotData)
-    });
+    }));
 
-    registrarAuditoria('fechamento_mensal', `Fechamento mensal ${referencia}`, null, snapshotData);
+    (await registrarAuditoria('fechamento_mensal', `Fechamento mensal ${referencia}`, null, snapshotData));
 
     return {
       sucesso: true,
@@ -111,22 +115,29 @@ export function fecharMesTrabalho(mes, referencia) {
       fechamento_id: insert.lastInsertRowid,
       snapshot: snapshotData
     };
-  })();
+  })());
 
   return resultado;
+  });
 }
 
-export function listarFechamentosMensais() {
+export async function listarFechamentosMensais() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM fechamentos_mensais ORDER BY referencia DESC').all();
+  return (await db.prepare('SELECT * FROM fechamentos_mensais ORDER BY referencia DESC').all());
+  });
 }
 
-export function obterFechamentoMensalPorReferencia(referencia) {
+export async function obterFechamentoMensalPorReferencia(referencia) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM fechamentos_mensais WHERE referencia = ?').get(referencia);
+  return (await db.prepare('SELECT * FROM fechamentos_mensais WHERE referencia = ?').get(referencia));
+  });
 }
 
-export function obterFechamentoMensalPorId(id) {
+export async function obterFechamentoMensalPorId(id) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM fechamentos_mensais WHERE id = ?').get(id);
+  return (await db.prepare('SELECT * FROM fechamentos_mensais WHERE id = ?').get(id));
+  });
 }

@@ -1,3 +1,4 @@
+import { atomic, snapshot } from '../database/connection.js';
 /**
  * Serviço de Ajuste Retroativo
  * Por enquanto, usado apenas para a empresa Padrão.
@@ -16,13 +17,14 @@
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 
-export function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_unitario, observacao = null, empresa = 'Padrão') {
+export async function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_unitario, observacao = null, empresa = 'Padrão') {
+  return atomic(async () => {
   const db = getDatabase();
 
   // 1. Localizar o fechamento mensal
-  const fechamento = db.prepare(
+  const fechamento = (await db.prepare(
     'SELECT * FROM fechamentos_mensais WHERE id = ?'
-  ).get(fechamento_mensal_id);
+  ).get(fechamento_mensal_id));
 
   if (!fechamento) {
     return {
@@ -58,7 +60,7 @@ export function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_
     total_global: fechamento.total_global
   };
 
-  const resultado = db.transaction(() => {
+  const resultado = (await db.transaction(async () => {
     // 2-4. Atualizar o fechamento mensal
     const novosValores = {
       qtd_empresa: fechamento[qtdField] + quantidade,
@@ -94,7 +96,7 @@ export function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_
       console.error("Erro ao atualizar snapshot_json no ajuste", e);
     }
 
-    db.prepare(`
+    (await db.prepare(`
       UPDATE fechamentos_mensais SET
         ${qtdField} = @qtd_empresa,
         ${totalField} = @total_empresa,
@@ -103,10 +105,10 @@ export function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_
         snapshot_json = @snapshot_json,
         atualizado_em = datetime('now', 'localtime')
       WHERE id = @id
-    `).run({ ...novosValores, snapshot_json: snapshotJsonStr, id: fechamento_mensal_id });
+    `).run({ ...novosValores, snapshot_json: snapshotJsonStr, id: fechamento_mensal_id }));
 
     // 5. Registrar em ajustes_retroativos
-    const ajuste = db.prepare(`
+    const ajuste = (await db.prepare(`
       INSERT INTO ajustes_retroativos 
         (fechamento_mensal_id, referencia, empresa, quantidade, valor_unitario, total, observacao)
       VALUES 
@@ -119,15 +121,15 @@ export function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_
       valor_unitario,
       total,
       observacao
-    });
+    }));
 
     // 6. Registrar em auditoria
-    registrarAuditoria(
+    (await registrarAuditoria(
       'ajuste_retroativo',
       `Ajuste ${empresa} no mês ${fechamento.referencia}: +${quantidade} × R$${valor_unitario}`,
       dadosAntes,
       novosValores
-    );
+    ));
 
     return {
       sucesso: true,
@@ -138,17 +140,20 @@ export function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_
       valor_adicionado: total,
       novos_valores: novosValores
     };
-  })();
+  })());
 
   return resultado;
+  });
 }
 
-export function listarAjustesRetroativos(referencia = null) {
+export async function listarAjustesRetroativos(referencia = null) {
+  return snapshot(async () => {
   const db = getDatabase();
   if (referencia) {
-    return db.prepare(
+    return (await db.prepare(
       'SELECT * FROM ajustes_retroativos WHERE referencia = ? ORDER BY criado_em DESC'
-    ).all(referencia);
+    ).all(referencia));
   }
-  return db.prepare('SELECT * FROM ajustes_retroativos ORDER BY criado_em DESC').all();
+  return (await db.prepare('SELECT * FROM ajustes_retroativos ORDER BY criado_em DESC').all());
+  });
 }

@@ -8,7 +8,7 @@ Issues #2 e #3: AGENTS.md, templates de Issue/PR, Biome, contratos de arquitetur
 
 Issue #4: backend de login Supabase e sessão HttpOnly, autorização pelo UUID de proprietário, recuperação, logout e rate limit implementados. Testes locais usam cliente simulado. Credenciais e teste real ainda necessários; integração de Auth não conclui a migração do banco.
 
-Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado, testado em PostgreSQL local via PGlite. Importador transacional com paridade de valores e pré-validação do snapshot. **Ainda falta portar os serviços SQL síncronos para PostgreSQL, testar concorrência, definir papel de runtime e migrar/validar no Supabase real.** Não manter SQLite como fonte de verdade após o lançamento.
+Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado, testado em PostgreSQL local via PGlite. Importador transacional com paridade de valores e pré-validação do snapshot. O port dos serviços e papel de runtime estão na entrega seguinte. **Ainda falta revisão e migrar/validar no Supabase real.** Não manter SQLite como fonte de verdade após o lançamento.
 
 Issue #6: sidebar com bordas arredondadas, superfícies escuras, navegação móvel, foco/teclado, lazy loading por página, skeleton de navegação, feedback e reduced motion. Inicializadores das páginas passam a ser aguardados, removendo atrasos artificiais. Revisão visual usa dados sintéticos; não publicar screenshots com registros pessoais.
 
@@ -37,3 +37,15 @@ Uma Issue só pode ser fechada quando todos os seus critérios forem cumpridos. 
 ## Rollback
 
 Enquanto a publicação não acontece, continuar usando o SQLite local. Para reverter código, usar o PR/commit anterior e preservar o banco. Para restaurar dados, parar todos os processos e usar snapshot validado; nunca copiar arquivo SQLite em uso ignorando WAL. O Info não substitui uma cópia externa protegida contra falha do disco.
+
+## Runtime PostgreSQL — branch codex/supabase-postgres
+
+Refs #5; depende do PR #11. PR encadeado contra codex/cloud-foundation-design, sem mesclar diretamente em main.
+
+- Serviços SQL e rotas aguardam persistência. Pool pg com TLS verificado, transação na mesma conexão, timeouts, escrita serializada por acervo e snapshots consistentes. SQLite temporário e modo local continuam suportados.
+- Papel puzoto_runtime com DML e RLS, sem login habilitado automaticamente. Inicialização verifica estrutura/permissões e não migra dados remotos. Corrigida conversão BOOLEAN SQLite para número PostgreSQL; agrupamento de remessas explícito e determinístico.
+- Backup local aguarda conclusão; restauração impede intercalar consultas. JSON é completo e consistente ou falha inteiro. Planilhas usam nomes únicos, I/O assíncrono e fechamento atômico. Operações de arquivo SQLite não são aplicadas ao PostgreSQL.
+- Validação local: 44 testes Node aprovados; 6 jornadas Playwright por engine (SQLite/PostgreSQL), desktop/mobile. CI configurada com PostgreSQL 17 e conexões independentes; confirmação remota registrada no PR.
+- Limitações: PGlite não comprova Auth, TLS nem conectividade Supabase. Nenhuma migração real executada. Backup/restauração remotos, importação JSON pela interface, armazenamento persistente de anexos, XSS/validação completa, login real e jurídico continuam pendentes.
+
+A base pessoal continua SQLite no loopback. Info não foi alterado. Antes da migração final, criar novo snapshot consistente se houver lançamentos posteriores ao Info.
