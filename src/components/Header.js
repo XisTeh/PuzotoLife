@@ -10,7 +10,7 @@ export function renderHeader(session = { mode: 'local' }) {
     </div>
     <div class="header__right">
       <span class="connection-label">${session.mode === 'local' ? 'Neste computador' : 'Conta pessoal'}</span>
-      <button class="header__btn" id="importShortcut"><i data-lucide="download"></i><span>Importar</span></button>
+      <button class="header__btn" id="importShortcut" aria-label="Importar dados"><i data-lucide="download"></i><span>Importar</span></button>
       ${session.mode === 'local' ? '' : '<button class="header__btn" id="logoutButton" aria-label="Sair da conta"><i data-lucide="log-out"></i><span>Sair</span></button>'}
     </div>`;
   header.querySelector('#importShortcut').addEventListener('click', () => window.navigateTo('importar_dados'));
@@ -31,7 +31,7 @@ export function renderHeader(session = { mode: 'local' }) {
     sidebar.classList.add('is-open'); backdrop.classList.add('is-visible'); toggle.setAttribute('aria-expanded', 'true');
     sidebar.setAttribute('role', 'dialog'); sidebar.setAttribute('aria-modal', 'true'); sidebar.setAttribute('aria-label', 'Navegação principal');
     document.getElementById('mainContent').inert = true;
-    sidebar.querySelector('#closeMenu')?.focus();
+    requestAnimationFrame(() => sidebar.querySelector('#closeMenu')?.focus());
   });
   sidebar.querySelector('#closeMenu')?.addEventListener('click', () => { closeMenu(); toggle.focus(); });
   backdrop.onclick = () => { closeMenu(); toggle.focus(); };
@@ -42,6 +42,7 @@ export function renderHeader(session = { mode: 'local' }) {
     if (event.key === 'Tab') {
       const items = [...sidebar.querySelectorAll('button, a[href]')].filter(el => el.offsetParent !== null);
       const first = items[0]; const last = items.at(-1);
+      if (!sidebar.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); return; }
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     }

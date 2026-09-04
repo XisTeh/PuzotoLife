@@ -40,6 +40,7 @@ test('reduced motion e fechamento do menu por teclado', async ({ page }, info) =
   if (info.project.name === 'mobile') {
     const toggle = page.getByRole('button', { name: 'Abrir menu', exact: true });
     await toggle.click();
+    await expect(page.locator('#closeMenu')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(toggle).toBeFocused();
