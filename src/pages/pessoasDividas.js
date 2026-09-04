@@ -1,6 +1,7 @@
 import { apiFetch } from '../services/http.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
+import { escapeHtml, legacyStringArgument } from '../security/legacyHandlers.js';
 
 Chart.register(...registerables);
 
@@ -244,7 +245,7 @@ function renderTabela() {
     html += `
       <tr>
         <td style="${r.atrasado ? 'color: var(--color-red); font-weight: 600;' : ''}">${formatarDataBR(r.data_combinada)}</td>
-        <td style="font-weight: 500; cursor: pointer; color: var(--color-purple);" onclick="window.abrirHistoricoPessoa('${r.nome_pessoa}')" title="Ver Histórico">${r.nome_pessoa}</td>
+        <td style="font-weight: 500; cursor: pointer; color: var(--color-purple);" onclick="window.abrirHistoricoPessoa(${legacyStringArgument(r.nome_pessoa)})" title="Ver Histórico">${escapeHtml(r.nome_pessoa)}</td>
         <td>${tipoBadge}</td>
         <td>${r.motivo}</td>
         <td style="font-weight: 600;">${formatarMoedaBR(r.valor)}</td>
@@ -258,10 +259,10 @@ function renderTabela() {
         <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${r.observacao || ''}">${r.observacao || '-'}</td>
         <td>
           <div style="display: flex; gap: 8px;">
-            ${r.status === 'pendente' ? `<button class="btn-icon" style="color: var(--color-teal);" onclick="window.resolverPD('${r.id}')" title="${r.tipo === 'eu_devo' ? 'Marcar como Pago' : 'Marcar como Recebido'}"><i data-lucide="check"></i></button>` : ''}
-            ${r.status !== 'cancelado' ? `<button class="btn-icon" style="color: var(--color-orange);" onclick="window.cancelarPD('${r.id}', '${r.grupo_parcelas_id || ''}')" title="Cancelar Pendência"><i data-lucide="x"></i></button>` : ''}
-            <button class="btn-icon" style="color: var(--color-blue);" onclick="window.editarValorPD('${r.id}', ${r.valor})" title="Editar Valor"><i data-lucide="edit-2"></i></button>
-            <button class="btn-icon" style="color: var(--color-red);" onclick="window.excluirPD('${r.id}', '${r.grupo_parcelas_id || ''}')" title="Excluir"><i data-lucide="trash-2"></i></button>
+            ${r.status === 'pendente' ? `<button class="btn-icon" style="color: var(--color-teal);" onclick="window.resolverPD(${legacyStringArgument(r.id)})" title="${r.tipo === 'eu_devo' ? 'Marcar como Pago' : 'Marcar como Recebido'}"><i data-lucide="check"></i></button>` : ''}
+            ${r.status !== 'cancelado' ? `<button class="btn-icon" style="color: var(--color-orange);" onclick="window.cancelarPD(${legacyStringArgument(r.id)}, ${legacyStringArgument(r.grupo_parcelas_id || '')})" title="Cancelar Pendência"><i data-lucide="x"></i></button>` : ''}
+            <button class="btn-icon" style="color: var(--color-blue);" onclick="window.editarValorPD(${legacyStringArgument(r.id)}, ${r.valor})" title="Editar Valor"><i data-lucide="edit-2"></i></button>
+            <button class="btn-icon" style="color: var(--color-red);" onclick="window.excluirPD(${legacyStringArgument(r.id)}, ${legacyStringArgument(r.grupo_parcelas_id || '')})" title="Excluir"><i data-lucide="trash-2"></i></button>
           </div>
         </td>
       </tr>

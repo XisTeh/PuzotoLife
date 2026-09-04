@@ -76,7 +76,7 @@ export function renderSidebar() {
   sidebar.innerHTML = `
     <button class="header__btn mobile-menu sidebar-close" id="closeMenu" aria-label="Fechar menu"><i data-lucide="x"></i></button><div class="sidebar__brand">
       <div class="sidebar__logo-wrap">
-        <img src="/images/PuzotoLife.png" alt="Puzoto Life" class="sidebar__logo" onerror="this.src='/images/PuzotoLife.ico'">
+        <img src="/images/PuzotoLife.png" alt="Puzoto Life" class="sidebar__logo">
       </div>
       <div class="sidebar__app-name">Puzoto <span>Life</span></div>
     </div>
@@ -100,6 +100,9 @@ export function renderSidebar() {
       </div>
     </div>
   `;
+
+  const logo = sidebar.querySelector('.sidebar__logo');
+  logo.addEventListener('error', () => { logo.src = '/images/PuzotoLife.ico'; }, { once: true });
 
   // Add click events to links
   sidebar.querySelectorAll('.sidebar__link').forEach(link => {

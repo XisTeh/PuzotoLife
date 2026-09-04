@@ -8,6 +8,7 @@ import {
 } from '../services/api.js';
 
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
+import { legacyStringArgument } from '../security/legacyHandlers.js';
 
 const API_BASE = '/api';
 
@@ -459,7 +460,7 @@ function renderTabela() {
         <td>
           <div class="table-actions">
             ${contagemMap[item.registro_paciente] > 1 ? `
-              <button type="button" class="btn-icon" onclick="window.mesclarDuplicadosRanon('${item.registro_paciente}')" title="Mesclar lançamentos deste paciente" style="color: var(--color-teal);">
+              <button type="button" class="btn-icon" onclick="window.mesclarDuplicadosRanon(${legacyStringArgument(item.registro_paciente)})" title="Mesclar lançamentos deste paciente" style="color: var(--color-teal);">
                 <i data-lucide="git-merge" style="width: 16px; height: 16px;"></i>
               </button>
             ` : ''}
