@@ -1,5 +1,5 @@
 import { apiFetch } from '../services/http.js';
-import { setIconMessage } from '../security/safeDom.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR } from '../utils/formatters.js';
 
 const API_BASE = '/api';
@@ -255,23 +255,33 @@ function renderListaHistorico() {
   }
 
   container.innerHTML = historicoFechamentos.map(f => `
-    <div class="alert-item" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="window.selecionarMesHistorico(${f.id})">
-      <div>
-        <div class="alert-item__title">${f.referencia}</div>
-        <div class="alert-item__desc">Fechado em: ${formatarDataBR(f.fechado_em.split(' ')[0])}</div>
-      </div>
-      <div style="text-align: right;">
-        <div style="font-weight: 700; color: var(--color-teal);">${formatarMoedaBR(f.total_global)}</div>
-        <div style="font-size: 0.8rem; color: var(--text-secondary);">${f.qtd_global} laudos</div>
-      </div>
-    </div>
+    <button class="closed-month ${mesSelecionadoHistorico?.id === f.id ? 'is-selected' : ''}" type="button" data-closed-month-id="${Number(f.id)}" aria-pressed="${mesSelecionadoHistorico?.id === f.id}">
+      <span class="closed-month__date">
+        <strong>${escapeHtml(f.referencia)}</strong>
+        <small>Fechado em ${escapeHtml(formatarDataBR(f.fechado_em.split(' ')[0]))}</small>
+      </span>
+      <span class="closed-month__summary">
+        <strong>${escapeHtml(formatarMoedaBR(f.total_global))}</strong>
+        <small>${Number(f.qtd_global)} laudos</small>
+      </span>
+      <span class="closed-month__arrow" aria-hidden="true"><i data-lucide="chevron-right"></i></span>
+    </button>
   `).join('');
+  container.querySelectorAll('[data-closed-month-id]').forEach((button) => {
+    button.addEventListener('click', () => window.selecionarMesHistorico(Number(button.dataset.closedMonthId)));
+  });
+  lucide.createIcons();
 }
 
 window.selecionarMesHistorico = function(id) {
   const f = historicoFechamentos.find(x => x.id === id);
   if (!f) return;
   mesSelecionadoHistorico = f;
+  document.querySelectorAll('[data-closed-month-id]').forEach((button) => {
+    const selected = Number(button.dataset.closedMonthId) === id;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
   
   document.getElementById('detalhe-historico').style.display = 'block';
   document.getElementById('detalhe-ref').textContent = f.referencia;
@@ -527,7 +537,7 @@ export function renderFechamentoMes() {
 
     <div class="dashboard-grid">
       <!-- ÁREA 1: FECHAR NOVO MÊS -->
-      <div class="form-card animate-in" style="grid-column: 1; display: flex; flex-direction: column;">
+      <div class="form-card animate-in monthly-close-card">
         <h3 style="margin-bottom: 24px; font-weight: 600; color: var(--text-primary);">Fechar novo mês</h3>
         
         <div style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 24px;">
@@ -591,10 +601,10 @@ export function renderFechamentoMes() {
       </div>
 
       <!-- ÁREA 2: MESES FECHADOS -->
-      <div class="form-card animate-in" style="grid-column: 2; animation-delay: 0.1s;">
+      <div class="form-card animate-in monthly-history-card">
         <h3 style="margin-bottom: 24px; font-weight: 600; color: var(--text-primary);">Meses fechados</h3>
         
-        <div id="historico-lista-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 24px;">
+        <div id="historico-lista-container" class="closed-months-list">
           <!-- JS -->
         </div>
 

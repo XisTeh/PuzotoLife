@@ -73,3 +73,13 @@ Esta entrega cobre as superfícies mais expostas de feedback e finanças, com te
 Refs #7; depende do PR de escape de saídas. Em desenvolvimento, a API reconhece `localhost`, `127.0.0.1` e IPv6 loopback como aliases da mesma origem local, preservando a porta configurada do frontend. Isso corrige login e recuperação quando o Vite abre em `127.0.0.1:5174`. Em produção, somente a origem exata de `APP_ORIGIN` é aceita; aliases e origens do backend não são adicionados.
 
 O e-mail de recuperação continua apontando para a origem canônica configurada em `APP_ORIGIN`, que deve também constar na lista de redirects do Supabase. Validação local: 9 testes de segurança aprovados, incluindo alias local, bloqueio de origem externa, regra exata de produção e redirect canônico. O roundtrip com a senha e o e-mail reais permanece uma validação manual do proprietário.
+
+## Identidade visual, meses fechados e PWA — branch codex/visual-identity-pwa
+
+Refs #6, #16 e #17; depende do PR de origem local. A paleta verde foi substituída por grafite, azul aço e índigo; coral fica restrito a alertas e estados negativos. A marca anterior do Puzoto Life foi preservada com o “P”, pessoa/folhas e seta, trocando apenas a seta verde por azul/índigo. Sidebar e login usam textura pontilhada, luz ambiente, indicador ativo e profundidade inspirados na linguagem do Casaê, sem copiar sua identidade. Entradas usam 220 ms com foco progressivo; ações frequentes permanecem rápidas e todas respeitam `prefers-reduced-motion`.
+
+A lista de meses fechados virou uma lista responsiva de botões com rolagem estável, sem translação do item inteiro no hover. O último mês permanece dentro do card em desktop e celular. O sistema inclui manifesto, ícones próprios, metadados para iOS/Android, convite de instalação quando suportado e service worker que nunca intercepta nem armazena `/api`.
+
+Validação local: revisão visual em desktop e 390 × 844; 12 jornadas Playwright aprovadas em desktop/iPhone 13, incluindo todos os fluxos existentes, sidebar móvel, reduced motion, lista cheia de meses e metadados PWA. `npm run quality` aprovado com 57 testes, build, arquitetura, Biome e orçamento gzip de 203 KB. A PWA torna a interface instalável, mas não transforma SQLite em serviço remoto.
+
+A URL informada `https://puzoto-life.vercel.app/` retornou 404 em 04/09/2026. Publicação segue bloqueada pelas Issues #5, #7 e #9: o backend atual impede produção por segurança e o acervo ainda depende do SQLite local. Não publicar somente `dist`, pois login, persistência e sincronização entre dispositivos não funcionariam.

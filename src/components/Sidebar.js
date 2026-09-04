@@ -1,6 +1,18 @@
 import { navigateTo, appState } from '../state.js';
 import { checkHealth } from '../services/api.js';
 
+let installPrompt;
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  document.getElementById('installApp')?.removeAttribute('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = undefined;
+  document.getElementById('installApp')?.setAttribute('hidden', '');
+  window.dispatchEvent(new CustomEvent('puzoto-notice', { detail: 'Puzoto Life instalado neste dispositivo.' }));
+});
+
 const menuItems = [
   {
     title: 'VISÃO GERAL',
@@ -64,8 +76,8 @@ export function renderSidebar() {
       const activeClass = item.id === appState.currentPage ? 'active' : '';
       navHtml += `
         <a class="sidebar__link ${activeClass}" href="#${item.id}" data-page="${item.id}">
-          <i data-lucide="${item.icon}"></i>
-          <span>${item.label}</span>
+          <span class="sidebar__link-icon" aria-hidden="true"><i data-lucide="${item.icon}"></i></span>
+          <span class="sidebar__link-label">${item.label}</span>
         </a>
       `;
     });
@@ -74,11 +86,12 @@ export function renderSidebar() {
   });
 
   sidebar.innerHTML = `
+    <div class="sidebar__atmosphere" aria-hidden="true"></div>
     <button class="header__btn mobile-menu sidebar-close" id="closeMenu" aria-label="Fechar menu"><i data-lucide="x"></i></button><div class="sidebar__brand">
       <div class="sidebar__logo-wrap">
-        <img src="/images/PuzotoLife.png" alt="Puzoto Life" class="sidebar__logo">
+        <img src="/images/PuzotoLifeBlue.png" alt="" class="sidebar__logo">
       </div>
-      <div class="sidebar__app-name">Puzoto <span>Life</span></div>
+      <div class="sidebar__brand-copy"><div class="sidebar__app-name">Puzoto <span>Life</span></div><span class="sidebar__tagline">Trabalho & finanças</span></div>
     </div>
 
     <nav class="sidebar__nav scroll-hide">
@@ -86,6 +99,10 @@ export function renderSidebar() {
     </nav>
 
     <div class="sidebar__footer">
+      <button class="sidebar__install" id="installApp" hidden>
+        <span class="sidebar__install-icon" aria-hidden="true"><i data-lucide="download"></i></span>
+        <span><strong>Instalar aplicativo</strong><small>Acesso rápido no celular</small></span>
+      </button>
       <div class="sidebar__status">
         <div class="sidebar__status-top">
           <div class="sidebar__status-dot"></div>
@@ -103,6 +120,20 @@ export function renderSidebar() {
 
   const logo = sidebar.querySelector('.sidebar__logo');
   logo.addEventListener('error', () => { logo.src = '/images/PuzotoLife.ico'; }, { once: true });
+
+  const installButton = sidebar.querySelector('#installApp');
+  if (installPrompt && !matchMedia('(display-mode: standalone)').matches) installButton.hidden = false;
+  installButton.addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installButton.disabled = true;
+    installButton.setAttribute('aria-busy', 'true');
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = undefined;
+    installButton.hidden = true;
+    installButton.disabled = false;
+    installButton.removeAttribute('aria-busy');
+  });
 
   // Add click events to links
   sidebar.querySelectorAll('.sidebar__link').forEach(link => {
@@ -127,17 +158,15 @@ async function updateHealthStatus() {
     if (health && health.status === 'online') {
       labelEl.textContent = 'Conectado';
       labelEl.parentElement.parentElement.title = 'API disponível';
-      dotEl.style.background = 'var(--color-teal)';
-
-      if (barEl) barEl.style.background = 'var(--color-teal)';
+      dotEl.dataset.status = 'online';
+      if (barEl) barEl.dataset.status = 'online';
     } else {
       throw new Error('Offline');
     }
   } catch (err) {
     labelEl.textContent = 'Desconectado';
     labelEl.parentElement.parentElement.title = 'Não foi possível verificar a conexão.';
-    dotEl.style.background = 'var(--color-rose)';
-
-    if (barEl) barEl.style.background = 'var(--color-rose)';
+    dotEl.dataset.status = 'offline';
+    if (barEl) barEl.dataset.status = 'offline';
   }
 }

@@ -78,5 +78,21 @@
     "body": "Inventariar dados financeiros e registros de laudos, finalidade, base legal, subprocessadores, retenção, exportação/exclusão e contato do responsável. Preparar minutas sem inventar aprovação. Revisão e aprovação por profissional jurídico antes de disponibilizar o serviço; registrar data e versão aprovadas. Agente não substitui parecer jurídico.",
     "number": 10,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/10"
+  },
+  {
+    "key": "closed-months-layout",
+    "type": "Correção",
+    "title": "Corrigir lista de meses fechados no hover e em telas estreitas",
+    "body": "A lista de meses fechados corta e desloca a última linha quando o ponteiro passa sobre os itens, deixando o mês e os valores fora do card. Remover animações que alterem layout, criar estrutura responsiva sem estilos inline, preservar rolagem e garantir alvo de toque mínimo de 44 px. Validar a lista cheia no desktop, em viewport mobile, com teclado e prefers-reduced-motion.",
+    "number": 16,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/16"
+  },
+  {
+    "key": "pwa-installable",
+    "type": "Nova função",
+    "title": "Tornar o Puzoto Life instalável no celular como PWA",
+    "body": "Adicionar manifesto, ícones, tema, metadados mobile e service worker seguro para permitir instalação no celular. O cache deve conter somente o shell estático; nunca armazenar respostas /api, dados financeiros, laudos, sessões ou arquivos privados. Validar instalação, atualização, navegação autenticada e comportamento offline. A PWA não autoriza publicar o frontend isolado: acesso entre dispositivos depende do backend PostgreSQL e da revisão de segurança.",
+    "number": 17,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/17"
   }
 ]

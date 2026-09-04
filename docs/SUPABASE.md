@@ -55,6 +55,10 @@ Escritas usam lock transacional por acervo pessoal, inclusive entre processos. L
 
 Localhost funciona apenas neste computador. Para acesso remoto, concluir #5 e #7, escolher hospedagem Node + HTTPS, configurar segredos no provedor e publicar o commit aprovado em PR. Frontend e `/api` devem usar a mesma origem. Ainda não há URL pública funcional.
 
+A interface já está preparada como PWA instalável: manifesto, ícones, tema e service worker armazenam apenas o shell estático e excluem toda rota `/api`. A instalação no celular será oferecida pelo navegador quando a aplicação estiver em HTTPS e os critérios do dispositivo forem atendidos. No iPhone, também é possível usar **Compartilhar → Adicionar à Tela de Início**. Isso só deve ser validado no endereço final depois que o backend PostgreSQL estiver publicado com segurança.
+
+O projeto Vercel informado foi verificado em 04/09/2026 e `https://puzoto-life.vercel.app/` respondeu 404. Mesmo após corrigir a configuração do projeto, a Vercel não deve receber apenas o build estático enquanto o backend continuar bloqueado em produção e os dados estiverem no SQLite deste computador.
+
 Antes do lançamento: login/recuperação reais, persistência entre dispositivos, negação de outro usuário, exportação/restauração, XSS/CSRF, validação de payloads, rate limit, desempenho, observabilidade sem dados pessoais e revisão jurídica humana. O bloqueio de produção não deve ser removido isoladamente.
 
 ## Fontes técnicas
