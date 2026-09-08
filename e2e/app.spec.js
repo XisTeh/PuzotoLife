@@ -273,6 +273,7 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   expect(manifestResponse.ok()).toBe(true);
   const manifest = await manifestResponse.json();
   expect(manifest.display).toBe('standalone');
+  expect(manifest.background_color).toBe('#2d3852');
   expect(manifest.icons.some((icon) => icon.purpose.includes('maskable'))).toBe(true);
   expect(manifest.icons.map((icon) => icon.src)).toEqual(expect.arrayContaining([
     '/images/puzoto-180.png',
@@ -292,6 +293,18 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
     image.src = icon.src;
   }))), manifest.icons);
   expect(iconDimensions).toEqual(manifest.icons.map((icon) => ({ src: icon.src, size: icon.sizes })));
+  const maskableEdge = await page.evaluate(async (src) => {
+    const image = new Image();
+    image.src = src;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+    return [...context.getImageData(0, 0, 1, 1).data];
+  }, '/images/puzoto-maskable-512.png');
+  expect(maskableEdge).toEqual([45, 56, 82, 255]);
   const workerResponse = await page.request.get('/sw.js');
   expect(workerResponse.ok()).toBe(true);
   const worker = await workerResponse.text();
@@ -303,6 +316,37 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   const offlineResponse = await page.request.get('/offline.html');
   expect(offlineResponse.ok()).toBe(true);
   expect(await offlineResponse.text()).toContain('Você está sem conexão.');
+});
+
+test('falha de carga não deixa placeholders ou spinners presos', async ({ page }) => {
+  await page.route('**/api/dashboard?*', (route) => route.fulfill({ status: 503, json: { ok: false, error: 'indisponível' } }));
+  await page.goto('/');
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('.page-load-warning')).toBeVisible();
+  await expect(page.locator('.page-load-warning')).toContainText('Tentar novamente');
+  await expect(page.locator('#pageContent')).not.toContainText('Carregando alertas');
+  await expect(page.locator('#pageContent .spin:visible, #pageContent .rotating:visible, #pageContent .spinner:visible')).toHaveCount(0);
+});
+
+test('filtros mensais não parecem carregamentos e laudos usam rótulo curto', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await page.goto('/');
+  for (const pageId of ['dashboard', 'rel_geral', 'rel_financas']) {
+    await page.evaluate((id) => window.navigateTo(id), pageId);
+    await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+    const filter = page.locator('.period-filter');
+    await expect(filter).toBeVisible();
+    await expect(filter.getByRole('button', { name: 'Atualizar' })).toBeVisible();
+    const centers = await filter.locator('.period-filter__field, .period-filter__submit').evaluateAll((elements) => elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    }));
+    expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(2);
+  }
+  await page.evaluate(() => window.navigateTo('dr_ranon'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.getByText('Registro', { exact: true })).toHaveCount(2);
+  await expect(page.locator('#pageContent')).not.toContainText('Registro do Paciente');
 });
 
 test('abertura apresenta a identidade Puzoto sem atrasar a sessão', async ({ page }) => {

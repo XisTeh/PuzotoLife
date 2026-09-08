@@ -220,6 +220,45 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .page-header { margin-bottom: 28px; }
 .page-title, .page-header h1, .page-header__title { color: #f7f6fc; letter-spacing: -.045em; }
 .page-header__subtitle { color: #aaa7ba; }
+.period-filter {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+.period-filter__field { position: relative; display: flex; min-width: 0; flex: 1 1 180px; align-items: center; }
+.period-filter__field .form-control {
+  width: 100%;
+  height: 44px;
+  padding-left: 40px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: .95rem;
+  font-weight: 600;
+}
+.period-filter__submit { flex: 0 0 auto; gap: 7px; padding-inline: 14px; }
+.period-filter__submit svg { width: 17px; height: 17px; }
+.page-load-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -10px 0 24px;
+  padding: 14px 16px;
+  border: 1px solid rgb(214 173 100 / 28%);
+  border-radius: 14px;
+  color: #e4d2ad;
+  background: rgb(214 173 100 / 8%);
+}
+.page-load-warning .btn { flex: 0 0 auto; }
 
 .card, .metric-card, .dashboard-hero, .dashboard-panel, .form-card {
   position: relative;
@@ -668,6 +707,11 @@ table { font-variant-numeric: tabular-nums; }
     overflow-wrap: normal;
   }
   .page-header__subtitle { margin-top: 7px; font-size: .88rem; line-height: 1.55; }
+  .period-filter { width: 100%; flex-wrap: nowrap !important; }
+  .period-filter__field { width: auto !important; flex: 1 1 auto; }
+  .period-filter__submit { width: auto !important; flex: 0 0 auto; justify-content: center; }
+  .page-load-warning { align-items: stretch; flex-direction: column; }
+  .page-load-warning .btn { width: 100%; justify-content: center; }
   .page-content [style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
   .page-content .dashboard-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .page-content [class*="grid"] > * { max-width: 100%; min-width: 0; }

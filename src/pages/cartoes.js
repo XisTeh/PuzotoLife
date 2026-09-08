@@ -1035,7 +1035,7 @@ export function renderCartoesPage() {
   h += '      <h3 style="font-weight: 600; color: var(--text-primary);">Meus Cartões</h3>';
   h += '      <button class="btn-primary" onclick="window.abrirModalNovoCartao()">+ Novo Cartão</button>';
   h += '    </div>';
-  h += '    <div id="lista-cartoes-container">Carregando...</div>';
+  h += '    <div id="lista-cartoes-container" data-loading-placeholder>Carregando...</div>';
   h += '  </div>';
   h += '</div>';
 
@@ -1048,7 +1048,7 @@ export function renderCartoesPage() {
   h += '      <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">Faturas</h3>';
   
   // Faturas agrupadas por cartão
-  h += '      <div id="faturas-lista-container">Carregando...</div>';
+  h += '      <div id="faturas-lista-container" data-loading-placeholder>Carregando...</div>';
   h += '    </div>';
   
   h += '    <div class="form-card" style="padding: 24px;">';

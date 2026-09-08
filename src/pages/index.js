@@ -1,4 +1,4 @@
-import { pageSkeleton } from '../components/Feedback.js';
+import { pageSkeleton, settleLoadingPlaceholders } from '../components/Feedback.js';
 import { bindLegacyHandlers } from '../security/legacyHandlers.js';
 import { enhanceResponsiveTables } from '../components/ResponsiveTables.js';
 let navigation = 0;
@@ -259,6 +259,7 @@ export async function renderPage(pageId) {
     setPageContent(container, renderEmptyState(config.title, config.subtitle, config.icon));
   }
     if (ticket === navigation) {
+      settleLoadingPlaceholders(container, () => renderPage(pageId));
       bindLegacyHandlers(container);
       enhanceResponsiveTables(container);
       window.lucide?.createIcons();

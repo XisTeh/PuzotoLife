@@ -439,7 +439,7 @@ export function renderGastos() {
   h += '  <div class="form-group" style="margin-bottom: 0;">';
   h += '    <label class="form-label" style="font-size: 0.75rem;">Categoria</label>';
   h += '    <select id="filtro-categoria" class="form-control">';
-  h += '      <option value="todas">Carregando...</option>';
+  h += '      <option value="todas" data-loading-placeholder>Carregando...</option>';
   h += '    </select>';
   h += '  </div>';
   h += '  <div class="form-group" style="margin-bottom: 0;">';
@@ -470,7 +470,7 @@ export function renderGastos() {
   h += '<section class="expense-summary animate-in" aria-labelledby="resumo-gastos-titulo">';
   h += '  <div class="expense-summary__header">';
   h += '    <span class="expense-summary__header-icon" aria-hidden="true"><i data-lucide="calendar"></i></span>';
-  h += '    <div><span class="expense-summary__eyebrow">RESUMO DO MÊS</span><h2 class="expense-summary__month" id="resumo-gastos-titulo"><span id="resumo-ref-texto">Carregando...</span></h2></div>';
+  h += '    <div><span class="expense-summary__eyebrow">RESUMO DO MÊS</span><h2 class="expense-summary__month" id="resumo-gastos-titulo"><span id="resumo-ref-texto" data-loading-placeholder>Carregando...</span></h2></div>';
   h += '  </div>';
   h += '  <div class="expense-summary__grid">';
   h += '    <article class="expense-summary__tile expense-summary__tile--primary"><span class="expense-summary__icon" aria-hidden="true"><i data-lucide="wallet"></i></span><div><span class="expense-summary__label">Total pago</span><strong class="expense-summary__value" id="card-total-pago">R$ 0,00</strong></div></article>';
@@ -499,7 +499,7 @@ export function renderGastos() {
   h += '          <th style="text-align: right;">A\u00e7\u00f5es</th>';
   h += '        </tr></thead>';
   h += '        <tbody id="gastos-tabela-body">';
-  h += '          <tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-muted);">Carregando...</td></tr>';
+  h += '          <tr><td colspan="7" data-loading-placeholder style="text-align: center; padding: 20px; color: var(--text-muted);">Carregando...</td></tr>';
   h += '        </tbody>';
   h += '      </table>';
   h += '    </div>';

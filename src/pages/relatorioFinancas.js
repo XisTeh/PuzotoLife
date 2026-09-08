@@ -262,11 +262,10 @@ export function renderRelatorioFinancas() {
   s += '<div class="page-header animate-in" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;">';
   s += '<div><h1 class="page-header__title" style="font-size:2.2rem;font-weight:700;margin-bottom:6px;">Relatório Financeiro</h1>';
   s += '<p class="page-header__subtitle">Analise suas entradas, despesas, cartões, contas e saldo previsto do mês.</p></div>';
-  s += '<div style="display:flex;gap:8px;align-items:center;background:var(--bg-card);padding:6px 12px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);box-shadow:var(--shadow-sm);">';
-  s += '<div style="position:relative;display:flex;align-items:center;"><i data-lucide="calendar" style="position:absolute;left:12px;width:18px;height:18px;color:var(--text-muted);pointer-events:none;"></i>';
-  s += '<input type="month" id="rel-fin-mes" class="form-control" style="width:170px;height:40px;padding-left:40px;border:none;background:transparent;cursor:pointer;color:var(--text-primary);font-weight:600;font-size:0.95rem;box-shadow:none;" onchange="window.atualizarRelatorioFinancas()"></div>';
-  s += '<div style="width:1px;height:24px;background:var(--border-default);"></div>';
-  s += '<button class="btn-icon" onclick="window.atualizarRelatorioFinancas()" style="border:none;background:transparent;box-shadow:none;color:var(--text-muted);" title="Atualizar"><i data-lucide="refresh-cw"></i></button></div></div>';
+  s += '<div class="period-filter">';
+  s += '<div class="period-filter__field"><i data-lucide="calendar" style="position:absolute;left:12px;width:18px;height:18px;color:var(--text-muted);pointer-events:none;"></i>';
+  s += '<input type="month" id="rel-fin-mes" aria-label="Mês de referência" class="form-control" onchange="window.atualizarRelatorioFinancas()"></div>';
+  s += '<button class="btn-secondary period-filter__submit" onclick="window.atualizarRelatorioFinancas()" title="Atualizar"><i data-lucide="refresh-cw"></i><span>Atualizar</span></button></div></div>';
 
   // Empty state
   s += '<div id="rel-fin-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;background:var(--bg-card);border:1px dashed var(--border-default);border-radius:var(--radius-lg);margin-top:40px;">';

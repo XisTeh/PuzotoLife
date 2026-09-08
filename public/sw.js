@@ -1,4 +1,4 @@
-const CACHE = 'puzoto-static-v3';
+const CACHE = 'puzoto-static-v4';
 const LEGACY_CACHE_PREFIXES = ['puzoto-shell-', 'puzoto-static-'];
 const STABLE_ASSETS = [
   '/offline.html',
