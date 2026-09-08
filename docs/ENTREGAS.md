@@ -169,3 +169,13 @@ As minutas de Termos e Privacidade ficam marcadas como rascunho não aprovado e 
 Closes #33. A verificação de Fetch Metadata passa a distinguir navegação principal de documento e chamadas de API. Uma abertura `GET`/`HEAD` com `Sec-Fetch-Mode: navigate` e destino `document` pode carregar o frontend mesmo quando o navegador informa que o link veio de outro site. Mutações com origem externa, leituras cross-site por `cors` e requisições sem o cabeçalho interno continuam recebendo 403.
 
 O smoke test de produção inclui a navegação cross-site que reproduzia o `Forbidden` do Brave. Testes de segurança também confirmam que a exceção não libera uma leitura cross-site da API.
+
+## Responsividade integral e ciclo assíncrono — branch codex/mobile-layout-audit
+
+Closes #35 e #36. A camada móvel passa a reorganizar todas as grades embutidas, formulários, filtros, cartões e modais entre 320 e 390 px, sem rolagem horizontal. Colunas com posicionamento explícito são liberadas no fluxo de uma coluna; resumos preservam duas colunas quando há espaço e o último cartão ímpar ocupa a linha. As abas de Histórico viram um controle segmentado com estado ativo visível. A tipografia usa a pilha nativa do dispositivo com suavização e tamanhos de formulário que evitam zoom involuntário.
+
+O componente compartilhado `ResponsiveTables` deriva os rótulos dos cabeçalhos e os associa às células, permitindo que cada registro vire um cartão vertical no celular. Isso se aplica também a linhas adicionadas após o carregamento, sem implementar uma tabela móvel diferente em cada página.
+
+Contas a Pagar associa categorias, resumo, gráfico, vencimentos, tabela e ações ao elemento raiz que iniciou a operação. Se a página for removida antes da resposta, a conclusão é ignorada; botões e mensagens também verificam o ciclo atual antes de tocar no DOM. O teste reproduz a resposta atrasada durante uma troca de tela e confirma ausência do erro `Cannot set properties of null`.
+
+Validação local: `npm run quality` aprovado com 61 testes Node, arquitetura, Biome, build e orçamento de 217 KB gzip; `npm audit --omit=dev` sem vulnerabilidades; 27 jornadas Playwright aprovadas em desktop e celular. A varredura percorre as 20 páginas em 320, 360 e 390 px, verificando largura do documento, largura rolável do conteúdo, elementos fora da margem, colunas comprimidas e cabeçalho deslocado. Há cobertura específica para transformação de tabelas e navegação rápida em Contas a Pagar. A revisão visual foi feita em 390 × 844 com dados sintéticos; nenhuma imagem com dados pessoais foi gerada.

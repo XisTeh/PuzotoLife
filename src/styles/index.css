@@ -5,7 +5,7 @@
 
 :root {
   color-scheme: dark;
-  --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-primary: 'Segoe UI Variable Text', 'Segoe UI', Inter, Roboto, Helvetica, Arial, system-ui, -apple-system, sans-serif;
 
   /* Background layers - Deep, premium dark */
   --bg-body: #0b0c10;
@@ -73,6 +73,7 @@
 
 html {
   font-size: 14px;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

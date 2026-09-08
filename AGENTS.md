@@ -41,6 +41,8 @@ Aplicar Design Motion Principles de Kyle Zantos: https://github.com/kylezantos/d
 
 Lazy loading por página, skeletons, estados vazios/erro/progresso, proteção contra clique duplo, feedback de sucesso/falha e transições consistentes. Revisar como designer de produto sênior em desktop e celular, corrigindo cortes, estouros, saltos, baixa legibilidade e controles sem ação. Não reconstruir componentes existentes desnecessariamente.
 
+No celular, validar todas as páginas em 320, 360 e 390 px. A aplicação deve rolar somente no eixo vertical: não aceitar overflow horizontal da página, grades comprimidas, títulos cortados nem controles fora da margem. Tabelas de domínio usam o adaptador compartilhado `ResponsiveTables` para virar cartões rotulados; não recriar essa transformação por página. Respostas assíncronas devem confirmar que o elemento raiz da página ainda está conectado antes de atualizar o DOM.
+
 ## Situação da modernização
 
 Consultar `docs/ENTREGAS.md` e `docs/SUPABASE.md`. Diferenciar implementado localmente, validado e pendente de serviço externo. Manter estes documentos atualizados junto das entregas.

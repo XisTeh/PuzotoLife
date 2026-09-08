@@ -18,6 +18,18 @@ let mesAtual = dataAtualISO().substring(0, 7); // YYYY-MM
 let filtroCategoria = 'todas';
 let filtroStatus = 'todos';
 
+function getPageRoot() {
+  return document.querySelector('[data-page-root="contas-pagar"]');
+}
+
+function isActiveRoot(root) {
+  return Boolean(root?.isConnected && root === getPageRoot());
+}
+
+function getPageElement(root, id) {
+  return isActiveRoot(root) ? root.querySelector(`#${id}`) : null;
+}
+
 // Toasts
 function showToast(message, type = 'success') {
   let container = document.getElementById('toast-container');
@@ -53,55 +65,63 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export async function initContasPagar() {
-  document.getElementById('cp-filtro-mes').value = mesAtual;
-  await loadCategorias();
-  await loadDados();
+  const root = getPageRoot();
+  const monthFilter = getPageElement(root, 'cp-filtro-mes');
+  if (!monthFilter) return;
+  monthFilter.value = mesAtual;
+  await loadCategorias(root);
+  if (!isActiveRoot(root)) return;
+  await loadDados(root);
 }
 
-async function loadCategorias() {
+async function loadCategorias(root = getPageRoot()) {
   try {
     const cats = await fetchAPI('/categorias');
+    if (!isActiveRoot(root)) return;
     categorias = cats.filter(c => c.tipo === 'gasto' || c.tipo === 'ambos');
     
     // Select do Filtro
-    const selFiltro = document.getElementById('cp-filtro-categoria');
+    const selFiltro = getPageElement(root, 'cp-filtro-categoria');
     if (selFiltro) {
       selFiltro.innerHTML = '<option value="todas">Todas as Categorias</option>' + 
         categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
     }
 
     // Select do Formulário
-    const selForm = document.getElementById('form-cp-categoria');
+    const selForm = getPageElement(root, 'form-cp-categoria');
     if (selForm) {
       selForm.innerHTML = categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
     }
   } catch (err) {
-    showToast('Erro ao carregar categorias: ' + err.message, 'error');
+    if (isActiveRoot(root)) showToast('Erro ao carregar categorias: ' + err.message, 'error');
   }
 }
 
 window.filtrarContasPagar = async function() {
-  mesAtual = document.getElementById('cp-filtro-mes').value;
-  filtroCategoria = document.getElementById('cp-filtro-categoria').value;
-  filtroStatus = document.getElementById('cp-filtro-status').value;
-  await loadDados();
+  const root = getPageRoot();
+  if (!root) return;
+  mesAtual = getPageElement(root, 'cp-filtro-mes').value;
+  filtroCategoria = getPageElement(root, 'cp-filtro-categoria').value;
+  filtroStatus = getPageElement(root, 'cp-filtro-status').value;
+  await loadDados(root);
 };
 
-async function loadDados() {
+async function loadDados(root = getPageRoot()) {
   try {
     const p1 = fetchAPI(`/contas-pagar?mes=${mesAtual}&categoria=${filtroCategoria}&status=${filtroStatus}`);
     const p2 = fetchAPI(`/contas-pagar/resumo?mes=${mesAtual}`);
     
     const [cData, rData] = await Promise.all([p1, p2]);
+    if (!isActiveRoot(root)) return;
     contas = cData;
     resumo = rData;
 
-    renderMetrics();
-    renderChart();
-    renderProximosVencimentos();
-    renderTabela();
+    renderMetrics(root);
+    renderChart(root);
+    renderProximosVencimentos(root);
+    renderTabela(root);
   } catch (err) {
-    showToast('Erro ao carregar contas: ' + err.message, 'error');
+    if (isActiveRoot(root)) showToast('Erro ao carregar contas: ' + err.message, 'error');
   }
 }
 
@@ -109,21 +129,28 @@ async function loadDados() {
 // RENDERS
 // ═══════════════════════════════════════
 
-function renderMetrics() {
-  if (!resumo) return;
-  document.getElementById('metrica-cp-pendente').textContent = formatarMoedaBR(resumo.totalPendente);
-  document.getElementById('metrica-cp-vencido').textContent = formatarMoedaBR(resumo.totalVencido);
-  document.getElementById('metrica-cp-pago').textContent = formatarMoedaBR(resumo.totalPago);
-  document.getElementById('metrica-cp-qtd').textContent = resumo.quantidadeContas;
+function renderMetrics(root) {
+  if (!resumo || !isActiveRoot(root)) return;
+  const values = {
+    'metrica-cp-pendente': formatarMoedaBR(resumo.totalPendente),
+    'metrica-cp-vencido': formatarMoedaBR(resumo.totalVencido),
+    'metrica-cp-pago': formatarMoedaBR(resumo.totalPago),
+    'metrica-cp-qtd': resumo.quantidadeContas,
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const element = getPageElement(root, id);
+    if (element) element.textContent = value;
+  });
 
   const prox = resumo.proximoVencimento;
-  document.getElementById('metrica-cp-prox').textContent = prox ? `${formatarDataBR(prox.vencimento)} - ${prox.nome}` : 'Nenhum';
+  const nextElement = getPageElement(root, 'metrica-cp-prox');
+  if (nextElement) nextElement.textContent = prox ? `${formatarDataBR(prox.vencimento)} - ${prox.nome}` : 'Nenhum';
 }
 
-function renderChart() {
-  if (!resumo || !resumo.categorias) return;
+function renderChart(root) {
+  if (!resumo || !resumo.categorias || !isActiveRoot(root)) return;
   
-  const canvas = document.getElementById('chart-cp-categorias');
+  const canvas = getPageElement(root, 'chart-cp-categorias');
   if (!canvas) return;
 
   if (chartCategorias) {
@@ -168,8 +195,8 @@ function renderChart() {
   });
 }
 
-function renderProximosVencimentos() {
-  const container = document.getElementById('lista-cp-proximos');
+function renderProximosVencimentos(root) {
+  const container = getPageElement(root, 'lista-cp-proximos');
   if (!container) return;
 
   const hojeStr = dataAtualISO();
@@ -216,8 +243,8 @@ function calcularDiferencaDias(dataInicioIso, dataFimIso) {
   return Math.round(diffTime / (1000 * 3600 * 24));
 }
 
-function renderTabela() {
-  const tbody = document.getElementById('tbody-contas-pagar');
+function renderTabela(root) {
+  const tbody = getPageElement(root, 'tbody-contas-pagar');
   if (!tbody) return;
 
   if (contas.length === 0) {
@@ -268,34 +295,41 @@ function renderTabela() {
 // ═══════════════════════════════════════
 
 window.toggleRecorrenciaCP = function() {
-  const isChecked = document.getElementById('form-cp-recorrente').checked;
-  const containerFreq = document.getElementById('container-cp-frequencia');
+  const root = getPageRoot();
+  const recurrence = getPageElement(root, 'form-cp-recorrente');
+  const containerFreq = getPageElement(root, 'container-cp-frequencia');
+  const quantity = getPageElement(root, 'container-cp-quantidade');
+  if (!recurrence || !containerFreq || !quantity) return;
+  const isChecked = recurrence.checked;
   if (isChecked) {
     containerFreq.style.display = 'block';
-    document.getElementById('container-cp-quantidade').style.display = 'block';
+    quantity.style.display = 'block';
   } else {
     containerFreq.style.display = 'none';
-    document.getElementById('container-cp-quantidade').style.display = 'none';
+    quantity.style.display = 'none';
   }
 };
 
 window.salvarContaPagar = async function() {
-  const nome = document.getElementById('form-cp-nome').value;
-  const descricao = document.getElementById('form-cp-desc').value;
-  let valorStr = document.getElementById('form-cp-valor').value.toString().trim();
+  const root = getPageRoot();
+  if (!root) return;
+  const field = (id) => getPageElement(root, id);
+  const nome = field('form-cp-nome').value;
+  const descricao = field('form-cp-desc').value;
+  let valorStr = field('form-cp-valor').value.toString().trim();
   if (valorStr.includes(',') && valorStr.includes('.')) {
     valorStr = valorStr.replace(/\./g, '');
   }
   valorStr = valorStr.replace(',', '.');
   const valor = parseFloat(valorStr);
 
-  const vencimento = document.getElementById('form-cp-vencimento').value;
-  const categoria_id = parseInt(document.getElementById('form-cp-categoria').value);
-  const forma_pagamento = document.getElementById('form-cp-forma').value;
-  const recorrente = document.getElementById('form-cp-recorrente').checked;
-  const frequencia = recorrente ? document.getElementById('form-cp-frequencia').value : 'nenhuma';
-  const quantidade = recorrente ? parseInt(document.getElementById('form-cp-quantidade').value) : 1;
-  const observacao = document.getElementById('form-cp-obs').value;
+  const vencimento = field('form-cp-vencimento').value;
+  const categoria_id = parseInt(field('form-cp-categoria').value);
+  const forma_pagamento = field('form-cp-forma').value;
+  const recorrente = field('form-cp-recorrente').checked;
+  const frequencia = recorrente ? field('form-cp-frequencia').value : 'nenhuma';
+  const quantidade = recorrente ? parseInt(field('form-cp-quantidade').value) : 1;
+  const observacao = field('form-cp-obs').value;
 
   if (!nome || isNaN(valor) || valor <= 0 || !vencimento || !categoria_id) {
     showToast('Preencha os campos obrigatórios corretamente!', 'error');
@@ -303,7 +337,7 @@ window.salvarContaPagar = async function() {
   }
 
   try {
-    const btn = document.getElementById('btn-salvar-cp');
+    const btn = field('btn-salvar-cp');
     btn.disabled = true;
     btn.innerHTML = 'Salvando...';
 
@@ -312,27 +346,32 @@ window.salvarContaPagar = async function() {
       body: JSON.stringify({ nome, descricao, valor, vencimento, categoria_id, forma_pagamento, recorrente, frequencia, quantidade, observacao })
     });
     
+    if (!isActiveRoot(root)) return;
     showToast('Conta adicionada com sucesso!');
     
     // Limpar form (exceto campos fixos como categoria)
-    document.getElementById('form-cp-nome').value = '';
-    document.getElementById('form-cp-desc').value = '';
-    document.getElementById('form-cp-valor').value = '';
-    document.getElementById('form-cp-obs').value = '';
-    document.getElementById('form-cp-recorrente').checked = false;
+    field('form-cp-nome').value = '';
+    field('form-cp-desc').value = '';
+    field('form-cp-valor').value = '';
+    field('form-cp-obs').value = '';
+    field('form-cp-recorrente').checked = false;
     window.toggleRecorrenciaCP();
 
-    await loadDados();
+    await loadDados(root);
   } catch (err) {
-    showToast('Erro ao salvar: ' + err.message, 'error');
+    if (isActiveRoot(root)) showToast('Erro ao salvar: ' + err.message, 'error');
   } finally {
-    const btn = document.getElementById('btn-salvar-cp');
-    btn.disabled = false;
-    btn.innerHTML = 'Adicionar Conta';
+    const btn = getPageElement(root, 'btn-salvar-cp');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Adicionar Conta';
+    }
   }
 };
 
 window.editarValorCP = async function(id, valorAtual) {
+  const root = getPageRoot();
+  if (!root) return;
   const novoValorStr = prompt("Digite o novo valor para esta conta neste mês:", valorAtual);
   if (novoValorStr === null) return;
   
@@ -347,32 +386,39 @@ window.editarValorCP = async function(id, valorAtual) {
       method: 'PUT',
       body: JSON.stringify({ valor: novoValor })
     });
+    if (!isActiveRoot(root)) return;
     showToast("Valor atualizado com sucesso!");
-    await loadDados();
+    await loadDados(root);
   } catch (err) {
-    showToast("Erro ao editar valor: " + err.message, "error");
+    if (isActiveRoot(root)) showToast("Erro ao editar valor: " + err.message, "error");
   }
 };
 
 window.marcarCP_Pago = async function(id) {
+  const root = getPageRoot();
+  if (!root) return;
   if (!confirm('Deseja realmente marcar esta conta como PAGA?')) return;
   try {
     await fetchAPI(`/contas-pagar/${id}/pagar`, { method: 'POST' });
+    if (!isActiveRoot(root)) return;
     showToast('Conta marcada como paga!');
-    loadDados();
+    await loadDados(root);
   } catch (err) {
-    showToast('Erro ao pagar: ' + err.message, 'error');
+    if (isActiveRoot(root)) showToast('Erro ao pagar: ' + err.message, 'error');
   }
 };
 
 window.cancelarCP = async function(id) {
+  const root = getPageRoot();
+  if (!root) return;
   if (!confirm('Deseja realmente CANCELAR esta conta? Ela não será excluída do histórico, mas ficará inativa.')) return;
   try {
     await fetchAPI(`/contas-pagar/${id}/cancelar`, { method: 'POST' });
+    if (!isActiveRoot(root)) return;
     showToast('Conta cancelada!');
-    loadDados();
+    await loadDados(root);
   } catch (err) {
-    showToast('Erro ao cancelar: ' + err.message, 'error');
+    if (isActiveRoot(root)) showToast('Erro ao cancelar: ' + err.message, 'error');
   }
 };
 
@@ -384,6 +430,7 @@ export function renderContasPagarPage() {
 
 
   let h = '';
+  h += '<section data-page-root="contas-pagar">';
   
   // TOAST CONTAINER
   h += '<div id="toast-container" class="toast-container"></div>';
@@ -550,6 +597,7 @@ export function renderContasPagarPage() {
 
   h += '  </div>'; // fim direita
   h += '</div>';
+  h += '</section>';
 
   return h;
 }

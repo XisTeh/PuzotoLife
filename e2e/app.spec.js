@@ -26,6 +26,100 @@ test('navegação de todas as páginas em desktop e celular', async ({ page }, i
   expect(apiFailures).toEqual([]);
   expect(cspViolations).toEqual([]);
 });
+
+test('todas as páginas cabem entre 320 e 390 px e mantêm leitura vertical', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await page.goto('/');
+  await expect(page.locator('#app')).toBeVisible();
+  const pages = ['dashboard', 'lancamentos', 'dr_ranon', 'fechamento_mes', 'historico', 'gastos', 'cartoes', 'contas_pagar', 'pessoas_dividas', 'receitas', 'investimentos', 'rel_geral', 'rel_trabalho', 'rel_financas', 'rel_comparativo', 'configuracoes', 'backup', 'importar_dados', 'diagnostico', 'ajuda'];
+
+  for (const width of [320, 360, 390]) {
+    await page.setViewportSize({ width, height: 760 });
+    for (const id of pages) {
+      await page.evaluate((pageId) => window.navigateTo(pageId), id);
+      await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+      await page.waitForTimeout(60);
+      const layout = await page.locator('#pageContent').evaluate((root) => {
+        const boundary = root.getBoundingClientRect();
+        const offenders = [...root.querySelectorAll('*')]
+          .filter((element) => {
+            const style = getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 1 &&
+              (rect.left < boundary.left - 1 || rect.right > boundary.right + 1);
+          })
+          .slice(0, 8)
+          .map((element) => ({ tag: element.tagName, id: element.id, className: String(element.className).slice(0, 100), rect: element.getBoundingClientRect().toJSON() }));
+        const compressedGridItems = [...root.querySelectorAll('.dashboard-grid > *')]
+          .filter((element) => {
+            const rect = element.getBoundingClientRect();
+            return getComputedStyle(element).display !== 'none' && rect.height > 0 && rect.width < 180;
+          })
+          .map((element) => ({ className: String(element.className), width: element.getBoundingClientRect().width }));
+        return {
+          pageScrollWidth: root.scrollWidth,
+          pageClientWidth: root.clientWidth,
+          documentScrollWidth: document.documentElement.scrollWidth,
+          viewportWidth: window.innerWidth,
+          mainScrollTop: document.getElementById('mainContent').scrollTop,
+          offenders,
+          compressedGridItems,
+        };
+      });
+      expect(layout.offenders, `elementos fora da tela em ${id} a ${width}px`).toEqual([]);
+      expect(layout.compressedGridItems, `colunas comprimidas em ${id} a ${width}px`).toEqual([]);
+      expect(layout.documentScrollWidth, `documento em ${id} a ${width}px`).toBeLessThanOrEqual(layout.viewportWidth + 1);
+      expect(layout.pageScrollWidth, `conteúdo em ${id} a ${width}px`).toBeLessThanOrEqual(layout.pageClientWidth + 1);
+      expect(layout.mainScrollTop, `cabeçalho deslocado em ${id} a ${width}px`).toBe(0);
+    }
+  }
+  expect(await page.locator('body').evaluate((body) => getComputedStyle(body).fontFamily)).toMatch(/Segoe UI|Roboto|system-ui/);
+});
+
+test('tabelas recebem rótulos móveis e viram cartões legíveis', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await page.setViewportSize({ width: 320, height: 760 });
+  await page.goto('/');
+  await page.evaluate(() => window.navigateTo('gastos'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const table = page.locator('#pageContent table.table').first();
+  expect(await table.evaluate((element) => ({ ready: element.dataset.responsiveReady, html: element.outerHTML.slice(0, 300) }))).toMatchObject({ ready: 'true' });
+  await table.locator('tbody').evaluate((tbody) => {
+    const row = tbody.insertRow();
+    const columnCount = tbody.closest('table').querySelectorAll('thead th').length;
+    for (let index = 0; index < columnCount; index += 1) row.insertCell().textContent = `Valor ${index + 1}`;
+  });
+  const firstDataRow = table.locator('tbody tr').first();
+  await expect(firstDataRow).toHaveCSS('display', 'grid');
+  const cells = firstDataRow.locator('td:not([colspan])');
+  if (await cells.count()) {
+    await expect(cells.first()).toHaveAttribute('data-label', /.+/);
+  }
+});
+
+test('Contas a Pagar ignora resposta concluída depois da troca de página', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  const errors = [];
+  let releaseResponse;
+  let markStarted;
+  const responseReleased = new Promise((resolve) => { releaseResponse = resolve; });
+  const requestStarted = new Promise((resolve) => { markStarted = resolve; });
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.route('**/api/financas/contas-pagar?*', async (route) => {
+    markStarted();
+    await responseReleased;
+    await route.fulfill({ json: { ok: true, data: [] } });
+  });
+  await page.goto('/');
+  await page.evaluate(() => { window.navigateTo('contas_pagar'); });
+  await requestStarted;
+  await page.evaluate(() => { window.navigateTo('gastos'); });
+  releaseResponse();
+  await expect(page.getByRole('heading', { name: 'Gastos', exact: true })).toBeVisible();
+  await page.waitForTimeout(150);
+  await expect(page.locator('body')).not.toContainText('Cannot set properties of null');
+  expect(errors).toEqual([]);
+});
 test('login apresenta erro, controla senha e não revela o aplicativo', async ({ page }) => {
   await page.route('**/api/auth/session', (route) => route.fulfill({ json: { ok: true, mode: 'supabase', authenticated: false } }));
   await page.route('**/api/auth/login', (route) => route.fulfill({ status: 401, json: { ok: false, error: 'Não foi possível entrar com esses dados.' } }));
