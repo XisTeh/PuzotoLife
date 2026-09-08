@@ -9,6 +9,9 @@ import { installSafeHtmlPolicy } from './security/safeDom.js';
 import { installResponsiveTables } from './components/ResponsiveTables.js';
 import './icons.js';
 
+// Force replacement of entrypoints cached before stable assets became no-store.
+performance.mark?.('puzoto-entry-no-store-20260908');
+
 installSafeHtmlPolicy();
 installFeedback();
 installLegacyHandlers();

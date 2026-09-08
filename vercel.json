@@ -7,8 +7,21 @@
     { "source": "/assets/index-ykoC362m.js", "destination": "/assets/index.js" },
     { "source": "/assets/index-Gbg9SHyi.js", "destination": "/assets/index.js" },
     { "source": "/assets/index-o8iZysgL.js", "destination": "/assets/index.js" },
+    { "source": "/assets/gastos-BzZKahpP.js", "destination": "/assets/gastos-Sr3p8HEB.js" },
+    { "source": "/assets/contasPagar-BWYtTW3T.js", "destination": "/assets/contasPagar-BiBr4wdV.js" },
+    { "source": "/assets/receitas-A_bUZNFg.js", "destination": "/assets/receitas-75gkrjyj.js" },
     { "source": "/assets/index-CI3LXTob.css", "destination": "/assets/index.css" },
     { "source": "/assets/index-CJ8iLQm5.css", "destination": "/assets/index.css" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/index.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
+      "source": "/assets/index.css",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
   ],
   "functions": {
     "app.js": {

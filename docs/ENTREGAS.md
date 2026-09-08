@@ -188,6 +188,8 @@ O service worker deixa de armazenar HTML e bundles versionados. Navegação busc
 
 A primeira publicação do worker novo não recuperou imediatamente um aparelho ainda preso ao HTML antigo: sem o JavaScript dessa página, ela não conseguia solicitar a atualização. As entradas principais passam a usar os caminhos estáveis `/assets/index.js` e `/assets/index.css`. Rewrites transitórios atendem os hashes de entrada observados nas implantações anteriores, inclusive o par reproduzido no aparelho, permitindo que o HTML legado carregue o código atual e conclua a troca do worker.
 
+Uma segunda falha apareceu na validação do deploy seguinte: `max-age=0` ainda permitia revalidação condicional do entrypoint estável. Como a troca dos nomes de chunks não necessariamente altera o tamanho do bundle, o ETag fraco coincidiu e uma sessão persistente reutilizou JavaScript antigo; Gastos, Contas a Pagar e Receitas então pediram chunks removidos. Os entrypoints estáveis passam a usar `no-store`, têm conteúdo alterado para substituir a cópia já guardada e os três hashes observados recebem aliases temporários. O verificador público agora exige `no-store` nos dois entrypoints.
+
 ## Latência dos dados autenticados — branch codex/production-data-performance
 
 Closes #42. A medição autenticada inicial em produção registrou 5,2 s para o Dashboard, 4,5 s para Gastos, 3,5 s para Contas a Pagar e cerca de 2,4 s para Receitas e Cofre. Cada rota privada primeiro criava uma sessão Supabase e depois consultava o usuário, duplicando trabalho remoto; o Dashboard ainda enviava dezenas de consultas sequenciais pela mesma conexão PostgreSQL.

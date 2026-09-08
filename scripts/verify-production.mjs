@@ -10,6 +10,8 @@ const session = await fetch(`${origin}/api/auth/session`, { redirect: 'error' })
 const privateData = await fetch(`${origin}/api/dashboard`, { redirect: 'error' });
 const worker = await fetch(`${origin}/sw.js`, { redirect: 'error', cache: 'no-store' });
 const offline = await fetch(`${origin}/offline.html`, { redirect: 'error', cache: 'no-store' });
+const stableScript = await fetch(`${origin}/assets/index.js`, { redirect: 'error', cache: 'no-store' });
+const stableStyle = await fetch(`${origin}/assets/index.css`, { redirect: 'error', cache: 'no-store' });
 const crossSiteNavigation = await new Promise((resolve, reject) => {
   const request = httpsRequest(`${origin}/`, {
     method: 'GET',
@@ -48,6 +50,9 @@ const checks = {
   deploymentAssetsNotCached: !workerBody.includes("cache.put('/',") && !workerBody.includes("['script', 'style'") && workerBody.includes("caches.match('/offline.html')"),
   offlineFallback: offline.status === 200 && offlineBody.includes('Você está sem conexão.'),
   stableEntryAssets: rootHtml.includes('/assets/index.js') && rootHtml.includes('/assets/index.css'),
+  stableEntriesNotStored: stableScript.status === 200 && stableStyle.status === 200
+    && stableScript.headers.get('cache-control')?.includes('no-store')
+    && stableStyle.headers.get('cache-control')?.includes('no-store'),
 };
 if (Object.values(checks).some((value) => !value)) throw new Error(`Validação pública falhou: ${Object.entries(checks).filter(([, value]) => !value).map(([name]) => name).join(', ')}`);
 console.log(JSON.stringify({ origin, validated: true, checks }));

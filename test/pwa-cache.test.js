@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
 const workerSource = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
+const vercelConfig = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
 function workerFixture({ fetchImpl = async () => ({ ok: true, clone: () => ({}) }) } = {}) {
   const listeners = {};
@@ -97,4 +98,15 @@ test('registro do service worker ignora o cache HTTP e solicita atualização', 
   const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(mainSource, /register\('\/sw\.js', \{ updateViaCache: 'none' \}\)/);
   assert.match(mainSource, /registration\.update\(\)/);
+});
+
+test('entrypoints estáveis não são armazenados e chunks antigos têm recuperação transitória', () => {
+  const headers = Object.fromEntries(vercelConfig.headers.map(rule => [rule.source, rule.headers]));
+  assert.deepEqual(headers['/assets/index.js'], [{ key: 'Cache-Control', value: 'no-store' }]);
+  assert.deepEqual(headers['/assets/index.css'], [{ key: 'Cache-Control', value: 'no-store' }]);
+
+  const rewrites = new Map(vercelConfig.rewrites.map(rule => [rule.source, rule.destination]));
+  assert.equal(rewrites.get('/assets/gastos-BzZKahpP.js'), '/assets/gastos-Sr3p8HEB.js');
+  assert.equal(rewrites.get('/assets/contasPagar-BWYtTW3T.js'), '/assets/contasPagar-BiBr4wdV.js');
+  assert.equal(rewrites.get('/assets/receitas-A_bUZNFg.js'), '/assets/receitas-75gkrjyj.js');
 });
