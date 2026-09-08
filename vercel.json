@@ -5,11 +5,7 @@
   "functions": {
     "app.js": {
       "maxDuration": 30,
-      "includeFiles": [
-        "dist/**",
-        "assets/images/**",
-        "supabase/schema-manifest.json"
-      ]
+      "includeFiles": "{dist/**,assets/images/**,supabase/schema-manifest.json}"
     }
   }
 }
