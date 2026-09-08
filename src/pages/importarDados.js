@@ -356,7 +356,7 @@ export function renderImportarDadosPage() {
       <input type="file" id="import-file-input" accept=".json" style="display:none;">
 
       <div id="import-file-info">
-        <div style="border:2px dashed var(--border-subtle);border-radius:var(--radius-sm);padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;" id="btn-selecionar-arquivo" onmouseover="this.style.borderColor='var(--color-teal)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
+        <div class="import-file-picker" style="border:2px dashed var(--border-subtle);border-radius:var(--radius-sm);padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;" id="btn-selecionar-arquivo">
           <i data-lucide="file-up" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:12px;"></i>
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Clique para selecionar um arquivo</div>
           <div style="font-size:0.85rem;color:var(--text-muted);">Aceita apenas .json (max 50MB)</div>

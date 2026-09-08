@@ -6,7 +6,7 @@ export function installHttpSecurity(app, env = process.env) {
   const origin = new URL(env.APP_ORIGIN || 'http://localhost:5174').origin;
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: { directives: {
-    defaultSrc: ["'self'"], scriptSrc: ["'self'"], scriptSrcAttr: ["'unsafe-inline'"],
+    defaultSrc: ["'self'"], scriptSrc: ["'self'"], scriptSrcAttr: ["'none'"],
     styleSrc: ["'self'", "'unsafe-inline'"], fontSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:'], connectSrc: ["'self'"],
     objectSrc: ["'none'"], baseUri: ["'none'"], frameAncestors: ["'none'"],
     upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,

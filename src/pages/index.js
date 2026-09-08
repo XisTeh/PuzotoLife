@@ -1,4 +1,5 @@
 import { pageSkeleton } from '../components/Feedback.js';
+import { bindLegacyHandlers } from '../security/legacyHandlers.js';
 let navigation = 0;
 
 
@@ -22,6 +23,11 @@ let navigation = 0;
 
 
 import { updateHeaderTitle } from '../components/Header.js';
+
+function setPageContent(container, content) {
+  container.innerHTML = content;
+  bindLegacyHandlers(container);
+}
 
 export async function renderPage(pageId) {
   const ticket = ++navigation;
@@ -65,129 +71,130 @@ export async function renderPage(pageId) {
     updateHeaderTitle('Visão Geral');
     const { renderDashboard, initDashboard } = await import('./dashboard.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderDashboard();
+    setPageContent(container, renderDashboard());
     await initDashboard();
   } else if (pageId === 'rel_geral') {
     updateHeaderTitle('Relatório Geral');
     const { renderRelatorioGeral, initRelatorioGeral } = await import('./relatorioGeral.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderRelatorioGeral();
+    setPageContent(container, renderRelatorioGeral());
     await initRelatorioGeral();
   } else if (pageId === 'rel_financas') {
     updateHeaderTitle('Relatório Financeiro');
     const { renderRelatorioFinancas, initRelatorioFinancas } = await import('./relatorioFinancas.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderRelatorioFinancas();
+    setPageContent(container, renderRelatorioFinancas());
     await initRelatorioFinancas();
   } else if (pageId === 'rel_comparativo') {
     updateHeaderTitle('Comparativo Mensal');
     const { renderComparativoMensal, initComparativoMensal } = await import('./comparativoMensal.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderComparativoMensal();
+    setPageContent(container, renderComparativoMensal());
     await initComparativoMensal();
   } else if (pageId === 'lancamentos') {
     updateHeaderTitle('Lançamentos');
     const { renderLancamentos, initLancamentos } = await import('./lancamentos.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderLancamentos();
+    setPageContent(container, renderLancamentos());
     await initLancamentos();
   } else if (pageId === 'dr_ranon') {
     updateHeaderTitle('Dr. Ranon / RX');
     const { renderRanon, initRanon } = await import('./ranon.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderRanon();
+    setPageContent(container, renderRanon());
     await initRanon();
   } else if (pageId === 'rel_trabalho') {
     updateHeaderTitle('Relatório do Trabalho');
     const { renderRelatorioTrabalho, initRelatorioTrabalho } = await import('./relatorioTrabalho.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderRelatorioTrabalho();
+    setPageContent(container, renderRelatorioTrabalho());
     await initRelatorioTrabalho();
   } else if (pageId === 'fechamento_mes') {
     updateHeaderTitle('Fechamento do Mês');
     const { renderFechamentoMes, initFechamentoMes } = await import('./fechamentoMes.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderFechamentoMes();
+    setPageContent(container, renderFechamentoMes());
     await initFechamentoMes();
   } else if (pageId === 'gastos') {
     updateHeaderTitle('Gastos');
     const { renderGastos, initGastos } = await import('./gastos.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderGastos();
+    setPageContent(container, renderGastos());
     await initGastos();
   } else if (pageId === 'cartoes') {
     updateHeaderTitle('Cartões');
     const { renderCartoesPage, initCartoes } = await import('./cartoes.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderCartoesPage();
+    setPageContent(container, renderCartoesPage());
     await initCartoes();
   } else if (pageId === 'contas_pagar') {
     updateHeaderTitle('Contas a Pagar');
     const { renderContasPagarPage, initContasPagar } = await import('./contasPagar.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderContasPagarPage();
+    setPageContent(container, renderContasPagarPage());
     await initContasPagar();
   } else if (pageId === 'pessoas_dividas') {
     updateHeaderTitle('Pessoas / Dívidas');
     const { renderPessoasDividasPage, initPessoasDividas } = await import('./pessoasDividas.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderPessoasDividasPage();
+    setPageContent(container, renderPessoasDividasPage());
     await initPessoasDividas();
   } else if (pageId === 'receitas') {
     updateHeaderTitle('Receitas');
     const { renderReceitasPage, initReceitas } = await import('./receitas.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderReceitasPage();
+    setPageContent(container, renderReceitasPage());
     await initReceitas();
   } else if (pageId === 'investimentos') {
     updateHeaderTitle('Cofre');
     const { renderInvestimentosPage, initInvestimentos } = await import('./investimentos.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderInvestimentosPage();
+    setPageContent(container, renderInvestimentosPage());
     await initInvestimentos();
   } else if (pageId === 'historico') {
     updateHeaderTitle('Histórico');
     const { renderHistoricoPage, initHistorico } = await import('./historico.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderHistoricoPage();
+    setPageContent(container, renderHistoricoPage());
     await initHistorico();
   } else if (pageId === 'configuracoes') {
     updateHeaderTitle('Configurações');
     const { renderConfiguracoesPage, initConfiguracoes } = await import('./configuracoes.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderConfiguracoesPage();
+    setPageContent(container, renderConfiguracoesPage());
     await initConfiguracoes();
   } else if (pageId === 'backup') {
     updateHeaderTitle('Backup');
     const { renderBackupPage, initBackup } = await import('./backup.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderBackupPage();
+    setPageContent(container, renderBackupPage());
     await initBackup();
 
   } else if (pageId === 'importar_dados') {
     updateHeaderTitle('Importar Dados');
     const { renderImportarDadosPage, initImportarDados } = await import('./importarDados.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderImportarDadosPage();
+    setPageContent(container, renderImportarDadosPage());
     await initImportarDados();
   } else if (pageId === 'diagnostico') {
     updateHeaderTitle('Diagnóstico do Sistema');
     const { renderDiagnosticoPage } = await import('./diagnostico.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderDiagnosticoPage();
+    setPageContent(container, renderDiagnosticoPage());
   } else if (pageId === 'ajuda') {
     updateHeaderTitle('Ajuda');
     const { renderAjudaPage } = await import('./ajuda.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderAjudaPage();
+    setPageContent(container, renderAjudaPage());
   } else {
     const config = pageConfigs[pageId] || { title: 'Página não encontrada', subtitle: 'Em breve.', icon: 'alert-circle' };
     updateHeaderTitle(config.title);
     const { renderEmptyState } = await import('./empty.js');
     if (ticket !== navigation) return;
-    container.innerHTML = renderEmptyState(config.title, config.subtitle, config.icon);
+    setPageContent(container, renderEmptyState(config.title, config.subtitle, config.icon));
   }
     if (ticket === navigation) {
+      bindLegacyHandlers(container);
       window.lucide?.createIcons();
       container.scrollTop = 0;
       if (!document.getElementById('sidebar').classList.contains('is-open')) container.focus({ preventScroll: true });

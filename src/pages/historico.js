@@ -1,5 +1,6 @@
 import { apiFetch } from '../services/http.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
+import { legacyStringArgument } from '../security/legacyHandlers.js';
 
 const API_BASE = '/api';
 
@@ -464,7 +465,7 @@ async function renderPagadorTab() {
       <td>${badgeStatus(p.status)}</td>
       <td style="text-align: right;">
         ${p.status === 'fechado' 
-          ? `<button class="btn-primary" style="padding: 4px 12px; font-size: 0.8rem; background: var(--color-teal); border-color: var(--color-teal);" onclick="window.receberPorPagador('${p.pagador}', '${p.tipo}', '${p.referencia}', ${p.valor}, '${p.data_referencia || p.referencia}')">Receber</button>`
+          ? `<button class="btn-primary" style="padding: 4px 12px; font-size: 0.8rem; background: var(--color-teal); border-color: var(--color-teal);" onclick="window.receberPorPagador(${legacyStringArgument(p.pagador)}, ${legacyStringArgument(p.tipo)}, ${legacyStringArgument(p.referencia)}, ${p.valor}, ${legacyStringArgument(p.data_referencia || p.referencia)})">Receber</button>`
           : p.status === 'pendente'
             ? `<span style="font-size: 0.75rem; color: #f97316;">Salve a planilha para receber</span>`
             : `<span style="font-size: 0.8rem; color: var(--color-teal); display: flex; align-items: center; gap: 4px; justify-content: flex-end;"><i data-lucide="check" style="width: 14px;"></i> Pago</span>`

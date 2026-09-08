@@ -23,7 +23,7 @@ O backup local `Info/`, criado antes da modernização, contém snapshot SQLite 
 - Enquanto o domínio operar em SQLite, manter o servidor no loopback e bloquear publicação. A troca exige portabilidade das consultas/transações, testes de paridade e migração validada.
 - Autorização no servidor, negação por padrão, escopo de proprietário explícito. Nunca abrir o acervo pessoal a qualquer usuário cadastrado. Se virar multiusuário, modelar isolamento e RLS antes de habilitar cadastros gerais.
 - `.env` (não `.inv`) só local/segredos da hospedagem. Variáveis `VITE_*` são públicas; jamais colocar senha do banco ou chave service role nelas. Não registrar tokens, corpos, nomes de pacientes ou dados financeiros.
-- Aplicar rate limit, validação, controle de origem, headers de segurança e revisão de XSS/CSRF. A interface legada usa HTML interpolado e handlers inline; não tratar como resolvida sem auditoria e testes.
+- Aplicar rate limit, validação, controle de origem, headers de segurança e revisão de XSS/CSRF. A CSP nega scripts em atributos; o adaptador legado aceita somente ações listadas e remove os atributos no DOM. A interface ainda usa HTML interpolado; não tratar XSS como resolvido sem concluir escape contextual, auditoria e testes.
 - Evitar overengineering, bloqueio do event loop, consultas N+1 e abstrações prematuras. Reusar componentes existentes, componentizar por responsabilidade e aplicar DRY com critério.
 - Observabilidade proporcional: logs estruturados com ID de correlação e duração, sem dados pessoais; Sentry/OpenTelemetry quando houver ambiente e retenção definidos. Não acumular Sentry, Datadog e New Relic sem necessidade.
 

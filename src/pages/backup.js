@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { legacyStringArgument } from '../security/legacyHandlers.js';
 /**
  * Puzoto Life — Página de Backup
  * Backup, restauração e exportação de dados.
@@ -294,13 +295,13 @@ function renderBackupList() {
               <td><span class="backup-size-badge">${b.tamanhoFormatado}</span></td>
               <td>
                 <div class="backup-actions">
-                  <button class="backup-btn backup-btn--download" title="Baixar" onclick="window.baixarBackup('${b.nomeArquivo}')">
+                  <button class="backup-btn backup-btn--download" title="Baixar" onclick="window.baixarBackup(${legacyStringArgument(b.nomeArquivo)})">
                     <i data-lucide="download"></i>
                   </button>
-                  <button class="backup-btn backup-btn--restore" title="Restaurar" onclick="window.abrirModalRestaurar('${b.nomeArquivo}', '${formatarData(b.criadoEm)}', '${b.tamanhoFormatado}')">
+                  <button class="backup-btn backup-btn--restore" title="Restaurar" onclick="window.abrirModalRestaurar(${legacyStringArgument(b.nomeArquivo)}, ${legacyStringArgument(formatarData(b.criadoEm))}, ${legacyStringArgument(b.tamanhoFormatado)})">
                     <i data-lucide="rotate-ccw"></i>
                   </button>
-                  <button class="backup-btn backup-btn--delete" title="Excluir" onclick="window.excluirBackup('${b.nomeArquivo}', ${i})">
+                  <button class="backup-btn backup-btn--delete" title="Excluir" onclick="window.excluirBackup(${legacyStringArgument(b.nomeArquivo)}, ${i})">
                     <i data-lucide="trash-2"></i>
                   </button>
                 </div>
