@@ -287,7 +287,7 @@ table { font-variant-numeric: tabular-nums; }
   max-height: 278px;
   gap: 8px;
   margin: -4px -5px 24px;
-  padding: 4px 5px;
+  padding: 4px 5px 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -416,6 +416,7 @@ table { font-variant-numeric: tabular-nums; }
   border-radius: 14px;
   background: rgb(18 21 32 / 82%);
 }
+.closed-month:last-child { margin-bottom: 2px; scroll-margin-block-end: 6px; }
 .tab-btn {
   min-height: 42px;
   padding: 9px 14px !important;
