@@ -57,12 +57,7 @@ async function fetchAPI(endpoint, options = {}) {
 export async function initReceitas() {
   document.getElementById('rec-filtro-mes').value = mesAtual;
   
-  await Promise.all([
-    loadCategorias(),
-    loadOrigens()
-  ]);
-  
-  await loadDados();
+  await Promise.all([loadCategorias(), loadOrigens(), loadDados()]);
 }
 
 async function loadCategorias() {

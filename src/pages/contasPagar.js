@@ -69,9 +69,8 @@ export async function initContasPagar() {
   const monthFilter = getPageElement(root, 'cp-filtro-mes');
   if (!monthFilter) return;
   monthFilter.value = mesAtual;
-  await loadCategorias(root);
+  await Promise.all([loadCategorias(root), loadDados(root)]);
   if (!isActiveRoot(root)) return;
-  await loadDados(root);
 }
 
 async function loadCategorias(root = getPageRoot()) {

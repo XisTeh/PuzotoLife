@@ -28,6 +28,14 @@ function parseCookie(req, name) {
   try { return decodeURIComponent(entry.slice(name.length + 1)); } catch { return null; }
 }
 
+function accessTokenExpired(token, now = Date.now()) {
+  try {
+    const [, payload] = token.split('.');
+    const { exp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return typeof exp === 'number' && exp * 1000 <= now;
+  } catch { return false; }
+}
+
 export function createAuth(env = process.env, clientFactory = createClient) {
   const configured = authConfigured(env);
   const sessionSecret = requireSessionSecret(env, configured);
@@ -76,18 +84,29 @@ export function createAuth(env = process.env, clientFactory = createClient) {
     res.cookie(COOKIE, encodeSession(session, recoveryOnly), { ...cookieOptions, maxAge: MAX_AGE });
   }
 
-  async function validate(req, res) {
+  async function validate(req, res, { attachSession = false } = {}) {
     const saved = decodeSession(req);
     if (!saved) { endSession(res); return null; }
     const authClient = client();
-    const { data: sessionData, error: sessionError } = await authClient.auth.setSession({ access_token: saved.access, refresh_token: saved.refresh });
-    if (sessionError) { endSession(res); return null; }
-    const { data, error } = await authClient.auth.getUser();
-    if (error || data.user?.id !== env.SUPABASE_OWNER_ID) { endSession(res); return null; }
-    if (sessionData?.session && (sessionData.session.access_token !== saved.access || sessionData.session.refresh_token !== saved.refresh)) {
-      startSession(res, sessionData.session, saved.recoveryOnly);
+    let session;
+    const verified = await authClient.auth.getUser(saved.access);
+    if (verified.error) {
+      // Only an actually expired JWT may use the refresh token. Other failures stay denied.
+      if (!accessTokenExpired(saved.access)) { endSession(res); return null; }
+      const refreshed = await authClient.auth.setSession({ access_token: saved.access, refresh_token: saved.refresh });
+      if (refreshed.error || refreshed.data.user?.id !== env.SUPABASE_OWNER_ID || !refreshed.data.session) { endSession(res); return null; }
+      session = refreshed.data.session;
+      startSession(res, session, saved.recoveryOnly);
+    } else if (verified.data.user?.id !== env.SUPABASE_OWNER_ID) {
+      endSession(res);
+      return null;
+    } else if (attachSession) {
+      const attached = await authClient.auth.setSession({ access_token: saved.access, refresh_token: saved.refresh });
+      if (attached.error || attached.data.user?.id !== env.SUPABASE_OWNER_ID || !attached.data.session) { endSession(res); return null; }
+      session = attached.data.session;
+      if (session.access_token !== saved.access || session.refresh_token !== saved.refresh) startSession(res, session, saved.recoveryOnly);
     }
-    return { client: authClient, recoveryOnly: saved.recoveryOnly };
+    return { client: authClient, recoveryOnly: saved.recoveryOnly, session: session ?? { access_token: saved.access, refresh_token: saved.refresh } };
   }
 
   router.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -114,7 +133,7 @@ export function createAuth(env = process.env, clientFactory = createClient) {
   });
   router.post('/logout', async (req, res) => {
     let saved;
-    try { saved = await validate(req, res); } catch { /* O cookie será removido mesmo se o Supabase estiver indisponível. */ }
+    try { saved = await validate(req, res, { attachSession: true }); } catch { /* O cookie será removido mesmo se o Supabase estiver indisponível. */ }
     endSession(res);
     if (saved) { try { await saved.client.auth.signOut({ scope: 'global' }); } catch { /* Cookie removido. */ } }
     res.json({ ok: true });
@@ -142,7 +161,7 @@ export function createAuth(env = process.env, clientFactory = createClient) {
     const password = req.body?.password;
     if (typeof password !== 'string' || password.length < 12 || password.length > 128) return res.status(400).json({ ok: false, error: 'Use uma senha entre 12 e 128 caracteres.' });
     try {
-      const saved = await validate(req, res);
+      const saved = await validate(req, res, { attachSession: true });
       if (!saved) return res.status(401).json({ ok: false, error: 'Entre novamente para alterar sua senha.' });
       const { error } = await saved.client.auth.updateUser({ password });
       if (error) return res.status(400).json({ ok: false, error: 'Não foi possível alterar a senha. Solicite outro link.' });

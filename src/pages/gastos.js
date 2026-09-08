@@ -55,8 +55,7 @@ export async function initGastos() {
   var dataHoje = document.getElementById('form-gasto-data');
   if (dataHoje) dataHoje.value = dataAtualISO();
 
-  await carregarCategorias();
-  await atualizarPainel();
+  await Promise.all([carregarCategorias(), atualizarPainel()]);
 
   // Listeners de filtros
   var fm = document.getElementById('filtro-mes');
