@@ -4,7 +4,7 @@ Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](http
 
 ## Estado atual
 
-Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. A Vercel ainda precisa receber o commit aprovado antes de a publicação ser considerada concluída.
+Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `1f4f4e6` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.
 
 ## 1. Crie seu acesso
 
@@ -55,13 +55,13 @@ Escritas usam lock transacional por acervo pessoal, inclusive entre processos. L
 
 ## 6. Celular e computador
 
-Localhost funciona apenas neste computador. Para acesso remoto, o frontend e `/api` serão publicados na mesma origem HTTPS da Vercel. A migração da Issue #5 está validada; as variáveis de Production e as URLs HTTPS do Auth já foram configuradas. A branch encadeada da Issue #7 aplica sanitização central aos sinks HTML e precisa passar pelos mesmos gates. Ainda faltam mesclar os dois PRs na ordem e validar a URL pública.
+Localhost funciona apenas neste computador. Para acesso remoto, frontend e `/api` estão publicados na mesma origem HTTPS da Vercel. A migração da Issue #5 e a sanitização da Issue #7 chegaram à `main` depois dos gates obrigatórios; as variáveis de Production e as URLs HTTPS do Auth estão configuradas. O smoke test público confirma o runtime PostgreSQL/Supabase e as barreiras de autenticação e origem. Resta ao proprietário validar a mesma conta no computador e celular.
 
-A interface já está preparada como PWA instalável: manifesto, ícones, tema e service worker armazenam apenas o shell estático e excluem toda rota `/api`. A instalação no celular será oferecida pelo navegador quando a aplicação estiver em HTTPS e os critérios do dispositivo forem atendidos. No iPhone, também é possível usar **Compartilhar → Adicionar à Tela de Início**. Isso só deve ser validado no endereço final depois que o backend PostgreSQL estiver publicado com segurança.
+A interface está preparada como PWA instalável: manifesto, ícones, tema e service worker armazenam apenas o shell estático e excluem toda rota `/api`. A instalação no celular é oferecida pelo navegador quando os critérios do dispositivo são atendidos. No iPhone, também é possível usar **Compartilhar → Adicionar à Tela de Início**. A validação final deve ser feita em `https://puzoto-life.vercel.app/` depois do login do proprietário.
 
-Em 08/09/2026, o domínio `https://puzoto-life.vercel.app/` já servia o frontend da `main`, mas `/api/health` e `/api/auth/session` ainda respondiam 404 porque o runtime Express não estava publicado. A branch `codex/vercel-runtime` adiciona esse runtime, sessão compatível com múltiplas funções e Storage privado. A publicação só estará concluída após os segredos serem configurados, o PR passar nos três gates, o deploy apontar ao merge e as rotas públicas serem validadas.
+Em 08/09/2026, `https://puzoto-life.vercel.app/` passou a servir o runtime Express da `main`: `/api/health` confirmou PostgreSQL e Supabase, `/api/auth/session` retornou uma sessão anônima válida, `/api/dashboard` negou acesso sem login com 401 e uma origem externa foi recusada com 403. O comando `npm run verify:production` repete essas verificações sem usar credenciais. Login real, gravação cruzada e exportação autenticada permanecem manuais porque a senha do proprietário não deve ser compartilhada.
 
-Antes do lançamento: login/recuperação reais, persistência entre dispositivos, negação de outro usuário, exportação/restauração, XSS/CSRF, validação de payloads, rate limit, desempenho, observabilidade sem dados pessoais e revisão jurídica humana. O bloqueio de produção não deve ser removido isoladamente.
+Para encerrar a Issue #9: validar login/recuperação reais, persistência entre dispositivos, exportação autenticada e o procedimento de rollback. XSS/CSRF, payloads, rate limit e desempenho já têm gates automatizados; observabilidade externa sem dados pessoais e revisão jurídica humana continuam em tarefas próprias.
 
 ## Fontes técnicas
 

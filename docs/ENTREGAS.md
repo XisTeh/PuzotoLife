@@ -12,9 +12,9 @@ Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado. E
 
 Issue #6: sidebar com bordas arredondadas, superfícies escuras, navegação móvel, foco/teclado, lazy loading por página, skeleton de navegação, feedback e reduced motion. Inicializadores das páginas passam a ser aguardados, removendo atrasos artificiais. Revisão visual usa dados sintéticos; não publicar screenshots com registros pessoais.
 
-Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. A validação bloqueia IDs inválidos, poluição de protótipo, parâmetros duplicados, payloads excessivamente complexos e tipos de conteúdo inesperados antes dos serviços. A CSP usa `script-src-attr 'none'`; ações legadas passam por uma lista permitida. A branch `codex/xss-sanitization` completa a defesa dos sinks HTML com DOMPurify e testes de ataque sintéticos. A produção permanece condicionada ao merge desse PR com os três gates verdes.
+Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. A validação bloqueia IDs inválidos, poluição de protótipo, parâmetros duplicados, payloads excessivamente complexos e tipos de conteúdo inesperados antes dos serviços. A CSP usa `script-src-attr 'none'`; ações legadas passam por uma lista permitida. A defesa central dos sinks HTML com DOMPurify e os testes de ataque sintéticos chegaram à produção pelo commit revisado `1f4f4e6`.
 
-Issue #9: o runtime Vercel está preparado na branch `codex/vercel-runtime`, com Express na mesma origem, PostgreSQL obrigatório em produção, sessão Supabase assinada e sem estado em memória, TLS verificado e planilhas no bucket privado `puzoto-private`. As nove variáveis necessárias foram adicionadas somente ao ambiente Production da Vercel, sem a conexão administrativa, e Site URL/redirect HTTPS foram configurados no Auth. **A publicação ainda não deve ser anunciada como concluída:** faltam mesclar o PR com CI verde e validar a URL pública.
+Issue #9: o runtime Express foi publicado na Vercel pelo commit revisado `1f4f4e6`, com PostgreSQL obrigatório, Supabase Auth, sessão assinada, TLS e planilhas no bucket privado. As nove variáveis estão somente no ambiente Production, sem a conexão administrativa; Site URL/redirect HTTPS estão configurados no Auth. O smoke test público confirmou frontend, health PostgreSQL, sessão anônima, bloqueio 401 dos dados, origem externa 403 e CSP. **Ainda falta a validação manual autenticada:** entrar com a conta do proprietário no computador e celular, gravar/ler o mesmo dado, exportar backup e confirmar o procedimento de rollback antes de fechar #9.
 
 Issue #10: checklist para minutas, revisão e aprovação jurídica humana pendentes. Não há termos juridicamente aprovados.
 
@@ -113,7 +113,7 @@ A proteção da `main` continua exigindo `quality`, `security` e `e2e`, conversa
 | Segurança | CSP e parte dos escapes estão validados; templates legados ainda têm saídas sem escape contextual completo | Issue #7 aberta |
 | Dados privados | `.env`, `Info/`, Casaê, bancos, `data/` e `dist/` estão ignorados; nenhum apareceu entre os arquivos rastreados na auditoria | Proteção local confirmada |
 
-Não promover o preview nem empurrar código diretamente para `main`. Para produção na Vercel, primeiro concluir #5 e #7, substituir a sessão em memória, mover planilhas para armazenamento privado e criar a entrega de runtime da Issue #9. Depois, configurar no Supabase as URLs HTTPS finais, SMTP de recuperação e segredos do ambiente protegido; validar login, leitura e gravação entre celular e computador antes da promoção.
+Os PRs #29 e #28 foram validados e mesclados na ordem, sem push direto para `main`. A Vercel promoveu o commit `1f4f4e6` e as verificações públicas não autenticadas passaram. A Issue #9 permanece aberta apenas para o ensaio autenticado entre computador e celular, exportação de backup e confirmação prática do rollback. SMTP próprio e jurídico continuam pendências separadas.
 
 ## Migração real e runtime Vercel — branch codex/vercel-runtime
 
@@ -128,7 +128,7 @@ Refs #5 e #9. Esta etapa parte da `main` depois da fusão de todos os PRs anteri
 
 Validação concluída antes do PR: `npm run quality` com 58 testes Node, build e orçamento gzip de 204 KB; 20 jornadas Playwright em desktop e iPhone 13; inicialização do entrypoint Vercel em modo produção; bucket privado e runtime PostgreSQL verificados no projeto real. A validação não incluiu senha do proprietário nem enviou e-mail de recuperação.
 
-Pendências para concluir #9: mesclar somente com `quality`, `security` e `e2e` verdes, aguardar o deploy e validar `/api/health`, login e gravação no endereço final. As nove variáveis de produção foram registradas como Secret na Vercel sem `SUPABASE_DB_URL`; Site URL e redirect HTTPS estão configurados no Supabase. A correção de saídas HTML da Issue #7 segue no PR encadeado abaixo; a aprovação jurídica da Issue #10 continua com seu próprio critério humano.
+Resultado de produção: PR #28 mesclado somente depois de `quality`, `security`, `e2e` e Vercel verdes; `/api/health` retornou `storage: postgres` e `auth: supabase`; a sessão anônima respondeu sem autenticação; `/api/dashboard` respondeu 401; origem externa recebeu 403. As nove variáveis de produção permanecem como Secret na Vercel sem `SUPABASE_DB_URL`. A validação com senha, gravação cruzada e backup depende do proprietário; a aprovação jurídica da Issue #10 continua com seu próprio critério humano.
 
 ## Sanitização integral dos sinks HTML — branch codex/xss-sanitization
 
@@ -140,4 +140,12 @@ Closes #7; PR encadeado sobre `codex/vercel-runtime`.
 - Scripts, iframes, SVG ativo, atributos de evento, URLs `javascript:` e `formaction` ativo são removidos antes de alcançar o DOM. A CSP continua negando scripts em atributos como uma segunda camada.
 - O contrato de arquitetura exige a instalação da política central e a cobertura dos três sinks. Testes sintéticos verificam que nenhum marcador de execução muda e que nenhum nó ou atributo ativo permanece.
 
-Validação local: `npm run quality` aprovado com 58 testes Node, build e orçamento gzip de 215 KB; `npm audit --omit=dev --audit-level=high` com zero vulnerabilidades; 24 jornadas Playwright aprovadas em desktop e iPhone 13, incluindo payload direto nos sinks e texto ativo retornado pela API de relatório. Depois do merge com `quality`, `security` e `e2e` verdes, os critérios técnicos da Issue #7 ficam concluídos. Qualquer novo sink HTML exige sanitização e teste equivalente. A aprovação jurídica da Issue #10 continua sendo uma decisão humana separada.
+Validação local: `npm run quality` aprovado com 58 testes Node, build e orçamento gzip de 215 KB; `npm audit --omit=dev --audit-level=high` com zero vulnerabilidades; 24 jornadas Playwright aprovadas em desktop e iPhone 13, incluindo payload direto nos sinks e texto ativo retornado pela API de relatório. O PR #29 passou por `quality`, `security`, `e2e` e Vercel, foi mesclado na base do PR #28 e chegou à `main` pelo commit revisado `1f4f4e6`. Os critérios técnicos da Issue #7 estão concluídos. Qualquer novo sink HTML exige sanitização e teste equivalente. A aprovação jurídica da Issue #10 continua sendo uma decisão humana separada.
+
+## Validação pública — branch codex/production-validation
+
+Refs #9. O comando `npm run verify:production` verifica a origem HTTPS sem credenciais: frontend e headers de segurança, saúde PostgreSQL/Supabase, sessão anônima, bloqueio 401 de dados privados e rejeição 403 de origem externa. Ele não imprime cookies, tokens, respostas pessoais nem valores de ambiente.
+
+O primeiro ensaio público do commit `1f4f4e6` passou em todos esses pontos. A etapa manual que resta exige a senha do proprietário: entrar no computador e no celular, criar um registro temporário identificável, confirmar a leitura no outro dispositivo, removê-lo e gerar uma exportação autenticada.
+
+Rollback de código: promover na Vercel o último deployment de produção estável e registrar o commit promovido. Rollback de dados: interromper escritas, exportar o estado remoto e reconciliar somente os registros posteriores ao snapshot validado; o SQLite e o `Info/` servem como referência privada, nunca devem ser restaurados diretamente sobre o PostgreSQL.
