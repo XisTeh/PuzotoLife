@@ -3,7 +3,18 @@ import assert from 'node:assert/strict';
 import { Router } from 'express';
 process.env.NODE_ENV = 'test';
 process.env.PUZOTO_DATABASE = 'sqlite';
-const { createApp } = await import('../server/index.js');
+const { createApp, setStaticCacheHeaders } = await import('../server/index.js');
+
+test('HTML e entrypoints estáveis recebem no-store no servidor Express', () => {
+  for (const file of ['index.html', 'offline.html', 'index.js', 'index.css']) {
+    let cacheControl;
+    setStaticCacheHeaders({ setHeader: (name, value) => { if (name === 'Cache-Control') cacheControl = value; } }, `C:/dist/assets/${file}`);
+    assert.equal(cacheControl, 'no-store');
+  }
+  let hashedCacheControl;
+  setStaticCacheHeaders({ setHeader: (_name, value) => { hashedCacheControl = value; } }, 'C:/dist/assets/dashboard-C26b_G6m.js');
+  assert.equal(hashedCacheControl, undefined);
+});
 
 test('produção exige PostgreSQL, HTTPS e Supabase enquanto o runtime local permanece no loopback', () => {
   const authFactory = (_env, configured = true) => ({ router: Router(), guard: (_req, _res, next) => next(), configured });

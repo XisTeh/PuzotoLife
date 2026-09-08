@@ -190,6 +190,8 @@ A primeira publicação do worker novo não recuperou imediatamente um aparelho 
 
 Uma segunda falha apareceu na validação do deploy seguinte: `max-age=0` ainda permitia revalidação condicional do entrypoint estável. Como a troca dos nomes de chunks não necessariamente altera o tamanho do bundle, o ETag fraco coincidiu e uma sessão persistente reutilizou JavaScript antigo; Gastos, Contas a Pagar e Receitas então pediram chunks removidos. Os entrypoints estáveis passam a usar `no-store`, têm conteúdo alterado para substituir a cópia já guardada e os três hashes observados recebem aliases temporários. O verificador público agora exige `no-store` nos dois entrypoints.
 
+O deploy do PR #45 confirmou os aliases com HTTP 200, mas revelou que o `express.static` sobrescreveu os headers configurados apenas no `vercel.json` e ainda enviou `max-age=0`. A Issue #44 foi reaberta. O servidor Express passa a definir `no-store` diretamente para HTML e os dois entrypoints, enquanto os chunks com hash mantêm o cache padrão. Um teste de integração do servidor e o verificador público cobrem a precedência real dos headers.
+
 ## Latência dos dados autenticados — branch codex/production-data-performance
 
 Closes #42. A medição autenticada inicial em produção registrou 5,2 s para o Dashboard, 4,5 s para Gastos, 3,5 s para Contas a Pagar e cerca de 2,4 s para Receitas e Cofre. Cada rota privada primeiro criava uma sessão Supabase e depois consultava o usuário, duplicando trabalho remoto; o Dashboard ainda enviava dezenas de consultas sequenciais pela mesma conexão PostgreSQL.

@@ -39,6 +39,7 @@ const workerCacheControl = worker.headers.get('cache-control') || '';
 const workerRequiresRevalidation = workerCacheControl.includes('no-store') || (workerCacheControl.includes('max-age=0') && workerCacheControl.includes('must-revalidate'));
 const checks = {
   root: root.status === 200 && root.headers.get('content-type')?.startsWith('text/html') && rootHtml.includes('<title>Puzoto Life'),
+  navigationNotStored: root.headers.get('cache-control')?.includes('no-store'),
   health: health.status === 200 && healthBody.storage === 'postgres' && healthBody.auth === 'supabase',
   anonymousSession: session.status === 200 && sessionBody.authenticated === false,
   privateDataDenied: privateData.status === 401,

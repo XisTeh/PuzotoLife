@@ -13,6 +13,11 @@ import { validateApiRequest } from './security/requestValidation.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+export function setStaticCacheHeaders(res, filePath) {
+  const name = path.basename(filePath);
+  if (name === 'index.js' || name === 'index.css' || name.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+}
+
 export function createApp(env = process.env, authFactory = createAuth, application = express()) {
   const production = env.NODE_ENV === 'production';
   if (!production && env.HOST && !['127.0.0.1', 'localhost', '::1'].includes(env.HOST)) throw new Error('Publicação bloqueada: o runtime local deve permanecer no loopback.');
@@ -41,7 +46,7 @@ export function createApp(env = process.env, authFactory = createAuth, applicati
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.sendFile(path.join(root, 'dist', 'sw.js'), (error) => { if (error) next(error); });
   });
-  app.use(express.static(path.join(root, 'dist'), { dotfiles: 'deny', index: 'index.html' }));
+  app.use(express.static(path.join(root, 'dist'), { dotfiles: 'deny', index: 'index.html', setHeaders: setStaticCacheHeaders }));
   app.use((_req, res) => res.status(404).json({ ok: false, error: 'Página não encontrada.' }));
   app.use((err, req, res, _next) => {
     const status = err.type === 'entity.too.large' ? 413 : err.type === 'entity.parse.failed' ? 400 : err.status || 500;
