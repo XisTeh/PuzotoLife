@@ -1,7 +1,4 @@
-import {
-  listarInvestimentos, listarMovimentosInvestimento,
-  registrarMovimentoInvestimento, ajustarSaldoInvestimento
-} from '../services/api.js';
+import { obterPainelInvestimentos, registrarMovimentoInvestimento, ajustarSaldoInvestimento } from '../services/api.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 
@@ -51,13 +48,11 @@ function tipoAmigavel(tipo) {
 async function carregarCofre() {
   const root = document.getElementById('cofre-page');
   if (!root) return;
-  const cofres = await listarInvestimentos(true);
+  const painel = await obterPainelInvestimentos(true);
   if (!root.isConnected) return;
-  const proximoCofre = cofres[0] || null;
-  const proximosMovimentos = proximoCofre ? await listarMovimentosInvestimento(proximoCofre.id) : [];
-  if (!root.isConnected) return;
+  const proximoCofre = painel.investimentos[0] || null;
   cofreAtual = proximoCofre;
-  movimentos = proximosMovimentos;
+  movimentos = painel.movimentos;
   renderizarCofre(root);
 }
 

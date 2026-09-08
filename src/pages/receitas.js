@@ -56,52 +56,37 @@ async function fetchAPI(endpoint, options = {}) {
 
 export async function initReceitas() {
   document.getElementById('rec-filtro-mes').value = mesAtual;
-  
-  await Promise.all([loadCategorias(), loadOrigens(), loadDados()]);
-}
-
-async function loadCategorias() {
   try {
-    const allCat = await fetchAPI('/financas/categorias');
-    categorias = allCat.filter(c => c.tipo === 'receita' || c.tipo === 'ambos');
-    
-    // Popula select formulário
-    const selectForm = document.getElementById('form-rec-categoria');
-    if (selectForm) {
-      selectForm.innerHTML = categorias.map(c => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`).join('');
-    }
-    
-    // Popula select filtro
-    const selectFiltro = document.getElementById('rec-filtro-categoria');
-    if (selectFiltro) {
-      selectFiltro.innerHTML = '<option value="todas">Todas Categorias</option>' + 
-        categorias.map(c => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`).join('');
-    }
+    const painel = await fetchAPI(`/financas/receitas-painel?mes=${mesAtual}&categoria=${filtroCategoria}&status=${filtroStatus}&origem=${filtroOrigem}`);
+    aplicarCategorias(painel.categorias);
+    aplicarOrigens(painel.origens);
+    registros = painel.receitas;
+    resumo = painel.resumo;
+    renderMetrics();
+    renderChart();
+    renderProximasReceitas();
+    renderTabela();
   } catch (err) {
-    console.error('Erro ao carregar categorias:', err);
+    showToast('Erro ao carregar dados: ' + err.message, 'error');
   }
 }
 
-async function loadOrigens() {
-  try {
-    origens = await fetchAPI('/financas/receitas/origens');
-    
-    // Popula datalist form
-    const datalist = document.getElementById('origens-list');
-    if (datalist) {
-      datalist.innerHTML = origens.map(o => `<option value="${escapeHtml(o)}">`).join('') +
-        `<option value="Trabalho"><option value="Reembolso"><option value="Venda"><option value="Renda Extra"><option value="Salário"><option value="Presente"><option value="Devolução"><option value="Outros">`;
-    }
-    
-    // Popula select filtro
-    const selectFiltro = document.getElementById('rec-filtro-origem');
-    if (selectFiltro) {
-      selectFiltro.innerHTML = '<option value="todas">Todas Origens</option>' + 
-        origens.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
-    }
-  } catch (err) {
-    console.error('Erro ao carregar origens:', err);
-  }
+function aplicarCategorias(todasCategorias) {
+  categorias = todasCategorias.filter(c => c.tipo === 'receita' || c.tipo === 'ambos');
+  const opcoes = categorias.map(c => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`).join('');
+  const selectForm = document.getElementById('form-rec-categoria');
+  if (selectForm) selectForm.innerHTML = opcoes;
+  const selectFiltro = document.getElementById('rec-filtro-categoria');
+  if (selectFiltro) selectFiltro.innerHTML = `<option value="todas">Todas Categorias</option>${opcoes}`;
+}
+
+function aplicarOrigens(novasOrigens) {
+  origens = novasOrigens;
+  const opcoes = origens.map(o => `<option value="${escapeHtml(o)}">`).join('');
+  const datalist = document.getElementById('origens-list');
+  if (datalist) datalist.innerHTML = `${opcoes}<option value="Trabalho"><option value="Reembolso"><option value="Venda"><option value="Renda Extra"><option value="Salário"><option value="Presente"><option value="Devolução"><option value="Outros">`;
+  const selectFiltro = document.getElementById('rec-filtro-origem');
+  if (selectFiltro) selectFiltro.innerHTML = `<option value="todas">Todas Origens</option>${origens.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}`;
 }
 
 window.filtrarReceitas = async function() {
@@ -121,13 +106,9 @@ async function loadDados() {
       origem: filtroOrigem
     }).toString();
 
-    const [cData, rData] = await Promise.all([
-      fetchAPI(`/financas/receitas?${query}`),
-      fetchAPI(`/financas/receitas/resumo?mes=${mesAtual}`)
-    ]);
-    
-    registros = cData;
-    resumo = rData;
+    const painel = await fetchAPI(`/financas/receitas-painel?${query}`);
+    registros = painel.receitas;
+    resumo = painel.resumo;
 
     renderMetrics();
     renderChart();

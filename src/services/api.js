@@ -187,6 +187,10 @@ export async function listarInvestimentos(incluirInativos = true) {
   return await fetchAPI(`/financas/investimentos?incluir_inativos=${incluirInativos}`);
 }
 
+export async function obterPainelInvestimentos(incluirInativos = true) {
+  return await fetchAPI(`/financas/investimentos-painel?incluir_inativos=${incluirInativos}`);
+}
+
 export async function criarInvestimento(dados) {
   return await fetchAPI('/financas/investimentos', {
     method: 'POST',
