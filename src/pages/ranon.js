@@ -444,7 +444,7 @@ function renderTabela() {
         <td>${formatarDataBR(item.data)}</td>
         <td>${escapeHtml(item.horario || '-')}</td>
         <td style="font-family: monospace; font-size: 1.1rem; color: var(--color-cyan);">${escapeHtml(item.registro_paciente)}</td>
-        <td style="text-align: center; font-weight: 600;">${item.quantidade || 1}</td>
+        <td class="table-cell--number" style="text-align: center; font-weight: 600;">${item.quantidade || 1}</td>
         <td>${formatarMoedaBR(item.valor_unitario)}</td>
         <td style="font-weight: 600;">${formatarMoedaBR(item.total)}</td>
         <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHtml(item.observacao || '-')}</td>

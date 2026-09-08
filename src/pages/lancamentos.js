@@ -143,6 +143,7 @@ function renderEmpresaCards() {
   empresasComuns.forEach((empresa, idx) => {
     const card = document.createElement('div');
     card.className = 'metric-card metric-card-empresa';
+    if (idx === empresasComuns.length - 1 && empresasComuns.length % 2 === 1) card.classList.add('metric-card--wide-mobile');
     card.innerHTML = `
       <div class="metric-card__header"><div class="metric-card__label-top">${escapeHtml(empresa.nome)}</div></div>
       <div class="metric-card__body">
@@ -646,7 +647,7 @@ export function renderLancamentos() {
 
       <!-- WhatsApp -->
       <div class="form-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div class="whatsapp-card__header">
           <h3 style="font-weight: 600; color: var(--text-primary);">Mensagem para WhatsApp</h3>
           <button type="button" class="btn-secondary" id="btn-gerar-msg" style="padding: 8px 16px; font-size: 0.8rem;">
             <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Gerar Mensagem
