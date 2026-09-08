@@ -1040,7 +1040,7 @@ export function renderCartoesPage() {
   h += '</div>';
 
   // MAIN GRID (FATURAS E COMPRA)
-  h += '<div class="dashboard-grid animate-in" style="grid-template-columns: 1fr 400px; gap: 24px;">';
+  h += '<div class="dashboard-grid animate-in" style="grid-template-columns: minmax(0, 1fr) 400px; gap: 24px;">';
   
   // Coluna Esquerda: Faturas e Parcelas Recentes
   h += '  <div style="display: flex; flex-direction: column; gap: 24px;">';

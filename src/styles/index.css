@@ -640,7 +640,10 @@ img { max-width: 100%; display: block; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  min-width: 0;
 }
+
+.dashboard-grid > * { min-width: 0; }
 
 .dashboard-panel {
   background: var(--bg-card);
