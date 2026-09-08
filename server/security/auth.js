@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit } from 'express-rate-limit';
+import { applicationOrigin } from './origin.js';
 
 const COOKIE = 'puzoto_session';
 const MAX_AGE = 12 * 60 * 60 * 1000;
@@ -73,7 +74,7 @@ export function createAuth(env = process.env, clientFactory = createClient) {
     if (!configured) return res.sendStatus(503);
     const email = req.body?.email;
     if (typeof email !== 'string' || email.length > 254) return res.status(400).json({ ok: false, error: 'Informe um e-mail válido.' });
-    try { await client().auth.resetPasswordForEmail(email, { redirectTo: `${env.APP_ORIGIN}/` }); } catch { /* Evitar enumeração. */ }
+    try { await client().auth.resetPasswordForEmail(email, { redirectTo: `${applicationOrigin(env)}/` }); } catch { /* Evitar enumeração. */ }
     res.json({ ok: true, message: 'Se houver uma conta para esse e-mail, você receberá as instruções.' });
   });
   router.post('/recover-session', async (req, res) => {

@@ -67,3 +67,9 @@ Validação: 53 testes Node, CSP com `script-src-attr 'none'`, ação legítima 
 Refs #7; depende do PR de CSP. Mensagens de sucesso/erro das páginas deixam de usar `innerHTML`: ícone e mensagem são nós separados e o texto nunca é interpretado como markup. Nomes de empresas, categorias, cartões, pagadores, origens e pessoas recebem escape antes de entrar em opções e listas financeiras. Descrições, observações, motivos, formas de pagamento e status das telas de gastos, receitas, contas e dívidas recebem escape em conteúdo e atributos. O contrato de arquitetura impede voltar a interpolar mensagens de toast com `innerHTML`.
 
 Esta entrega cobre as superfícies mais expostas de feedback e finanças, com testes sintéticos contendo tags, aspas e atributos de evento. Relatórios e partes extensas de cartões/configurações ainda possuem templates legados que precisam de revisão campo a campo; a Issue #7 e o bloqueio de produção permanecem abertos.
+
+## Origem local e recuperação — branch codex/local-origin-alias
+
+Refs #7; depende do PR de escape de saídas. Em desenvolvimento, a API reconhece `localhost`, `127.0.0.1` e IPv6 loopback como aliases da mesma origem local, preservando a porta configurada do frontend. Isso corrige login e recuperação quando o Vite abre em `127.0.0.1:5174`. Em produção, somente a origem exata de `APP_ORIGIN` é aceita; aliases e origens do backend não são adicionados.
+
+O e-mail de recuperação continua apontando para a origem canônica configurada em `APP_ORIGIN`, que deve também constar na lista de redirects do Supabase. Validação local: 9 testes de segurança aprovados, incluindo alias local, bloqueio de origem externa, regra exata de produção e redirect canônico. O roundtrip com a senha e o e-mail reais permanece uma validação manual do proprietário.
