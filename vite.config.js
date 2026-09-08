@@ -1,6 +1,15 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/index.js',
+        assetFileNames: (assetInfo) => assetInfo.name?.endsWith('.css') ? 'assets/index.css' : 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: 5174,
