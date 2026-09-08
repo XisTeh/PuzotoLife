@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "express",
   "buildCommand": "npm run build",
+  "regions": ["gru1"],
   "rewrites": [
     { "source": "/assets/index-CF3yt2xF.js", "destination": "/assets/index.js" },
     { "source": "/assets/index-ykoC362m.js", "destination": "/assets/index.js" },
