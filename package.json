@@ -16,6 +16,7 @@
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:budget": "node scripts/check-budget.mjs",
     "test:e2e": "playwright test",
+    "verify:production": "node scripts/verify-production.mjs",
     "quality": "npm run lint && npm run check:architecture && npm test && npm run build && npm run check:budget"
   },
   "devDependencies": {
