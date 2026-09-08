@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getDatabase, getDatabasePath, getLocalDatabase, reopenLocalDatabase, snapshot } from '../database/connection.js';
+import { logEvent } from '../observability/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -191,15 +192,15 @@ export async function restaurarBackup(filename, confirmacao) {
   const checkpoint = getLocalDatabase().pragma('wal_checkpoint(TRUNCATE)')[0];
   if (checkpoint.busy) throw new Error('Banco ocupado. Feche outros processos antes de restaurar.');
   fs.copyFileSync(dbPath, caminhoSeguranca);
-  console.log(`[RESTORE] Backup de segurança criado: ${nomeSeguranca}`);
+  logEvent('info', 'restore_safety_backup_created');
 
   // 2. Fechar conexão ativa
   getLocalDatabase().close();
-  console.log('[RESTORE] Conexão com banco fechada.');
+  logEvent('info', 'restore_database_closed');
 
   // 3. Substituir banco atual pelo backup selecionado
   fs.copyFileSync(backupPath, dbPath);
-  console.log(`[RESTORE] Banco restaurado a partir de: ${filename}`);
+  logEvent('info', 'restore_database_replaced');
 
   // 4. Remover arquivos WAL/SHM residuais para evitar conflito
   const walPath = dbPath + '-wal';
@@ -209,7 +210,7 @@ export async function restaurarBackup(filename, confirmacao) {
 
   // 5. Reconectar — o getDatabase() vai recriar a conexão automaticamente
   reopenLocalDatabase();
-  console.log('[RESTORE] Conexão reestabelecida.');
+  logEvent('info', 'restore_database_reopened');
 
   return {
     restaurado: true,
@@ -239,7 +240,7 @@ export function excluirBackup(filename) {
   }
 
   fs.unlinkSync(filePath);
-  console.log(`[BACKUP] Backup excluído: ${filename}`);
+  logEvent('info', 'backup_deleted');
 
   return { excluido: true, arquivo: filename };
 }

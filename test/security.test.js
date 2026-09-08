@@ -81,7 +81,9 @@ test('logout invalida o cookie no servidor', async (t) => {
 });
 test('origem externa e mutação sem header de proteção são bloqueadas', async (t) => {
   const { request } = await fixture(t);
-  assert.equal((await request('/api/auth/login', { method: 'POST', headers: { Origin: 'https://evil.example', 'X-Puzoto-Request': '1' } })).status, 403);
+  const external = await request('/api/auth/login', { method: 'POST', headers: { Origin: 'https://evil.example', 'X-Puzoto-Request': '1' } });
+  assert.equal(external.status, 403);
+  assert.match(external.headers.get('x-request-id'), /^[0-9a-f-]{36}$/);
   assert.equal((await request('/api/auth/login', { method: 'POST' })).status, 403);
 });
 test('aliases locais são aceitos no desenvolvimento e recuperação usa origem canônica', async (t) => {

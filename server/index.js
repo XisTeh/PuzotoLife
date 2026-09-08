@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initializeStorage } from './database/initialize.js';
 import { databaseDialect } from './database/connection.js';
+import { logApiError, logEvent } from './observability/logger.js';
 import { garantirConfiguracoesPadrao } from './services/configuracoes.js';
 import apiRoutes from './routes/api.js';
 import { createAuth } from './security/auth.js';
@@ -38,9 +39,10 @@ export function createApp(env = process.env, authFactory = createAuth, applicati
   });
   app.use(express.static(path.join(root, 'dist'), { dotfiles: 'deny', index: 'index.html' }));
   app.use((_req, res) => res.status(404).json({ ok: false, error: 'Página não encontrada.' }));
-  app.use((err, _req, res, _next) => {
+  app.use((err, req, res, _next) => {
     const status = err.type === 'entity.too.large' ? 413 : err.type === 'entity.parse.failed' ? 400 : err.status || 500;
-    const message = status === 413 ? 'Arquivo maior que o limite permitido.' : status === 400 && !err.expose ? 'Conteúdo inválido.' : err.expose ? err.message : 'Não foi possível concluir. Tente novamente.';
+    const message = status === 413 ? 'Arquivo maior que o limite permitido.' : status === 400 ? 'Conteúdo inválido.' : !production && err.expose ? err.message : 'Não foi possível concluir. Tente novamente.';
+    logApiError(req, res, err, status);
     res.status(status).json({ ok: false, error: message });
   });
   return app;
@@ -51,7 +53,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   await initializeStorage();
   if (databaseDialect() === 'sqlite') await garantirConfiguracoesPadrao();
   const port = Number(process.env.PORT || 3210);
-  const server = app.listen(port, process.env.HOST || '127.0.0.1', () => console.log('Puzoto Life: http://127.0.0.1:' + port));
+  const server = app.listen(port, process.env.HOST || '127.0.0.1', () => logEvent('info', 'server_started'));
   server.requestTimeout = 30000;
   server.headersTimeout = 15000;
 }

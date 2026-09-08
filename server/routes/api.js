@@ -4,6 +4,7 @@
  */
 
 import express, { Router } from 'express';
+import { logApiError } from '../observability/logger.js';
 import { validateBackupFilenameParam, validateIdParam, validateTextParam } from '../security/requestValidation.js';
 
 // Serviços
@@ -102,7 +103,7 @@ function asyncHandler(fn) {
       const result = await fn(req, res);
       res.json({ ok: true, data: result });
     } catch (err) {
-      console.error(`[API ERROR] ${req.method} ${req.path}:`, err.message);
+      logApiError(req, res, err, 500);
       res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
     }
   };
@@ -120,7 +121,7 @@ router.post('/empresas', async (req, res) => {
     const novaEmpresa = (await obterEmpresaPorId(id));
     res.json({ success: true, message: 'Empresa criada com sucesso.', empresa: novaEmpresa });
   } catch (err) {
-    console.error('[API ERROR] POST /empresas:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ success: false, message: 'Erro ao criar empresa.', error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -138,7 +139,7 @@ router.put('/empresas/:id', async (req, res) => {
     
     res.json({ success: true, message: 'Empresa atualizada com sucesso.', empresa: empresaAtualizada });
   } catch (err) {
-    console.error('[API ERROR] PUT /empresas/:id:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ success: false, message: 'Erro ao atualizar empresa.', error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -196,7 +197,7 @@ router.get('/ranon/exportar-excel', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"; filename*=UTF-8''${encodeURIComponent(nomeArquivo)}`);
     res.send(Buffer.from(buffer));
   } catch (err) {
-    console.error('[API ERROR] GET /ranon/exportar-excel:', err.message);
+    logApiError(req, res, err, 400);
     res.status(400).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -221,7 +222,7 @@ router.post('/ranon/salvar-planilha', async (req, res) => {
     const resultado = await salvarPlanilhaRanon(mes_referencia);
     res.json({ ok: resultado.success, data: resultado });
   } catch (err) {
-    console.error('[API ERROR] POST /ranon/salvar-planilha:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -413,8 +414,8 @@ router.get('/relatorios/geral', async (req, res) => {
     const dados = (await obterRelatorioGeral(mes));
     res.json({ ok: true, data: dados });
   } catch (error) {
-    console.error('Erro ao obter relatório geral:', error);
-    res.status(500).json({ success: false, message: error.message });
+    logApiError(req, res, error, 500);
+    res.status(500).json({ success: false, message: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : error.message });
   }
 });
 
@@ -437,7 +438,7 @@ router.get('/diagnostico/completo', async (req, res) => {
     const result = (await executarDiagnostico());
     res.json(result);
   } catch (err) {
-    console.error('[API ERROR] GET /diagnostico/completo:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ success: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -451,7 +452,7 @@ router.post('/sistema/limpar-dados-teste', async (req, res) => {
     const result = (await executarLimpezaDadosTeste(confirmacao));
     res.json(result);
   } catch (err) {
-    console.error('[API ERROR] POST /sistema/limpar-dados-teste:', err.message);
+    logApiError(req, res, err, 400);
     res.status(400).json({ success: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -465,7 +466,7 @@ router.get('/backup/info', async (req, res) => {
     const info = obterInfoBanco();
     res.json({ ok: true, data: info });
   } catch (err) {
-    console.error('[API ERROR] GET /backup/info:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -475,7 +476,7 @@ router.post('/backup/criar', async (req, res) => {
     const resultado = await criarBackupManual();
     res.json({ ok: true, data: resultado });
   } catch (err) {
-    console.error('[API ERROR] POST /backup/criar:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -485,7 +486,7 @@ router.get('/backup/listar', async (req, res) => {
     const backups = listarBackups();
     res.json({ ok: true, data: backups });
   } catch (err) {
-    console.error('[API ERROR] GET /backup/listar:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -495,7 +496,7 @@ router.get('/backup/download/:filename', async (req, res) => {
     const filePath = obterCaminhoBackup(req.params.filename);
     res.download(filePath, req.params.filename);
   } catch (err) {
-    console.error('[API ERROR] GET /backup/download:', err.message);
+    logApiError(req, res, err, 400);
     res.status(400).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -506,7 +507,7 @@ router.post('/backup/restaurar', async (req, res) => {
     const resultado = (await restaurarBackup(filename, confirmacao));
     res.json({ ok: true, data: resultado });
   } catch (err) {
-    console.error('[API ERROR] POST /backup/restaurar:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -516,7 +517,7 @@ router.delete('/backup/:filename', async (req, res) => {
     const resultado = excluirBackup(req.params.filename);
     res.json({ ok: true, data: resultado });
   } catch (err) {
-    console.error('[API ERROR] DELETE /backup:', err.message);
+    logApiError(req, res, err, 400);
     res.status(400).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -533,7 +534,7 @@ router.get('/backup/exportar-json', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify(dados, null, 2));
   } catch (err) {
-    console.error('[API ERROR] GET /backup/exportar-json:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -557,7 +558,7 @@ router.get('/backup/exportar-csv-trabalho', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.send('\uFEFF' + csv); // BOM para Excel
   } catch (err) {
-    console.error('[API ERROR] GET /backup/exportar-csv-trabalho:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -581,7 +582,7 @@ router.get('/backup/exportar-csv-financas', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.send('\uFEFF' + csv); // BOM para Excel
   } catch (err) {
-    console.error('[API ERROR] GET /backup/exportar-csv-financas:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -612,7 +613,7 @@ router.post('/importar/validar-json', express.text({ type: '*/*', limit: '50mb' 
       }
     });
   } catch (err) {
-    console.error('[API ERROR] POST /importar/validar-json:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
@@ -646,7 +647,7 @@ router.post('/importar/json', express.text({ type: '*/*', limit: '50mb' }), asyn
 
     res.json({ ok: true, data: resultado });
   } catch (err) {
-    console.error('[API ERROR] POST /importar/json:', err.message);
+    logApiError(req, res, err, 500);
     res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
   }
 });

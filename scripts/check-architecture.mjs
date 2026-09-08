@@ -17,6 +17,10 @@ for (const file of files('src').filter((name) => name.endsWith('.js'))) {
 for (const file of files('public')) {
   if (/\.(?:db|sqlite|env|key|pem|xlsx|csv|jsonl)(?:-|$)/i.test(file)) problems.push(`${file}: arquivo privado em public`);
 }
+for (const file of files('server').filter((name) => name.endsWith('.js') && name !== path.join('server', 'observability', 'logger.js'))) {
+  const source = fs.readFileSync(file, 'utf8');
+  if (/console\.(?:error|warn)\s*\(/.test(source)) problems.push(`${file}: erros de runtime devem passar pelo logger sanitizado`);
+}
 const httpSecurity = fs.readFileSync(path.join('server', 'security', 'http.js'), 'utf8');
 if (!/scriptSrcAttr:\s*\["'none'"\]/.test(httpSecurity)) problems.push('server/security/http.js: CSP deve negar scripts em atributos');
 const main = fs.readFileSync(path.join('src', 'main.js'), 'utf8');
