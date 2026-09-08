@@ -163,3 +163,9 @@ OpenTelemetry fica selecionado como opção futura de destino único. A ativaç�
 Refs #10. O inventário cobre conta, trabalho, identificadores de laudos, finanças, pessoas/dívidas, investimentos, auditoria, arquivos, backups e logs, além dos fluxos por Supabase, Vercel, GitHub e e-mail de autenticação. Os pontos que exigem decisão humana estão destacados: controlador, contexto profissional, dados sensíveis, bases legais, retenção, direitos, contratos, transferências, incidentes e aceite.
 
 As minutas de Termos e Privacidade ficam marcadas como rascunho não aprovado e usam campos explícitos para as decisões do jurídico. Nenhum texto é exibido no produto e nenhum aceite fictício foi criado. A Issue #10 permanece aberta até receber versão, data, nome/qualificação do revisor e registro da aprovação.
+
+## Navegação no Brave — branch codex/brave-navigation
+
+Closes #33. A verificação de Fetch Metadata passa a distinguir navegação principal de documento e chamadas de API. Uma abertura `GET`/`HEAD` com `Sec-Fetch-Mode: navigate` e destino `document` pode carregar o frontend mesmo quando o navegador informa que o link veio de outro site. Mutações com origem externa, leituras cross-site por `cors` e requisições sem o cabeçalho interno continuam recebendo 403.
+
+O smoke test de produção inclui a navegação cross-site que reproduzia o `Forbidden` do Brave. Testes de segurança também confirmam que a exceção não libera uma leitura cross-site da API.

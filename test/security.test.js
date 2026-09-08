@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { request as httpRequest } from 'node:http';
 import express from 'express';
 import { createAuth, authConfigured } from '../server/security/auth.js';
 import { installHttpSecurity } from '../server/security/http.js';
@@ -31,12 +32,22 @@ async function fixture(t, userId = owner) {
   app.use(express.json());
   app.use('/api/auth', auth.router);
   app.get('/api/private', auth.guard, (_req, res) => res.json({ ok: true }));
+  app.get('/', (_req, res) => res.type('html').send('<!doctype html><title>Puzoto Life</title>'));
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const request = (url, options = {}) => fetch(`http://127.0.0.1:${server.address().port}${url}`, options);
+  const rawRequest = (url, headers = {}) => new Promise((resolve, reject) => {
+    const outgoing = httpRequest({ hostname: '127.0.0.1', port: server.address().port, path: url, headers }, (response) => {
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    outgoing.on('error', reject);
+    outgoing.end();
+  });
   const login = (password = 'correct-password') => request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Puzoto-Request': '1' }, body: JSON.stringify({ email: 'owner@example.com', password }) });
-  return { request, login, revoke: () => { revoked = true; }, recoveryRequest: () => recoveryRequest };
+  return { request, rawRequest, login, revoke: () => { revoked = true; }, recoveryRequest: () => recoveryRequest };
 }
 test('configuração incompleta de Auth falha fechada', () => {
   assert.equal(authConfigured({}), false);
@@ -85,6 +96,25 @@ test('origem externa e mutação sem header de proteção são bloqueadas', asyn
   assert.equal(external.status, 403);
   assert.match(external.headers.get('x-request-id'), /^[0-9a-f-]{36}$/);
   assert.equal((await request('/api/auth/login', { method: 'POST' })).status, 403);
+});
+test('navegação de documento cross-site abre o app e leitura cross-site continua bloqueada', async (t) => {
+  const { request, rawRequest } = await fixture(t);
+  const navigationHeaders = {
+    Origin: 'https://search.example',
+    'Sec-Fetch-Site': 'cross-site',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Dest': 'document',
+  };
+  const navigation = await rawRequest('/', navigationHeaders);
+  assert.equal(navigation.status, 200);
+  assert.match(navigation.body, /Puzoto Life/);
+  const corsRead = await request('/api/private', { headers: {
+    Origin: 'https://evil.example',
+    'Sec-Fetch-Site': 'cross-site',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Dest': 'empty',
+  } });
+  assert.equal(corsRead.status, 403);
 });
 test('aliases locais são aceitos no desenvolvimento e recuperação usa origem canônica', async (t) => {
   const { request, recoveryRequest } = await fixture(t);
