@@ -62,17 +62,11 @@ function getMesReferenciaDefault() {
 export async function initRanon() {
   abaAtiva = 'pendentes';
   try {
-    // Carregar configurações do Dr. Ranon
-    try {
-      const cfgPreco = await apiFetch(`${API_BASE}/configuracoes/preco_padrao_ranon`).then(r => r.json());
-      if (cfgPreco.ok && cfgPreco.data) {
-        precoAtual = parseFloat(cfgPreco.data);
-      } else {
-        precoAtual = 2.00;
-      }
-    } catch {
-      precoAtual = 2.00;
-    }
+    const [cfgPreco, cfgMes] = await Promise.all([
+      apiFetch(`${API_BASE}/configuracoes/preco_padrao_ranon`).then(r => r.json()).catch(() => null),
+      apiFetch(`${API_BASE}/configuracoes/mes_referencia_ranon_padrao`).then(r => r.json()).catch(() => null)
+    ]);
+    precoAtual = cfgPreco?.ok && cfgPreco.data ? parseFloat(cfgPreco.data) : 2.00;
     const valorInput = document.getElementById('form-valor');
     if (valorInput) valorInput.value = precoAtual.toFixed(2);
 
@@ -82,15 +76,10 @@ export async function initRanon() {
     // Setar mês de referência padrão
     const mesRefInput = document.getElementById('form-mes-referencia');
     if (mesRefInput) {
-      try {
-        const cfgMes = await apiFetch(`${API_BASE}/configuracoes/mes_referencia_ranon_padrao`).then(r => r.json());
-        if (cfgMes.ok && cfgMes.data === 'atual') {
-          const agora = new Date();
-          mesRefInput.value = `${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`;
-        } else {
-          mesRefInput.value = getMesReferenciaDefault();
-        }
-      } catch {
+      if (cfgMes?.ok && cfgMes.data === 'atual') {
+        const agora = new Date();
+        mesRefInput.value = `${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`;
+      } else {
         mesRefInput.value = getMesReferenciaDefault();
       }
     }
@@ -118,14 +107,15 @@ export async function initRanon() {
 
 async function recarregarDados() {
   try {
-    loteAtual = await listarLaudosRanonPendentes();
-    
-    // Carregar histórico de planilhas
-    try {
+    const carregarHistorico = (async () => {
       const res = await apiFetch(`${API_BASE}/ranon/historico-planilhas?limit=5`);
       const json = await res.json();
-      historicoPlanihas = json.ok ? json.data : [];
-    } catch { historicoPlanihas = []; }
+      return json.ok ? json.data : [];
+    })().catch(() => []);
+    [loteAtual, historicoPlanihas] = await Promise.all([
+      listarLaudosRanonPendentes(),
+      carregarHistorico
+    ]);
     
     renderMétricas();
     renderTabela();

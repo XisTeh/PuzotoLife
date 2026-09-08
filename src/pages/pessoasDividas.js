@@ -58,8 +58,7 @@ async function fetchAPI(endpoint, options = {}) {
 
 export async function initPessoasDividas() {
   document.getElementById('pd-filtro-mes').value = mesAtual;
-  await loadPessoas();
-  await loadDados();
+  await Promise.all([loadPessoas(), loadDados()]);
 }
 
 async function loadPessoas() {

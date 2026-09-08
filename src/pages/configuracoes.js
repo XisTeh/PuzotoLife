@@ -704,10 +704,10 @@ export function renderConfiguracoesPage() {
   h += '  </div>';
 
   // --- TRABALHO E DR. RANON (Lado a lado em telas maiores) ---
-  h += '  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">';
+  h += '  <div class="settings-paired-grid">';
   
   // TRABALHO
-  h += '    <div class="form-card" style="padding: 24px;">';
+  h += '    <div class="form-card settings-action-card" style="padding: 24px;">';
   h += '      <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 24px;">Trabalho</h3>';
   h += '      <div class="form-group" style="margin-bottom: 16px;">';
   h += '        <label class="form-label">Última empresa selecionada (Lançamentos)</label>';
@@ -722,11 +722,11 @@ export function renderConfiguracoesPage() {
   h += '        <label class="form-label">Template WhatsApp (Resumo Diário)</label>';
   h += '        <textarea id="cfg-trabalho-whatsapp" class="form-control" rows="3" placeholder="Ex: Olá, resumo de hoje: {total}"></textarea>';
   h += '      </div>';
-  h += '      <button class="btn-primary" onclick="window.salvarConfigGeral(this, \'trabalho\')" style="width: 100%; justify-content: center;">Salvar Trabalho</button>';
+  h += '      <button class="btn-primary settings-action-card__submit" onclick="window.salvarConfigGeral(this, \'trabalho\')">Salvar Trabalho</button>';
   h += '    </div>';
 
   // DR. RANON
-  h += '    <div class="form-card" style="padding: 24px;">';
+  h += '    <div class="form-card settings-action-card" style="padding: 24px;">';
   h += '      <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 24px;">Dr. Ranon / RX</h3>';
   h += '      <div class="form-group" style="margin-bottom: 16px;">';
   h += '        <label class="form-label">Preço padrão do laudo (R$)</label>';
@@ -743,7 +743,7 @@ export function renderConfiguracoesPage() {
   h += '          <option value="mes_anterior">Mês Anterior</option>';
   h += '        </select>';
   h += '      </div>';
-  h += '      <button class="btn-primary" onclick="window.salvarConfigGeral(this, \'ranon\')" style="width: 100%; justify-content: center;">Salvar Dr. Ranon / RX</button>';
+  h += '      <button class="btn-primary settings-action-card__submit" onclick="window.salvarConfigGeral(this, \'ranon\')">Salvar Dr. Ranon / RX</button>';
   h += '    </div>';
   
   h += '  </div>';

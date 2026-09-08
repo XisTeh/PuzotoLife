@@ -1,5 +1,6 @@
 import { navigateTo, appState } from '../state.js';
 import { checkHealth } from '../services/api.js';
+import { preloadPage } from '../pages/index.js';
 
 let installPrompt;
 window.addEventListener('beforeinstallprompt', (event) => {
@@ -75,7 +76,7 @@ export function renderSidebar() {
     section.items.forEach(item => {
       const activeClass = item.id === appState.currentPage ? 'active' : '';
       navHtml += `
-        <a class="sidebar__link ${activeClass}" href="#${item.id}" data-page="${item.id}">
+        <a class="sidebar__link ${activeClass}" href="#${item.id}" data-page="${item.id}" ${activeClass ? 'aria-current="page"' : ''}>
           <span class="sidebar__link-icon" aria-hidden="true"><i data-lucide="${item.icon}"></i></span>
           <span class="sidebar__link-label">${item.label}</span>
         </a>
@@ -137,6 +138,9 @@ export function renderSidebar() {
 
   // Add click events to links
   sidebar.querySelectorAll('.sidebar__link').forEach(link => {
+    const preload = () => { preloadPage(link.dataset.page).catch(() => {}); };
+    link.addEventListener('pointerenter', preload, { once: true });
+    link.addEventListener('focus', preload, { once: true });
     link.addEventListener('click', (e) => {
       e.preventDefault();
       navigateTo(link.dataset.page);
