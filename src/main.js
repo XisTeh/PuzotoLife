@@ -21,5 +21,10 @@ startSession(async (session) => {
 });
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}), { once: true });
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+      await registration.update();
+    } catch { /* A aplicação online continua funcionando sem o cache estático. */ }
+  }, { once: true });
 }
