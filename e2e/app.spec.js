@@ -273,11 +273,11 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   expect(manifestResponse.ok()).toBe(true);
   const manifest = await manifestResponse.json();
   expect(manifest.display).toBe('standalone');
-  expect(manifest.background_color).toBe('#090b12');
-  expect(manifest.icons.every((icon) => icon.purpose === 'any')).toBe(true);
+  expect(manifest.background_color).toBe('#111827');
+  expect(manifest.icons.every((icon) => icon.purpose === 'any maskable')).toBe(true);
   expect(manifest.icons.map((icon) => icon.src)).toEqual(expect.arrayContaining([
-    '/images/puzoto-transparent-192.png',
-    '/images/puzoto-transparent-512.png',
+    '/images/puzoto-app-192.png',
+    '/images/puzoto-app-512.png',
   ]));
   for (const icon of manifest.icons) {
     const iconResponse = await page.request.get(icon.src);
@@ -291,7 +291,7 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
     image.src = icon.src;
   }))), manifest.icons);
   expect(iconDimensions).toEqual(manifest.icons.map((icon) => ({ src: icon.src, size: icon.sizes })));
-  const transparentEdge = await page.evaluate(async (src) => {
+  const iconPixels = await page.evaluate(async (src) => {
     const image = new Image();
     image.src = src;
     await image.decode();
@@ -300,9 +300,20 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
     canvas.height = image.naturalHeight;
     const context = canvas.getContext('2d');
     context.drawImage(image, 0, 0);
-    return [...context.getImageData(0, 0, 1, 1).data];
-  }, '/images/puzoto-transparent-512.png');
-  expect(transparentEdge).toEqual([0, 0, 0, 0]);
+    const edge = [...context.getImageData(0, 0, 1, 1).data];
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let white = 0;
+    let blue = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const [red, green, blueChannel] = pixels.slice(index, index + 3);
+      if (red > 220 && green > 220 && blueChannel > 220) white += 1;
+      if (blueChannel > 150 && blueChannel > red * 1.2) blue += 1;
+    }
+    return { edge, white, blue };
+  }, '/images/puzoto-app-512.png');
+  expect(iconPixels.edge).toEqual([17, 24, 39, 255]);
+  expect(iconPixels.white).toBeGreaterThan(5_000);
+  expect(iconPixels.blue).toBeGreaterThan(2_000);
   const workerResponse = await page.request.get('/sw.js');
   expect(workerResponse.ok()).toBe(true);
   const worker = await workerResponse.text();
@@ -357,7 +368,9 @@ test('abertura apresenta a identidade Puzoto sem atrasar a sessão', async ({ pa
   const navigation = page.goto('/');
   const launch = page.locator('.puzoto-launch');
   await expect(launch).toBeVisible();
+  await expect(page.locator('#sessionPanel')).toHaveCSS('background-color', 'rgb(17, 24, 39)');
   await expect(launch.locator('img')).toHaveAttribute('src', '/images/PuzotoLifeBlue.png');
+  await expect(launch.locator('.puzoto-launch__mark')).toHaveCSS('animation-name', 'none');
   await expect(launch).toContainText('Puzoto Life');
   releaseSession();
   await navigation;
@@ -484,7 +497,7 @@ test('quantidade, mensagem e cartões dinâmicos mantêm composição móvel', a
     value: getComputedStyle(cell).textAlign,
     label: getComputedStyle(cell, '::before').textAlign,
   }));
-  expect(alignment).toEqual({ value: 'right', label: 'left' });
+  expect(alignment).toEqual({ value: 'left', label: 'left' });
 });
 
 test('Cofre ignora uma resposta concluída depois da troca de página', async ({ page }, info) => {
