@@ -136,9 +136,9 @@ function renderDiagnostico(health) {
       <div><span style="color: var(--text-muted);">Porta Frontend:</span> 5174</div>
       <div><span style="color: var(--text-muted);">Porta Backend:</span> 3210</div>
       <div style="grid-column: span 2; border-top: 1px solid var(--border-subtle); margin-top: 8px; padding-top: 8px;"></div>
-      <div><span style="color: var(--text-muted);">Banco SQLite:</span> ${escapeHtml(dbStatus)}</div>
+      <div><span style="color: var(--text-muted);">Banco SQLite:</span> ${dbStatus}</div>
       <div><span style="color: var(--text-muted);">Tamanho DB:</span> ${escapeHtml(health.database?.size || '-')}</div>
-      <div><span style="color: var(--text-muted);">Pasta Backups:</span> ${escapeHtml(backupFolder)}</div>
+      <div><span style="color: var(--text-muted);">Pasta Backups:</span> ${backupFolder}</div>
       <div><span style="color: var(--text-muted);">Checagem:</span> ${escapeHtml(health.time || '-')}</div>
     </div>
   `;
@@ -287,7 +287,7 @@ function renderCategorias() {
         <td><div style="width: 16px; height: 16px; border-radius: 50%; background: ${cor};"></div></td>
         <td style="font-weight: 500;">${escapeHtml(c.nome)}</td>
         <td>${escapeHtml(c.tipo)}</td>
-        <td>${escapeHtml(stt)}</td>
+        <td>${stt}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             <button class="btn-icon" onclick="window.editarCategoria(${c.id})" title="Editar"><i data-lucide="edit-2"></i></button>
@@ -404,7 +404,7 @@ function renderEmpresas() {
         <td style="font-weight: 500;">${escapeHtml(e.nome)}</td>
         <td>${escapeHtml(e.tipo)}</td>
         <td>${formatarMoedaBR(e.valor_padrao || 0)}</td>
-        <td>${escapeHtml(stt)}</td>
+        <td>${stt}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             <button class="btn-icon" onclick="window.editarEmpresa(${e.id})" title="Editar"><i data-lucide="edit-2"></i></button>
@@ -552,7 +552,7 @@ function renderPagadores() {
         <td>${escapeHtml(p.tipo_pessoa || '-')}</td>
         <td>${escapeHtml(p.tipo_recebimento || '-')}</td>
         <td>${escapeHtml(p.conta_destino || '-')}</td>
-        <td>${escapeHtml(stt)}</td>
+        <td>${stt}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             <button class="btn-icon" onclick="window.editarPagador(${p.id})" title="Editar"><i data-lucide="edit-2"></i></button>

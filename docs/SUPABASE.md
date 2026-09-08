@@ -4,7 +4,7 @@ Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](http
 
 ## Estado atual
 
-Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `3b45fd6` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.
+Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `ea5d7de` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.
 
 ## 1. Crie seu acesso
 
@@ -53,7 +53,7 @@ No PostgreSQL, Backup oferece exportação JSON consistente e indica que retenç
 
 Escritas usam lock transacional por acervo pessoal, inclusive entre processos. Leituras seguem concorrentes. Uma plataforma multiusuário exige particionar dados, lock e políticas por proprietário. As sessões são assinadas e revalidadas no Supabase, sem dependência de memória compartilhada. O Dashboard agrupa seus agregados em quatro comandos no mesmo snapshot para evitar a latência de dezenas de viagens pela conexão. Gastos, Contas a Pagar, Receitas e Cofre reúnem a carga inicial de cada tela em uma rota privada para pagar uma única validação Auth e conexão serverless. Qualquer alteração futura deve preservar a transação adequada e a paridade com SQLite/PGlite. O rate limit local ainda é por instância; para o uso de proprietário único, ele complementa os limites do Supabase Auth.
 
-O projeto Supabase opera em São Paulo (`sa-east-1`). A função Express da Vercel usa `gru1`, também em São Paulo, para reduzir a distância de cada validação Auth e consulta PostgreSQL. O header operacional `x-vercel-id` deve mostrar `gru1` como região da função na validação posterior ao deploy.
+O projeto Supabase opera em São Paulo (`sa-east-1`). A função Express da Vercel usa `gru1`, também em São Paulo, para reduzir a distância de cada validação Auth e consulta PostgreSQL. Depois do PR #48, o header operacional `x-vercel-id` confirmou `gru1::gru1`, sem o salto anterior para Washington. A medição autenticada aquecida registrou abertura em 727 ms e navegações entre 206 e 357 ms; a primeira abertura após o deploy levou 4,4 s.
 
 ## 6. Celular e computador
 
