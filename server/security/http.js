@@ -25,11 +25,15 @@ export function installHttpSecurity(app, env = process.env) {
       status: res.statusCode,
       durationMs: performance.now() - start,
     }, env));
+    const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+    const isDocumentNavigation = ['GET', 'HEAD'].includes(req.method)
+      && req.get('Sec-Fetch-Mode') === 'navigate'
+      && req.get('Sec-Fetch-Dest') === 'document';
     if (env.NODE_ENV !== 'production' && !isLoopbackHostname(req.hostname)) return res.sendStatus(403);
     const requestOrigin = req.get('Origin');
-    if (requestOrigin && !allowedOrigins.has(requestOrigin)) return res.status(403).json({ ok: false, error: 'Origem não autorizada.' });
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.get('X-Puzoto-Request') !== '1') return res.status(403).json({ ok: false, error: 'Requisição não autorizada.' });
-    if (req.get('Sec-Fetch-Site') === 'cross-site') return res.sendStatus(403);
+    if (!isDocumentNavigation && requestOrigin && !allowedOrigins.has(requestOrigin)) return res.status(403).json({ ok: false, error: 'Origem não autorizada.' });
+    if (!isSafeMethod && req.get('X-Puzoto-Request') !== '1') return res.status(403).json({ ok: false, error: 'Requisição não autorizada.' });
+    if (!isDocumentNavigation && req.get('Sec-Fetch-Site') === 'cross-site') return res.sendStatus(403);
     if (req.path.startsWith('/api')) res.setHeader('Cache-Control', 'no-store');
     next();
   });
