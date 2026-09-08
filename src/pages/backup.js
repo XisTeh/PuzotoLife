@@ -1,6 +1,6 @@
 import { apiFetch } from '../services/http.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
-import { setIconMessage } from '../security/safeDom.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 /**
  * Puzoto Life — Página de Backup
  * Backup, restauração e exportação de dados.
@@ -288,12 +288,12 @@ function renderBackupList() {
               <td>
                 <div class="backup-file-name">
                   <i data-lucide="file" style="width:16px;height:16px;color:var(--color-teal);flex-shrink:0;"></i>
-                  <span>${b.nomeArquivo}</span>
+                  <span>${escapeHtml(b.nomeArquivo)}</span>
                 </div>
               </td>
               <td>${tipoBadge}</td>
               <td>${formatarData(b.criadoEm)}</td>
-              <td><span class="backup-size-badge">${b.tamanhoFormatado}</span></td>
+              <td><span class="backup-size-badge">${escapeHtml(b.tamanhoFormatado)}</span></td>
               <td>
                 <div class="backup-actions">
                   <button class="backup-btn backup-btn--download" title="Baixar" onclick="window.baixarBackup(${legacyStringArgument(b.nomeArquivo)})">

@@ -137,7 +137,7 @@ function renderPrevia(data) {
     const ticket = emp.data.qtd > 0 ? emp.data.total / emp.data.qtd : 0;
     return `
       <tr>
-        <td style="font-weight: 500;">${emp.nome}</td>
+        <td style="font-weight: 500;">${escapeHtml(emp.nome)}</td>
         <td style="text-align: center;">${emp.data.qtd}</td>
         <td style="text-align: right; font-weight: 600;">${formatarMoedaBR(emp.data.total)}</td>
         <td style="text-align: center;">${part.toFixed(1)}%</td>
@@ -320,7 +320,7 @@ window.selecionarMesHistorico = function(id) {
     const ticket = emp.qtd > 0 ? emp.total / emp.qtd : 0;
     return `
       <tr>
-        <td style="font-weight: 500;">${emp.nome}</td>
+        <td style="font-weight: 500;">${escapeHtml(emp.nome)}</td>
         <td style="text-align: center;">${emp.qtd}</td>
         <td style="text-align: right; font-weight: 600;">${formatarMoedaBR(emp.total)}</td>
         <td style="text-align: center;">${part.toFixed(1)}%</td>
@@ -496,12 +496,12 @@ async function carregarListaAjustesRetroativos(referencia) {
       const html = json.data.map(a => {
         let obsHtml = '';
         if (a.observacao) {
-          obsHtml = '<div style="margin-top: 4px; font-style: italic; color: var(--text-secondary);">' + '"' + a.observacao + '"' + '</div>';
+          obsHtml = '<div style="margin-top: 4px; font-style: italic; color: var(--text-secondary);">' + '"' + escapeHtml(a.observacao) + '"' + '</div>';
         }
         return [
           '<div style="padding: 10px; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem;">',
           '<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">',
-          '<strong style="color: var(--text-primary);">' + a.empresa + '</strong>',
+          '<strong style="color: var(--text-primary);">' + escapeHtml(a.empresa) + '</strong>',
           '<span style="color: var(--text-secondary);">' + formatarDataBR(a.criado_em.split(' ')[0]) + '</span>',
           '</div>',
           '<div style="display: flex; justify-content: space-between; color: var(--text-muted);">',

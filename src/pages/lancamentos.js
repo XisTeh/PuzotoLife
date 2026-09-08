@@ -144,7 +144,7 @@ function renderEmpresaCards() {
     const card = document.createElement('div');
     card.className = 'metric-card metric-card-empresa';
     card.innerHTML = `
-      <div class="metric-card__header"><div class="metric-card__label-top">${empresa.nome}</div></div>
+      <div class="metric-card__header"><div class="metric-card__label-top">${escapeHtml(empresa.nome)}</div></div>
       <div class="metric-card__body">
         <div class="metric-card__value" style="font-size: 1.4rem;" id="metrica-empresa-${idx}-valor">R$ 0,00</div>
         <div class="metric-card__desc" style="margin-top: 4px;" id="metrica-empresa-${idx}-qtd">0 exames</div>
@@ -333,7 +333,7 @@ window.abrirModalFechamentoDia = function() {
       <div style="border-top: 1px dashed var(--border-subtle); padding-top: 16px;">
         ${empresas.map(e => `
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem;">
-            <span style="color: var(--text-secondary);">${e.empresa_nome}</span>
+            <span style="color: var(--text-secondary);">${escapeHtml(e.empresa_nome)}</span>
             <span style="color: var(--text-primary);">${e.quantidade} ex. (${formatarMoedaBR(e.valor)})</span>
           </div>
         `).join('')}
@@ -467,13 +467,13 @@ function renderTabela() {
         <td>${formatarDataBR(item.data)}</td>
         <td>
           <div class="badge-empresa" style="background: ${cor}15; color: ${cor}; border-color: ${cor}30;">
-             ${item.empresa_nome}
+             ${escapeHtml(item.empresa_nome)}
           </div>
         </td>
         <td>${item.quantidade}</td>
         <td>${formatarMoedaBR(item.valor_unitario)}</td>
         <td style="font-weight: 600;">${formatarMoedaBR(item.total)}</td>
-        <td style="color: var(--text-muted); font-size: 0.8rem;">${item.observacao || '-'}</td>
+        <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHtml(item.observacao || '-')}</td>
         <td>
           <div class="table-actions">
             <button type="button" class="btn-icon" onclick="if(window.editarLote) window.editarLote(${item.id});" title="Editar">

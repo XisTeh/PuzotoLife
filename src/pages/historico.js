@@ -198,7 +198,7 @@ window.receberLancamento = async function(id) {
     <div style="display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.9rem;">
       <div style="display: flex; justify-content: space-between;">
         <span style="color: var(--text-muted);">Empresa</span>
-        <span style="font-weight: 600;">${l.empresa_nome}</span>
+        <span style="font-weight: 600;">${escapeHtml(l.empresa_nome)}</span>
       </div>
       <div style="display: flex; justify-content: space-between;">
         <span style="color: var(--text-muted);">Data</span>
@@ -241,7 +241,7 @@ window.receberLaudoRanon = async function(id) {
     <div style="display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.9rem;">
       <div style="display: flex; justify-content: space-between;">
         <span style="color: var(--text-muted);">Registro (Paciente)</span>
-        <span style="font-weight: 600;">${l.registro_paciente}</span>
+        <span style="font-weight: 600;">${escapeHtml(l.registro_paciente)}</span>
       </div>
       <div style="display: flex; justify-content: space-between;">
         <span style="color: var(--text-muted);">Data</span>
@@ -366,13 +366,13 @@ function renderLancamentosTab() {
     html += `
       <tr style="${isCancelado ? 'opacity: 0.5;' : ''}">
         <td>${formatarDataBR(l.data)} <span style="font-size:0.8rem; color:var(--text-muted);">${l.horario || ''}</span></td>
-        <td style="font-weight: 500;">${l.empresa_nome}</td>
+        <td style="font-weight: 500;">${escapeHtml(l.empresa_nome)}</td>
         <td>${l.quantidade}</td>
         <td>${formatarMoedaBR(l.valor_unitario)}</td>
         <td style="font-weight: 600; color: var(--color-blue);">${formatarMoedaBR(l.total)}</td>
         <td>${badgeStatus(l.status)}</td>
         <td>${l.recebido_em ? formatarDataBR(l.recebido_em) : '-'}</td>
-        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${l.observacao || ''}">${l.observacao || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(l.observacao || '')}">${escapeHtml(l.observacao || '-')}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             ${isRecebido ? `<span style="font-size: 0.8rem; color: var(--color-teal); display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px;"></i> Pago</span>` : `<span style="font-size: 0.8rem; color: var(--text-muted);">-</span>`}
@@ -404,13 +404,13 @@ function renderRanonTab() {
     html += `
       <tr style="${isCancelado ? 'opacity: 0.5;' : ''}">
         <td>${formatarDataBR(l.data)} <span style="font-size:0.8rem; color:var(--text-muted);">${l.horario || ''}</span></td>
-        <td style="font-weight: 500;">${l.registro_paciente}</td>
+        <td style="font-weight: 500;">${escapeHtml(l.registro_paciente)}</td>
         <td>${formatarMoedaBR(l.valor_unitario)}</td>
         <td style="font-weight: 600; color: var(--color-blue);">${formatarMoedaBR(l.total)}</td>
         <td>${badgeStatus(l.status)}</td>
         <td>${l.recebido_em ? formatarDataBR(l.recebido_em) : '-'}</td>
         <td>${l.arquivo_excel_backup ? `<span style="font-size:0.8rem; color:var(--color-green);"><i data-lucide="file-spreadsheet" style="width:14px; margin-bottom:-2px;"></i> Salvo</span>` : '-'}</td>
-        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${l.observacao || ''}">${l.observacao || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(l.observacao || '')}">${escapeHtml(l.observacao || '-')}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             ${isRecebido ? `<span style="font-size: 0.8rem; color: var(--color-teal); display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px;"></i> Pago</span>` : `<span style="font-size: 0.8rem; color: var(--text-muted);">-</span>`}
@@ -456,7 +456,7 @@ async function renderPagadorTab() {
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="width: 8px; height: 8px; border-radius: 50%; background: ${colors[p.pagador] || '#64748b'};"></div>
-          <strong style="color: var(--text-primary);">${p.pagador}</strong>
+          <strong style="color: var(--text-primary);">${escapeHtml(p.pagador)}</strong>
         </div>
       </td>
       <td style="color: var(--text-secondary); font-size: 0.85rem; text-transform: capitalize;">${p.tipo === 'pendente' ? 'Em Aberto' : p.tipo}</td>

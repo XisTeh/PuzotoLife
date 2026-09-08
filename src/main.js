@@ -5,8 +5,10 @@ import { renderPage, warmPageModules } from './pages/index.js';
 import { startSession } from './components/Session.js';
 import { installFeedback } from './components/Feedback.js';
 import { installLegacyHandlers } from './security/legacyHandlers.js';
+import { installSafeHtmlPolicy } from './security/safeDom.js';
 import './icons.js';
 
+installSafeHtmlPolicy();
 installFeedback();
 installLegacyHandlers();
 startSession(async (session) => {

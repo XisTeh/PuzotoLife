@@ -9,7 +9,7 @@ import {
 
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
-import { setIconMessage } from '../security/safeDom.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 
 const API_BASE = '/api';
 
@@ -442,12 +442,12 @@ function renderTabela() {
     return `
       <tr>
         <td>${formatarDataBR(item.data)}</td>
-        <td>${item.horario || '-'}</td>
-        <td style="font-family: monospace; font-size: 1.1rem; color: var(--color-cyan);">${item.registro_paciente}</td>
+        <td>${escapeHtml(item.horario || '-')}</td>
+        <td style="font-family: monospace; font-size: 1.1rem; color: var(--color-cyan);">${escapeHtml(item.registro_paciente)}</td>
         <td style="text-align: center; font-weight: 600;">${item.quantidade || 1}</td>
         <td>${formatarMoedaBR(item.valor_unitario)}</td>
         <td style="font-weight: 600;">${formatarMoedaBR(item.total)}</td>
-        <td style="color: var(--text-muted); font-size: 0.8rem;">${item.observacao || '-'}</td>
+        <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHtml(item.observacao || '-')}</td>
         <td>
           <div class="table-actions">
             ${contagemMap[item.registro_paciente] > 1 ? `
@@ -550,7 +550,7 @@ function renderHistoricoPlanilhas() {
         <div>
           <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
             <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
-            ${h.arquivo_excel_backup}
+            ${escapeHtml(h.arquivo_excel_backup)}
           </div>
           <div style="font-size: 0.8rem; color: var(--text-muted);">Salvo em ${formatarDataBR(salvoEm)}</div>
         </div>

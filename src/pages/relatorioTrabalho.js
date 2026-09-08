@@ -1,5 +1,5 @@
 import { apiFetch } from '../services/http.js';
-import { setIconMessage } from '../security/safeDom.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { Chart, registerables } from 'chart.js';
 import { formatarMoedaBR } from '../utils/formatters.js';
 
@@ -107,7 +107,7 @@ function renderMarketShare(porEmpresa) {
     return `
       <div style="margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${e.empresa}</span>
+          <span style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${escapeHtml(e.empresa)}</span>
           <div style="display: flex; gap: 16px; align-items: center;">
             <span style="color: var(--text-muted); font-size: 0.8rem;">${e.quantidade} laudos</span>
             <span style="font-weight: 600; color: ${cor};">${formatarMoedaBR(e.total)}</span>
@@ -248,7 +248,7 @@ function renderTabelaResumo(porEmpresa) {
         <td>
           <span style="display: inline-flex; align-items: center; gap: 8px;">
             <span style="width: 10px; height: 10px; border-radius: 50%; background: ${cor}; display: inline-block;"></span>
-            ${e.empresa}
+            ${escapeHtml(e.empresa)}
           </span>
         </td>
         <td style="text-align: center;">${e.quantidade}</td>

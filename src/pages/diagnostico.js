@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { escapeHtml } from '../security/safeDom.js';
 export function renderDiagnosticoPage() {
   setTimeout(() => window.executarDiagnosticoAPI(), 100);
 
@@ -131,8 +132,8 @@ function renderizarResultadoDiagnostico(data) {
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
           <i data-lucide="${icon}" style="color: ${color}; width: 18px; height: 18px; margin-top: 2px;"></i>
           <div>
-            <strong style="color: var(--text-primary);">${c.grupo} - ${c.nome}</strong><br>
-            <span style="color: var(--text-muted); font-size: 0.9rem;">${c.mensagem}</span>
+            <strong style="color: var(--text-primary);">${escapeHtml(c.grupo)} - ${escapeHtml(c.nome)}</strong><br>
+            <span style="color: var(--text-muted); font-size: 0.9rem;">${escapeHtml(c.mensagem)}</span>
           </div>
         </div>
       `;
@@ -190,12 +191,12 @@ function renderizarResultadoDiagnostico(data) {
               <i data-lucide="${icon}" style="color: ${iconColor}; width: 16px; height: 16px;"></i>
             </div>
             <div>
-              <div style="font-weight: 500; color: ${color}; font-size: 0.95rem;">${c.nome}</div>
-              <div style="font-size: 0.85rem; color: var(--text-muted);">${c.mensagem}</div>
+              <div style="font-weight: 500; color: ${color}; font-size: 0.95rem;">${escapeHtml(c.nome)}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">${escapeHtml(c.mensagem)}</div>
             </div>
           </div>
           <div style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: ${iconColor};">
-            ${c.status}
+            ${escapeHtml(c.status)}
           </div>
         </div>
       `;

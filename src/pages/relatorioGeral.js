@@ -1,6 +1,7 @@
 import { obterRelatorioGeral } from '../services/api.js';
 import { formatarMoedaBR, formatarDataBR, mesAtualReferencia } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
+import { escapeHtml } from '../security/safeDom.js';
 
 Chart.register(...registerables);
 
@@ -192,8 +193,8 @@ function atualizarListas(rankings) {
     listGastos.innerHTML = rankings.maiores_gastos.map(g => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
         <div>
-          <div style="font-weight: 500; color: var(--text-primary); font-size: 0.95rem;">${g.descricao}</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">${g.categoria} • ${formatarDataBR(g.data)}</div>
+          <div style="font-weight: 500; color: var(--text-primary); font-size: 0.95rem;">${escapeHtml(g.descricao)}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(g.categoria)} • ${formatarDataBR(g.data)}</div>
         </div>
         <div style="font-weight: 600; color: var(--color-rose);">${formatarMoedaBR(g.valor)}</div>
       </div>
@@ -208,8 +209,8 @@ function atualizarListas(rankings) {
     listReceitas.innerHTML = rankings.maiores_receitas.map(r => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
         <div>
-          <div style="font-weight: 500; color: var(--text-primary); font-size: 0.95rem;">${r.descricao}</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">${r.origem} • ${formatarDataBR(r.data)}</div>
+          <div style="font-weight: 500; color: var(--text-primary); font-size: 0.95rem;">${escapeHtml(r.descricao)}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(r.origem)} • ${formatarDataBR(r.data)}</div>
         </div>
         <div style="font-weight: 600; color: var(--color-teal);">${formatarMoedaBR(r.valor)}</div>
       </div>
@@ -226,8 +227,8 @@ function atualizarListas(rankings) {
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
           <div>
-            <div style="font-weight: 500; color: var(--text-primary); font-size: 0.95rem;">${v.descricao}</div>
-            <div style="font-size: 0.8rem; color: ${isAtrasado ? 'var(--color-rose)' : 'var(--text-muted)'};"> ${v.tipo} • ${formatarDataBR(v.data)}</div>
+            <div style="font-weight: 500; color: var(--text-primary); font-size: 0.95rem;">${escapeHtml(v.descricao)}</div>
+            <div style="font-size: 0.8rem; color: ${isAtrasado ? 'var(--color-rose)' : 'var(--text-muted)'};"> ${escapeHtml(v.tipo)} • ${formatarDataBR(v.data)}</div>
           </div>
           <div style="font-weight: 600; color: var(--text-primary);">${formatarMoedaBR(v.valor)}</div>
         </div>

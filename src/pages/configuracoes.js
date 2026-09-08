@@ -5,6 +5,7 @@ import { formatarMoedaBR } from '../utils/formatters.js';
 import { checkHealth } from '../services/api.js';
 
 const API_BASE = '/api';
+const safeColor = (value, fallback = 'var(--text-muted)') => /^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? value : fallback;
 
 // Estado
 let configAtual = {};
@@ -131,14 +132,14 @@ function renderDiagnostico(health) {
   container.innerHTML = `
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9rem;">
       <div><span style="color: var(--text-muted);">Backend:</span> <span style="color:var(--color-teal); font-weight:600;">Online</span></div>
-      <div><span style="color: var(--text-muted);">Versão:</span> ${health.version || '1.0.0'}</div>
+      <div><span style="color: var(--text-muted);">Versão:</span> ${escapeHtml(health.version || '1.0.0')}</div>
       <div><span style="color: var(--text-muted);">Porta Frontend:</span> 5174</div>
       <div><span style="color: var(--text-muted);">Porta Backend:</span> 3210</div>
       <div style="grid-column: span 2; border-top: 1px solid var(--border-subtle); margin-top: 8px; padding-top: 8px;"></div>
-      <div><span style="color: var(--text-muted);">Banco SQLite:</span> ${dbStatus}</div>
-      <div><span style="color: var(--text-muted);">Tamanho DB:</span> ${health.database?.size || '-'}</div>
-      <div><span style="color: var(--text-muted);">Pasta Backups:</span> ${backupFolder}</div>
-      <div><span style="color: var(--text-muted);">Checagem:</span> ${health.time || '-'}</div>
+      <div><span style="color: var(--text-muted);">Banco SQLite:</span> ${escapeHtml(dbStatus)}</div>
+      <div><span style="color: var(--text-muted);">Tamanho DB:</span> ${escapeHtml(health.database?.size || '-')}</div>
+      <div><span style="color: var(--text-muted);">Pasta Backups:</span> ${escapeHtml(backupFolder)}</div>
+      <div><span style="color: var(--text-muted);">Checagem:</span> ${escapeHtml(health.time || '-')}</div>
     </div>
   `;
 }
@@ -279,14 +280,14 @@ function renderCategorias() {
   let html = '';
   catsList.forEach(c => {
     const stt = c.ativa === 1 ? '<span style="color:var(--color-teal); font-weight:600; font-size:0.8rem; text-transform:uppercase;">Ativa</span>' : '<span style="color:var(--color-red); font-weight:600; font-size:0.8rem; text-transform:uppercase;">Inativa</span>';
-    const cor = c.cor || 'var(--text-muted)';
+    const cor = safeColor(c.cor);
     
     html += `
       <tr style="opacity: ${c.ativa === 1 ? '1' : '0.5'}">
         <td><div style="width: 16px; height: 16px; border-radius: 50%; background: ${cor};"></div></td>
-        <td style="font-weight: 500;">${c.nome}</td>
-        <td>${c.tipo}</td>
-        <td>${stt}</td>
+        <td style="font-weight: 500;">${escapeHtml(c.nome)}</td>
+        <td>${escapeHtml(c.tipo)}</td>
+        <td>${escapeHtml(stt)}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             <button class="btn-icon" onclick="window.editarCategoria(${c.id})" title="Editar"><i data-lucide="edit-2"></i></button>
@@ -400,10 +401,10 @@ function renderEmpresas() {
     
     html += `
       <tr style="opacity: ${e.ativa === 1 ? '1' : '0.5'}">
-        <td style="font-weight: 500;">${e.nome}</td>
-        <td>${e.tipo}</td>
+        <td style="font-weight: 500;">${escapeHtml(e.nome)}</td>
+        <td>${escapeHtml(e.tipo)}</td>
         <td>${formatarMoedaBR(e.valor_padrao || 0)}</td>
-        <td>${stt}</td>
+        <td>${escapeHtml(stt)}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             <button class="btn-icon" onclick="window.editarEmpresa(${e.id})" title="Editar"><i data-lucide="edit-2"></i></button>
@@ -547,11 +548,11 @@ function renderPagadores() {
     
     html += `
       <tr style="opacity: ${p.ativo === 1 ? '1' : '0.5'}">
-        <td style="font-weight: 500;">${p.nome}</td>
-        <td>${p.tipo_pessoa || '-'}</td>
-        <td>${p.tipo_recebimento || '-'}</td>
-        <td>${p.conta_destino || '-'}</td>
-        <td>${stt}</td>
+        <td style="font-weight: 500;">${escapeHtml(p.nome)}</td>
+        <td>${escapeHtml(p.tipo_pessoa || '-')}</td>
+        <td>${escapeHtml(p.tipo_recebimento || '-')}</td>
+        <td>${escapeHtml(p.conta_destino || '-')}</td>
+        <td>${escapeHtml(stt)}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             <button class="btn-icon" onclick="window.editarPagador(${p.id})" title="Editar"><i data-lucide="edit-2"></i></button>
