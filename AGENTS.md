@@ -14,7 +14,7 @@ O backup local `Info/`, criado antes da modernização, contém snapshot SQLite 
 - Criar a Issue antes de implementar quando o GitHub estiver acessível. Se não estiver, registrar o escopo em `docs/issues.json` e informar o bloqueio; não inventar números ou links.
 - Trabalhar em branches `codex/*`, nunca implementar/mesclar diretamente em `main`.
 - Usar Pull Requests para entregas e deploys. Descrição obrigatória: Issue relacionada (`Closes #N`), problema e mudança, validação com resultados reais, riscos, limitações e próximos passos.
-- Nenhum código entra na principal sem CI aprovado, revisão e resolução dos comentários. Configurar proteção de branch no GitHub; workflow sozinho não impõe proteção. Não contornar falhas nem baixar gates para publicar.
+- Nenhum código entra na principal sem CI aprovado, revisão do proprietário e resolução dos comentários. Este é um repositório de proprietário único: o GitHub não aceita autoaprovação formal, portanto a proteção da `main` usa zero aprovações obrigatórias e preserva `quality`, `security` e `e2e`, conversas resolvidas, bloqueio de push direto e aplicação aos administradores. A autorização explícita do proprietário registrada na conversa ou na Issue vale como revisão para o merge. Não contornar falhas nem baixar os checks para publicar.
 - Deploy somente do commit revisado e validado, com ambiente protegido e rollback documentado. Não anunciar publicação, Issue, PR ou proteção como concluídos sem confirmação remota.
 
 ## Segurança e arquitetura
@@ -50,4 +50,4 @@ Consultar `docs/ENTREGAS.md` e `docs/SUPABASE.md`. Diferenciar implementado loca
 - Usar `atomic` para operações que leem e gravam; a leitura que decide pagamento/resgate/fechamento deve ocorrer dentro da transação. `snapshot` agrupa leituras consistentes. Não iniciar gravação dentro de snapshot.
 - PostgreSQL usa conexão dedicada por transação, papel `puzoto_runtime` sem DDL/bypass de RLS, TLS validado e lock transacional do acervo pessoal. Não usar usuário administrador no runtime. SQLite fica restrito ao modo local.
 - Testes locais usam SQLite temporário e PGlite; CI também usa PostgreSQL com conexões independentes. `TEST_POSTGRES_URL` só pode apontar ao loopback. Nunca apontar testes à base Supabase pessoal.
-- A branch `codex/supabase-postgres` depende de `codex/cloud-foundation-design`. Manter PRs encadeados enquanto a entrega anterior aguarda revisão; não contornar a proteção de main.
+- A branch `codex/supabase-postgres` depende de `codex/cloud-foundation-design`. Manter PRs encadeados enquanto a entrega anterior aguarda checks e merge; não contornar a proteção de main.

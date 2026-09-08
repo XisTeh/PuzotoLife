@@ -92,13 +92,19 @@ O Cofre associa cada carregamento ao elemento raiz que o iniciou. Se o usuário 
 
 Validação local: `npm run quality` aprovado com 57 testes, build, arquitetura, Biome, zero vulnerabilidades de produção em `npm audit --omit=dev` e orçamento gzip de 204 KB. O Playwright cobre a troca de tela durante uma resposta suspensa do Cofre, leituras paralelas, ausência de atrasos CSS, alinhamento desktop, alvos mobile, painel de Gastos e canal alfa da logo, além das jornadas existentes. São 20 testes aprovados em Desktop Chrome e iPhone 13.
 
+## Governança de proprietário único — branch codex/single-owner-governance
+
+Closes #26; depende do PR de navegação. O proprietário confirmou que o repositório terá somente a conta `XisTeh`. Como o GitHub não permite que o autor aprove o próprio PR, a exigência de uma segunda conta foi removida. A revisão passa a ser a autorização explícita do proprietário, registrada na conversa ou na Issue relacionada.
+
+A proteção da `main` continua exigindo `quality`, `security` e `e2e`, conversas resolvidas, bloqueio de push direto e aplicação aos administradores. Somente a quantidade de aprovações formais muda de 1 para 0. Falhas de CI não podem ser ignoradas e o fluxo continua usando Issues, branches `codex/*` e PRs encadeados.
+
 ### Auditoria de prontidão em 07/09/2026
 
 | Área | Evidência verificada | Estado |
 | --- | --- | --- |
-| Repositório | `origin/main` contém somente `README.md`; esta linha de trabalho está 11 commits à frente | Bloqueado por revisão/merge dos PRs empilhados |
-| Proteção da `main` | `quality`, `security` e `e2e` obrigatórios, administração incluída e 1 aprovação exigida | Configurada corretamente |
-| PRs | #12, #13, #14, #15, #18 e #19 estão limpos e com checks verdes; #11 tem checks verdes, mas está bloqueado pela aprovação obrigatória | Precisa de revisor diferente do autor |
+| Repositório | `origin/main` contém somente `README.md`; esta linha de trabalho está 11 commits à frente | Aguardando merge sequencial dos PRs empilhados |
+| Proteção da `main` | `quality`, `security` e `e2e` obrigatórios, administração incluída, conversas resolvidas e zero aprovações formais para o proprietário único | Ajuste autorizado pelo proprietário na Issue #26 |
+| PRs | #11, #12, #13, #14, #15, #18, #19 e #25 estão com checks verdes na auditoria; devem ser revalidados a cada mudança de base | Prontos para a sequência de merge condicionada aos checks |
 | Vercel | produção aponta ao commit `5f641bc` da `main`; `https://puzoto-life.vercel.app/` continua respondendo 404 | Não há aplicação publicável na `main` |
 | Backend | `server/index.js` bloqueia explicitamente `NODE_ENV=production`; não existe adaptador Vercel/`vercel.json` | Publicação intencionalmente bloqueada |
 | Banco | PostgreSQL foi testado localmente com dados sintéticos; migrações e paridade ainda não foram executadas no Supabase pessoal | Issue #5 aberta |
