@@ -157,3 +157,9 @@ Closes #8. O logger central aceita somente metadados operacionais permitidos. To
 Operações de banco, backup, restauração, importação e limpeza usam eventos JSON sem nomes de arquivos ou registros. Testes sintéticos injetam e-mail, token e caminho pessoal em campos proibidos e confirmam que eles não chegam ao evento.
 
 OpenTelemetry fica selecionado como opção futura de destino único. A ativação depende de uma nova Issue que defina operador, região, acesso, retenção, exclusão, amostragem e orçamento; adicionar Sentry, Datadog e New Relic ao mesmo tempo não é proporcional ao uso pessoal atual. O procedimento de diagnóstico e a decisão estão em `docs/OBSERVABILIDADE.md`.
+
+## Pacote para revisão jurídica — branch codex/legal-review-pack
+
+Refs #10. O inventário cobre conta, trabalho, identificadores de laudos, finanças, pessoas/dívidas, investimentos, auditoria, arquivos, backups e logs, além dos fluxos por Supabase, Vercel, GitHub e e-mail de autenticação. Os pontos que exigem decisão humana estão destacados: controlador, contexto profissional, dados sensíveis, bases legais, retenção, direitos, contratos, transferências, incidentes e aceite.
+
+As minutas de Termos e Privacidade ficam marcadas como rascunho não aprovado e usam campos explícitos para as decisões do jurídico. Nenhum texto é exibido no produto e nenhum aceite fictício foi criado. A Issue #10 permanece aberta até receber versão, data, nome/qualificação do revisor e registro da aprovação.
