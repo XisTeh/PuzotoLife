@@ -2,6 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "express",
   "buildCommand": "npm run build",
+  "rewrites": [
+    { "source": "/assets/index-CF3yt2xF.js", "destination": "/assets/index.js" },
+    { "source": "/assets/index-ykoC362m.js", "destination": "/assets/index.js" },
+    { "source": "/assets/index-Gbg9SHyi.js", "destination": "/assets/index.js" },
+    { "source": "/assets/index-o8iZysgL.js", "destination": "/assets/index.js" },
+    { "source": "/assets/index-CI3LXTob.css", "destination": "/assets/index.css" },
+    { "source": "/assets/index-CJ8iLQm5.css", "destination": "/assets/index.css" }
+  ],
   "functions": {
     "app.js": {
       "maxDuration": 30,

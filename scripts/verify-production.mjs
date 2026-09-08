@@ -47,6 +47,7 @@ const checks = {
   workerFresh: worker.status === 200 && workerRequiresRevalidation,
   deploymentAssetsNotCached: !workerBody.includes("cache.put('/',") && !workerBody.includes("['script', 'style'") && workerBody.includes("caches.match('/offline.html')"),
   offlineFallback: offline.status === 200 && offlineBody.includes('Você está sem conexão.'),
+  stableEntryAssets: rootHtml.includes('/assets/index.js') && rootHtml.includes('/assets/index.css'),
 };
 if (Object.values(checks).some((value) => !value)) throw new Error(`Validação pública falhou: ${Object.entries(checks).filter(([, value]) => !value).map(([name]) => name).join(', ')}`);
 console.log(JSON.stringify({ origin, validated: true, checks }));
