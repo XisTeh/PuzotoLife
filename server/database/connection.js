@@ -36,7 +36,11 @@ export function postgresOptions(env = process.env) {
   };
   return {
     connectionString: url.toString(), max: 5, connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000,
-    ssl: { rejectUnauthorized: true, ...(env.SUPABASE_DB_CA_FILE ? { ca: fs.readFileSync(env.SUPABASE_DB_CA_FILE, 'utf8') } : {}) },
+    ssl: {
+      rejectUnauthorized: true,
+      ...(env.SUPABASE_DB_CA_CERT ? { ca: env.SUPABASE_DB_CA_CERT.replaceAll('\\n', '\n') }
+        : env.SUPABASE_DB_CA_FILE ? { ca: fs.readFileSync(env.SUPABASE_DB_CA_FILE, 'utf8') } : {}),
+    },
     types: { getTypeParser: (oid, format) => [20, 1700].includes(oid) ? number : pg.types.getTypeParser(oid, format) },
   };
 }
