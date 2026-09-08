@@ -243,3 +243,11 @@ O cliente HTTP aplica um limite único a todas as rotas: 15 segundos para leitur
 O splash nativo do Android continua sendo gerado pelo sistema operacional a partir do manifesto. O `background_color` agora coincide exatamente com a borda opaca do ícone maskable, removendo o bloco quadrado ao redor da marca durante a abertura. O cache estático sobe para `puzoto-static-v4`. No Dr. Ranon / RX, formulário e tabela usam somente “Registro”.
 
 Validação local: lint aprovado; 70 testes Node aprovados, incluindo timeout real com `AbortController`; build aprovado; E2E cobre falha de API sem spinner preso, alinhamento dos três filtros móveis, rótulo de Registro e correspondência pixel a pixel entre splash e ícone.
+
+## Correções móveis finais — branch codex/mobile-polish-followup
+
+Closes #57. O manifesto deixa de oferecer ao Android os ícones com uma superfície quadrada gravada no próprio PNG e passa a declarar versões transparentes de 192 e 512 px, mantendo a marca na área central segura. O fundo do splash volta ao grafite mais escuro do aplicativo e o cache estático sobe para `puzoto-static-v5`, removendo a versão anterior. A instalação existente precisa ser removida e instalada novamente, pois o WebAPK conserva os metadados nativos do manifesto usado na instalação.
+
+No Dr. Ranon / RX, a célula de quantidade ganha alinhamento móvel explícito, com rótulo à esquerda e valor à direita. Em Lançamentos, o botão “Gerar Mensagem” recebe distância vertical consistente do título, e a grade de empresas deixa de expandir o último cartão quando as quatro empresas formam duas linhas completas; se futuramente houver uma quantidade ímpar de empresas, somente o último cartão ocupará a largura total.
+
+Validação local: `npm run quality` aprovado com 70 testes Node, arquitetura, lint, build e orçamento de 219 KB gzip; 37 jornadas Playwright aprovadas em desktop e celular, com 5 saltos previstos por projeto; `npm audit --omit=dev --audit-level=high` sem vulnerabilidades. A cobertura confere dimensões e transparência real dos ícones, atualização e limpeza do cache, alinhamento da quantidade, distância do botão e ocupação das linhas da grade em 390 × 844.

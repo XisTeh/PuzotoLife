@@ -273,13 +273,11 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   expect(manifestResponse.ok()).toBe(true);
   const manifest = await manifestResponse.json();
   expect(manifest.display).toBe('standalone');
-  expect(manifest.background_color).toBe('#2d3852');
-  expect(manifest.icons.some((icon) => icon.purpose.includes('maskable'))).toBe(true);
+  expect(manifest.background_color).toBe('#090b12');
+  expect(manifest.icons.every((icon) => icon.purpose === 'any')).toBe(true);
   expect(manifest.icons.map((icon) => icon.src)).toEqual(expect.arrayContaining([
-    '/images/puzoto-180.png',
-    '/images/puzoto-192.png',
-    '/images/puzoto-512.png',
-    '/images/puzoto-maskable-512.png',
+    '/images/puzoto-transparent-192.png',
+    '/images/puzoto-transparent-512.png',
   ]));
   for (const icon of manifest.icons) {
     const iconResponse = await page.request.get(icon.src);
@@ -293,7 +291,7 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
     image.src = icon.src;
   }))), manifest.icons);
   expect(iconDimensions).toEqual(manifest.icons.map((icon) => ({ src: icon.src, size: icon.sizes })));
-  const maskableEdge = await page.evaluate(async (src) => {
+  const transparentEdge = await page.evaluate(async (src) => {
     const image = new Image();
     image.src = src;
     await image.decode();
@@ -303,8 +301,8 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
     const context = canvas.getContext('2d');
     context.drawImage(image, 0, 0);
     return [...context.getImageData(0, 0, 1, 1).data];
-  }, '/images/puzoto-maskable-512.png');
-  expect(maskableEdge).toEqual([45, 56, 82, 255]);
+  }, '/images/puzoto-transparent-512.png');
+  expect(transparentEdge).toEqual([0, 0, 0, 0]);
   const workerResponse = await page.request.get('/sw.js');
   expect(workerResponse.ok()).toBe(true);
   const worker = await workerResponse.text();
@@ -439,6 +437,54 @@ test('ações, filtros, resumos e competências mantêm geometria móvel', async
   const reportRow = page.locator('.summary-cards-table tbody tr').first();
   await expect(reportRow).toBeVisible();
   await expect(reportRow).toHaveCSS('grid-template-columns', /.+ .+/);
+});
+
+test('quantidade, mensagem e cartões dinâmicos mantêm composição móvel', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/ranon/pendentes', (route) => route.fulfill({ json: { ok: true, data: [{
+    id: 1,
+    data: '2026-09-03',
+    horario: '14:23',
+    registro_paciente: '112352',
+    quantidade: 1,
+    valor_unitario: 2,
+    total: 2,
+    observacao: 'D.O',
+  }] } }));
+  await page.goto('/');
+
+  await page.evaluate(() => window.navigateTo('lancamentos'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const grid = page.locator('#metrics-grid-container');
+  const cardRows = await grid.locator('.metric-card-empresa').evaluateAll((cards) => {
+    const width = cards[0]?.parentElement?.getBoundingClientRect().width ?? 0;
+    return cards.map((card) => {
+      const rect = card.getBoundingClientRect();
+      return { top: Math.round(rect.top), width: rect.width, containerWidth: width };
+    });
+  });
+  expect(cardRows).toHaveLength(4);
+  for (const card of cardRows) {
+    expect(card.width).toBeGreaterThan(card.containerWidth * 0.4);
+    expect(card.width).toBeLessThan(card.containerWidth * 0.6);
+  }
+  const messageSpacing = await page.locator('.whatsapp-card__header').evaluate((header) => {
+    const title = header.querySelector('h3').getBoundingClientRect();
+    const button = header.querySelector('button').getBoundingClientRect();
+    return button.top - title.bottom;
+  });
+  expect(messageSpacing).toBeGreaterThanOrEqual(14);
+
+  await page.evaluate(() => window.navigateTo('dr_ranon'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const quantity = page.locator('#tabela-ranon-body td[data-label="Qtd"]').first();
+  await expect(quantity).toBeVisible();
+  const alignment = await quantity.evaluate((cell) => ({
+    value: getComputedStyle(cell).textAlign,
+    label: getComputedStyle(cell, '::before').textAlign,
+  }));
+  expect(alignment).toEqual({ value: 'right', label: 'left' });
 });
 
 test('Cofre ignora uma resposta concluída depois da troca de página', async ({ page }, info) => {

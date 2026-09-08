@@ -26,7 +26,7 @@ function workerFixture({ fetchImpl = async () => ({ ok: true, clone: () => ({}) 
     },
     caches: {
       open: async () => cache,
-      keys: async () => ['puzoto-shell-v1', 'puzoto-static-v2', 'puzoto-static-v3', 'puzoto-static-v4', 'unrelated-cache'],
+      keys: async () => ['puzoto-shell-v1', 'puzoto-static-v2', 'puzoto-static-v3', 'puzoto-static-v4', 'puzoto-static-v5', 'unrelated-cache'],
       delete: async (key) => { operations.deleted.push(key); return true; },
       match: async (request) => {
         const key = typeof request === 'string' ? request : request.url;
@@ -63,7 +63,7 @@ test('service worker guarda somente recursos públicos estáveis e remove o cach
   const activate = lifecycleEvent();
   listeners.activate(activate.event);
   await activate.done();
-  assert.deepEqual(operations.deleted, ['puzoto-shell-v1', 'puzoto-static-v2', 'puzoto-static-v3']);
+  assert.deepEqual(operations.deleted, ['puzoto-shell-v1', 'puzoto-static-v2', 'puzoto-static-v3', 'puzoto-static-v4']);
   assert.equal(operations.claimed, true);
 });
 
