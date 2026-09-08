@@ -41,6 +41,8 @@ Aplicar Design Motion Principles de Kyle Zantos: https://github.com/kylezantos/d
 
 Lazy loading por página, skeletons, estados vazios/erro/progresso, proteção contra clique duplo, feedback de sucesso/falha e transições consistentes. Revisar como designer de produto sênior em desktop e celular, corrigindo cortes, estouros, saltos, baixa legibilidade e controles sem ação. Não reconstruir componentes existentes desnecessariamente.
 
+O service worker não pode guardar HTML de navegação nem bundles JavaScript/CSS com hash: um deploy novo remove esses caminhos e transforma o cache antigo em tela vazia. Cachear somente recursos públicos estáveis e a página offline; nunca `/api`, sessão ou dados. Servir `/sw.js` com `Cache-Control: no-store` e registrar com `updateViaCache: 'none'`.
+
 No celular, validar todas as páginas em 320, 360 e 390 px. A aplicação deve rolar somente no eixo vertical: não aceitar overflow horizontal da página, grades comprimidas, títulos cortados nem controles fora da margem. Tabelas de domínio usam o adaptador compartilhado `ResponsiveTables` para virar cartões rotulados; não recriar essa transformação por página. Respostas assíncronas devem confirmar que o elemento raiz da página ainda está conectado antes de atualizar o DOM.
 
 ## Situação da modernização

@@ -179,3 +179,9 @@ O componente compartilhado `ResponsiveTables` deriva os rótulos dos cabeçalhos
 Contas a Pagar associa categorias, resumo, gráfico, vencimentos, tabela e ações ao elemento raiz que iniciou a operação. Se a página for removida antes da resposta, a conclusão é ignorada; botões e mensagens também verificam o ciclo atual antes de tocar no DOM. O teste reproduz a resposta atrasada durante uma troca de tela e confirma ausência do erro `Cannot set properties of null`.
 
 Validação local: `npm run quality` aprovado com 61 testes Node, arquitetura, Biome, build e orçamento de 217 KB gzip; `npm audit --omit=dev` sem vulnerabilidades; 27 jornadas Playwright aprovadas em desktop e celular. A varredura percorre as 20 páginas em 320, 360 e 390 px, verificando largura do documento, largura rolável do conteúdo, elementos fora da margem, colunas comprimidas e cabeçalho deslocado. Há cobertura específica para transformação de tabelas e navegação rápida em Contas a Pagar. A revisão visual foi feita em 390 × 844 com dados sintéticos; nenhuma imagem com dados pessoais foi gerada.
+
+## Recuperação do cache PWA — branch codex/pwa-cache-recovery
+
+Closes #38. Um celular exibiu apenas o fundo escuro porque o cache `puzoto-shell-v1` devolveu HTML de uma implantação anterior. Esse HTML apontava para os bundles `index-CF3yt2xF.js` e `index-CI3LXTob.css`, ambos ausentes na produção atual e confirmados com HTTP 404.
+
+O service worker deixa de armazenar HTML e bundles versionados. Navegação busca a implantação ativa com `cache: no-store` e, sem rede, abre uma página offline estável que não contém dados. O novo cache mantém somente manifesto e imagens públicas; remove caches PWA legados na ativação e continua ignorando integralmente `/api`. O navegador busca `/sw.js` sem cache e solicita atualização, enquanto o servidor entrega o worker com `Cache-Control: no-store`.

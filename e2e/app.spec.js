@@ -237,6 +237,13 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   expect(workerResponse.ok()).toBe(true);
   const worker = await workerResponse.text();
   expect(worker).toContain("url.pathname.startsWith('/api/')");
+  expect(worker).toContain("cache: 'no-store'");
+  expect(worker).toContain("caches.match('/offline.html')");
+  expect(worker).not.toContain("cache.put('/',");
+  expect(worker).not.toContain("['script', 'style'");
+  const offlineResponse = await page.request.get('/offline.html');
+  expect(offlineResponse.ok()).toBe(true);
+  expect(await offlineResponse.text()).toContain('Você está sem conexão.');
 });
 
 test('Cofre ignora uma resposta concluída depois da troca de página', async ({ page }, info) => {

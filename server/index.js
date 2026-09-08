@@ -37,6 +37,10 @@ export function createApp(env = process.env, authFactory = createAuth, applicati
     if (req.path.split('/').some(part => part.startsWith('.')) || ['Info', 'data', 'server', 'Casaê'].includes(req.path.split('/')[1])) return res.sendStatus(404);
     next();
   });
+  app.get('/sw.js', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.sendFile(path.join(root, 'dist', 'sw.js'), (error) => { if (error) next(error); });
+  });
   app.use(express.static(path.join(root, 'dist'), { dotfiles: 'deny', index: 'index.html' }));
   app.use((_req, res) => res.status(404).json({ ok: false, error: 'Página não encontrada.' }));
   app.use((err, req, res, _next) => {
