@@ -5,6 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getDatabase, getDatabasePath, getLocalDatabase } from '../database/connection.js';
+import { logEvent } from '../observability/logger.js';
 import { garantirConfiguracoesPadrao } from './configuracoes.js';
 
 function gerarNomeBackupAuto() {
@@ -30,7 +31,7 @@ async function criarBackupAntesLimpeza() {
   const destino = path.join(backupDir, nomeArquivo);
 
   await getDatabase().backup(destino);
-  console.log(`[LIMPEZA] Backup de segurança criado: ${nomeArquivo}`);
+  logEvent('info', 'cleanup_backup_created');
   return nomeArquivo;
 }
 
@@ -106,7 +107,7 @@ async function limparDadosOperacionais(db) {
         tabelasLimpas++;
       }
     } catch (err) {
-      console.warn(`[LIMPEZA] Erro ao limpar tabela ${tabela}: ${err.message}`);
+      logEvent('warn', 'cleanup_table_error', { errorType: err?.constructor?.name || 'Error', errorCode: err?.code });
     }
   }
 
@@ -139,7 +140,7 @@ export async function executarLimpezaDadosTeste(confirmacao) {
   try {
     (await executarTransacao());
   } catch (err) {
-    console.error('[LIMPEZA] Erro na transação de limpeza:', err.message);
+    logEvent('error', 'cleanup_error', { errorType: err?.constructor?.name || 'Error', errorCode: err?.code });
     throw new Error(`Falha ao limpar dados: ${err.message}. A operação foi revertida.`);
   }
 

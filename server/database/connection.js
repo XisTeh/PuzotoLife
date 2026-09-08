@@ -3,6 +3,7 @@ import pg from 'pg';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { logEvent } from '../observability/logger.js';
 import { createAdapter } from './adapter.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -52,7 +53,10 @@ export function getDatabase() {
     adapter = createAdapter({ dialect, acquire: async () => getLocalDatabase(), close: async () => { local?.close(); local = null; } });
   } else if (dialect === 'postgres') {
     const pool = new pg.Pool(postgresOptions());
-    pool.on('error', () => console.error(JSON.stringify({ event: 'database_pool_error' })));
+    pool.on('error', error => logEvent('error', 'database_pool_error', {
+      errorType: error?.constructor?.name || 'Error',
+      errorCode: error?.code,
+    }));
     adapter = createAdapter({ dialect, acquire: () => pool.connect(), close: () => pool.end() });
   } else throw new Error('PUZOTO_DATABASE deve ser sqlite ou postgres.');
   return adapter;

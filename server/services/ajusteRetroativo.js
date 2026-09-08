@@ -15,6 +15,7 @@ import { atomic, snapshot } from '../database/connection.js';
  */
 
 import { getDatabase } from '../database/connection.js';
+import { logEvent } from '../observability/logger.js';
 import { registrarAuditoria } from './auditoria.js';
 
 export async function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, valor_unitario, observacao = null, empresa = 'Padrão') {
@@ -93,7 +94,7 @@ export async function ajustarPadraoRetroativo(fechamento_mensal_id, quantidade, 
 
       snapshotJsonStr = JSON.stringify(snap);
     } catch (e) {
-      console.error("Erro ao atualizar snapshot_json no ajuste", e);
+      logEvent('error', 'retroactive_snapshot_error', { errorType: e?.constructor?.name || 'Error', errorCode: e?.code });
     }
 
     (await db.prepare(`

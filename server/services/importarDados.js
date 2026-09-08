@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getDatabase, getDatabasePath, getLocalDatabase } from '../database/connection.js';
+import { logEvent } from '../observability/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -162,7 +163,7 @@ export async function criarBackupAntesImportacao() {
   const destino = path.join(BACKUP_DIR, nomeArquivo);
 
   await getDatabase().backup(destino);
-  console.log(`[IMPORT] Backup de seguranca criado: ${nomeArquivo}`);
+  logEvent('info', 'import_backup_created');
 
   const stats = fs.statSync(destino);
   return {
@@ -240,7 +241,7 @@ async function inserirRegistrosTabela(db, nomeTabela, registros, opcoes = {}) {
   // No modo substituir, apagar dados existentes da tabela
   if (modo === 'substituir') {
     (await db.prepare(`DELETE FROM ${nomeTabela}`).run());
-    console.log(`[IMPORT] Dados da tabela ${nomeTabela} apagados (modo substituir).`);
+    logEvent('info', 'import_table_cleared');
   }
 
   let importados = 0;
@@ -318,7 +319,7 @@ export async function importarJSON(conteudo, opcoes = {}) {
 
   // Criar backup automatico antes da importacao
   const backupCriado = await criarBackupAntesImportacao();
-  console.log(`[IMPORT] Backup de seguranca criado: ${backupCriado.nomeArquivo}`);
+  logEvent('info', 'import_backup_created');
 
   const db = getDatabase();
 
@@ -364,14 +365,14 @@ export async function importarJSON(conteudo, opcoes = {}) {
         status: res.importados > 0 ? 'importada' : (res.ignorados > 0 ? 'ignorada_duplicados' : 'vazia')
       });
 
-      console.log(`[IMPORT] ${chave}: ${res.importados} importados, ${res.ignorados} ignorados.`);
+      logEvent('info', 'import_table_completed', { count: res.importados, skipped: res.ignorados });
     }
   });
 
   try {
     (await transacao());
   } catch (err) {
-    console.error('[IMPORT] Erro durante importacao (rollback automatico):', err.message);
+    logEvent('error', 'import_rollback', { errorType: err?.constructor?.name || 'Error', errorCode: err?.code });
     throw new Error(`Importacao falhou e foi revertida: ${err.message}`);
   }
 

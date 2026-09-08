@@ -149,3 +149,11 @@ Refs #9. O comando `npm run verify:production` verifica a origem HTTPS sem crede
 O primeiro ensaio público do commit `1f4f4e6` passou em todos esses pontos. A etapa manual que resta exige a senha do proprietário: entrar no computador e no celular, criar um registro temporário identificável, confirmar a leitura no outro dispositivo, removê-lo e gerar uma exportação autenticada.
 
 Rollback de código: promover na Vercel o último deployment de produção estável e registrar o commit promovido. Rollback de dados: interromper escritas, exportar o estado remoto e reconciliar somente os registros posteriores ao snapshot validado; o SQLite e o `Info/` servem como referência privada, nunca devem ser restaurados diretamente sobre o PostgreSQL.
+
+## Observabilidade sanitizada — branch codex/observability-production
+
+Closes #8. O logger central aceita somente metadados operacionais permitidos. Todas as respostas recebem `X-Request-Id`, inclusive bloqueios antecipados; o evento HTTP registra método, padrão da rota, status e duração. Erros registram classe e código técnico, sem mensagem bruta, URL, query, corpo, cookie, token, usuário, nome de arquivo ou valor financeiro.
+
+Operações de banco, backup, restauração, importação e limpeza usam eventos JSON sem nomes de arquivos ou registros. Testes sintéticos injetam e-mail, token e caminho pessoal em campos proibidos e confirmam que eles não chegam ao evento.
+
+OpenTelemetry fica selecionado como opção futura de destino único. A ativação depende de uma nova Issue que defina operador, região, acesso, retenção, exclusão, amostragem e orçamento; adicionar Sentry, Datadog e New Relic ao mesmo tempo não é proporcional ao uso pessoal atual. O procedimento de diagnóstico e a decisão estão em `docs/OBSERVABILIDADE.md`.

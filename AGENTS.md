@@ -26,6 +26,7 @@ O backup local `Info/`, criado antes da modernização, contém snapshot SQLite 
 - Aplicar rate limit, validação, controle de origem, headers de segurança e revisão de XSS/CSRF. A CSP nega scripts em atributos. A política central DOMPurify sanitiza `innerHTML`, `outerHTML` e `insertAdjacentHTML`; handlers legados são colocados em atributos de dados, compilados somente pela lista permitida e removidos do DOM. Nunca inserir HTML antes de `installSafeHtmlPolicy()`, desativar essa política ou criar outro sink sem ampliar o contrato e os testes de ataque.
 - Evitar overengineering, bloqueio do event loop, consultas N+1 e abstrações prematuras. Reusar componentes existentes, componentizar por responsabilidade e aplicar DRY com critério.
 - Observabilidade proporcional: logs estruturados com ID de correlação e duração, sem dados pessoais; Sentry/OpenTelemetry quando houver ambiente e retenção definidos. Não acumular Sentry, Datadog e New Relic sem necessidade.
+- Logs de runtime passam por `server/observability/logger.js`, que aceita somente metadados operacionais permitidos. Não registrar mensagens brutas de exceção, URL concreta, query, corpo, cookie, token, nomes, arquivos ou valores; não criar writers paralelos com `console.error`/`console.warn`.
 
 ## Qualidade
 
