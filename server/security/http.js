@@ -37,6 +37,7 @@ export function installHttpSecurity(app, env = process.env) {
     if (req.path.startsWith('/api')) res.setHeader('Cache-Control', 'no-store');
     next();
   });
-  app.use('/api', rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false,
+  const apiLimit = env.NODE_ENV === 'test' ? 2_000 : 180;
+  app.use('/api', rateLimit({ windowMs: 60_000, limit: apiLimit, standardHeaders: 'draft-8', legacyHeaders: false,
     message: { ok: false, error: 'Muitas solicitações. Aguarde um minuto.' } }));
 }

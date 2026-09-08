@@ -6,11 +6,13 @@ import { startSession } from './components/Session.js';
 import { installFeedback } from './components/Feedback.js';
 import { installLegacyHandlers } from './security/legacyHandlers.js';
 import { installSafeHtmlPolicy } from './security/safeDom.js';
+import { installResponsiveTables } from './components/ResponsiveTables.js';
 import './icons.js';
 
 installSafeHtmlPolicy();
 installFeedback();
 installLegacyHandlers();
+installResponsiveTables(document.getElementById('pageContent'));
 startSession(async (session) => {
   renderSidebar();
   renderHeader(session);

@@ -1,5 +1,6 @@
 import { pageSkeleton } from '../components/Feedback.js';
 import { bindLegacyHandlers } from '../security/legacyHandlers.js';
+import { enhanceResponsiveTables } from '../components/ResponsiveTables.js';
 let navigation = 0;
 
 const pageModuleLoaders = {
@@ -69,6 +70,7 @@ import { updateHeaderTitle } from '../components/Header.js';
 function setPageContent(container, content) {
   container.innerHTML = content;
   bindLegacyHandlers(container);
+  enhanceResponsiveTables(container);
   window.lucide?.createIcons();
 }
 
@@ -261,8 +263,11 @@ export async function renderPage(pageId) {
   }
     if (ticket === navigation) {
       bindLegacyHandlers(container);
+      enhanceResponsiveTables(container);
       window.lucide?.createIcons();
-      container.scrollTop = 0;
+      container.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.getElementById('mainContent')?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       if (!document.getElementById('sidebar').classList.contains('is-open')) container.focus({ preventScroll: true });
     }
   } catch {
