@@ -55,7 +55,7 @@ export async function initGastos() {
   var dataHoje = document.getElementById('form-gasto-data');
   if (dataHoje) dataHoje.value = dataAtualISO();
 
-  await Promise.all([carregarCategorias(), atualizarPainel()]);
+  await carregarPainelInicial();
 
   // Listeners de filtros
   var fm = document.getElementById('filtro-mes');
@@ -68,43 +68,37 @@ export async function initGastos() {
   if (fp) fp.addEventListener('change', atualizarPainel);
 }
 
-async function carregarCategorias() {
+async function carregarPainelInicial() {
+  const queryParams = new URLSearchParams({
+    mes: document.getElementById('filtro-mes').value,
+    categoria: document.getElementById('filtro-categoria').value,
+    status: document.getElementById('filtro-status').value,
+    forma_pagamento: document.getElementById('filtro-pagamento').value,
+  });
   try {
-    var res = await apiFetch(API_BASE + '/categorias?tipo=gasto');
-    var json = await res.json();
-    if (json.ok) {
-      categorias = json.data;
-
-      var selectFiltro = document.getElementById('filtro-categoria');
-      if (selectFiltro) {
-        var opts = '<option value="todas">Todas as categorias</option>';
-        for (var i = 0; i < categorias.length; i++) {
-          opts += '<option value="' + categorias[i].id + '">' + categorias[i].nome + '</option>';
-        }
-        selectFiltro.innerHTML = opts;
-      }
-
-      var selectForm = document.getElementById('form-gasto-categoria');
-      if (selectForm) {
-        var optsF = '<option value="">Selecione...</option>';
-        for (var j = 0; j < categorias.length; j++) {
-          optsF += '<option value="' + categorias[j].id + '">' + categorias[j].nome + '</option>';
-        }
-        selectForm.innerHTML = optsF;
-      }
-
-      var selectFormEdit = document.getElementById('modal-edit-gasto-categoria');
-      if (selectFormEdit) {
-        var optsE = '<option value="">Selecione...</option>';
-        for (var j = 0; j < categorias.length; j++) {
-          optsE += '<option value="' + categorias[j].id + '">' + categorias[j].nome + '</option>';
-        }
-        selectFormEdit.innerHTML = optsE;
-      }
-    }
+    const resposta = await apiFetch(`${API_BASE}/gastos-painel?${queryParams}`);
+    const json = await resposta.json();
+    if (!json.ok) throw new Error(json.error || 'Erro ao carregar dados');
+    aplicarCategorias(json.data.categorias);
+    gastosAtuais = json.data.gastos;
+    resumoAtual = json.data.resumo;
+    renderCards();
+    renderTabela();
+    renderGrafico();
   } catch (err) {
-    showToast('Erro ao carregar categorias: ' + err.message, 'error');
+    showToast('Erro ao atualizar dados: ' + err.message, 'error');
   }
+}
+
+function aplicarCategorias(novasCategorias) {
+  categorias = novasCategorias;
+  const opcoes = categorias.map(categoria => `<option value="${categoria.id}">${escapeHtml(categoria.nome)}</option>`).join('');
+  const selectFiltro = document.getElementById('filtro-categoria');
+  if (selectFiltro) selectFiltro.innerHTML = `<option value="todas">Todas as categorias</option>${opcoes}`;
+  const selectForm = document.getElementById('form-gasto-categoria');
+  if (selectForm) selectForm.innerHTML = `<option value="">Selecione...</option>${opcoes}`;
+  const selectFormEdit = document.getElementById('modal-edit-gasto-categoria');
+  if (selectFormEdit) selectFormEdit.innerHTML = `<option value="">Selecione...</option>${opcoes}`;
 }
 
 async function atualizarPainel() {
@@ -116,15 +110,11 @@ async function atualizarPainel() {
   var queryParams = new URLSearchParams({ mes: mes, categoria: categoria, status: status, forma_pagamento: pagamento });
 
   try {
-    var respostas = await Promise.all([
-      apiFetch(API_BASE + '/gastos?' + queryParams),
-      apiFetch(API_BASE + '/gastos/resumo?' + queryParams)
-    ]);
-    var dados = await Promise.all(respostas.map(function(resposta) { return resposta.json(); }));
-    var jsonGastos = dados[0];
-    var jsonResumo = dados[1];
-    if (jsonGastos.ok) gastosAtuais = jsonGastos.data;
-    if (jsonResumo.ok) resumoAtual = jsonResumo.data;
+    const resposta = await apiFetch(`${API_BASE}/gastos-painel?${queryParams}`);
+    const json = await resposta.json();
+    if (!json.ok) throw new Error(json.error || 'Erro ao carregar dados');
+    gastosAtuais = json.data.gastos;
+    resumoAtual = json.data.resumo;
 
     renderCards();
     renderTabela();

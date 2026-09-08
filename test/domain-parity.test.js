@@ -15,6 +15,10 @@ const monthly = await import('../server/services/fechamentoMensal.js');
 const work = await import('../server/services/lancamentosTrabalho.js');
 const debt = await import('../server/services/pessoasDividas.js');
 const savings = await import('../server/services/investimentos.js');
+const finances = await import('../server/services/financas.js');
+const accounts = await import('../server/services/contasPagar.js');
+const income = await import('../server/services/receitas.js');
+const panels = await import('../server/services/pageData.js');
 const { salvarPlanilhaRanon } = await import('../server/services/salvarPlanilhaRanon.js');
 const { obterRecebimentosPendentes } = await import('../server/services/pagadores.js');
 const { exportarJSON } = await import('../server/services/backup.js');
@@ -83,6 +87,20 @@ for (const engine of ['sqlite', 'postgres']) {
     const group = await db.prepare('SELECT id FROM dividas_parceladas_grupos ORDER BY id LIMIT 1').get();
     const debtPayments = await Promise.allSettled([debt.pagarProximaParcelaDivida(group.id), debt.pagarProximaParcelaDivida(group.id)]);
     assert.equal(debtPayments.filter(result => result.status === 'fulfilled').length, 1);
+
+    const filters = { mes: month, categoria: 'todas', status: 'todos' };
+    const expensePanel = await panels.obterPainelGastos(filters);
+    assert.deepEqual(expensePanel.gastos, await finances.listarGastos(filters));
+    assert.deepEqual(expensePanel.resumo, await finances.calcularResumoGastos(filters));
+    const accountsPanel = await panels.obterPainelContasPagar(filters);
+    assert.deepEqual(accountsPanel.contas, await accounts.listarContasPagar(filters));
+    assert.deepEqual(accountsPanel.resumo, await accounts.calcularResumoContasPagar(month));
+    const incomePanel = await panels.obterPainelReceitas({ ...filters, origem: 'todas' });
+    assert.deepEqual(incomePanel.receitas, await income.listarReceitas(filters));
+    assert.deepEqual(incomePanel.resumo, await income.calcularResumoReceitas(month));
+    const savingsPanel = await panels.obterPainelInvestimentos(true);
+    assert.deepEqual(savingsPanel.investimentos, await savings.listarInvestimentos(true));
+    assert.deepEqual(savingsPanel.movimentos, await savings.listarMovimentosInvestimento(savingsPanel.investimentos[0].id));
 
     const exported = await exportarJSON();
     assert.equal(exported._meta.totalTabelas, 23);

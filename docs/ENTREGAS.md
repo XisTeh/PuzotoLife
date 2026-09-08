@@ -199,3 +199,11 @@ Closes #42. A medição autenticada inicial em produção registrou 5,2 s para o
 A validação normal passa a chamar diretamente `auth.getUser(accessToken)`, que continua consultando o Supabase e sustentando autorização e revogação remotas. `setSession` fica restrito às operações que precisam anexar a sessão e ao refresh de JWT comprovadamente expirado. Os agregados do Dashboard são executados em quatro comandos dentro do mesmo snapshot: totais, parcelas ativas, alertas e gráficos. Gastos, Contas a Pagar e Receitas iniciam juntas as leituras que não dependem entre si.
 
 Antes do deploy, a implementação atual foi comparada à anterior em quatro competências de um SQLite temporário: totais, gráficos e alertas permaneceram idênticos. Testes locais usam somente SQLite temporário e PGlite; a melhora final precisa ser medida novamente no runtime publicado depois dos checks e do merge.
+
+## Cascatas de carregamento móvel — branch codex/mobile-data-waterfall
+
+Refs #42. A medição autenticada depois da primeira otimização mostrou que Gastos ainda podia levar cerca de 6 s no celular. A interface também iniciava o download dos módulos das 20 páginas assim que o Dashboard abria, disputando rede e processamento com a página que o usuário realmente escolhia. Gastos, Contas a Pagar, Receitas e Cofre ainda faziam de duas a quatro requisições privadas para montar uma única tela; cada uma repetia validação remota da sessão e abertura do runtime serverless.
+
+O aquecimento global foi removido. Os módulos continuam carregados sob demanda e o foco ou ponteiro na navegação ainda antecipa somente a página pretendida. Cada uma das quatro telas passa a receber um payload consistente por uma rota de painel: categorias e opções necessárias, registros, resumo e movimentos são obtidos no mesmo `snapshot` ou transação. Os serviços de domínio permanecem como fonte das regras, sem duplicação de consultas no frontend.
+
+Os testes de paridade comparam cada painel aos serviços originais em SQLite temporário e PostgreSQL de teste. O Playwright exige apenas uma requisição autenticada para a carga de Gastos e mantém a cobertura de respostas obsoletas em Contas e Cofre. A medição final deve usar uma sessão autenticada persistente no deploy exato deste PR e registrar o resultado antes de encerrar novamente a Issue #42.

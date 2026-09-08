@@ -69,30 +69,31 @@ export async function initContasPagar() {
   const monthFilter = getPageElement(root, 'cp-filtro-mes');
   if (!monthFilter) return;
   monthFilter.value = mesAtual;
-  await Promise.all([loadCategorias(root), loadDados(root)]);
-  if (!isActiveRoot(root)) return;
+  await loadPainelInicial(root);
 }
 
-async function loadCategorias(root = getPageRoot()) {
-  try {
-    const cats = await fetchAPI('/categorias');
-    if (!isActiveRoot(root)) return;
-    categorias = cats.filter(c => c.tipo === 'gasto' || c.tipo === 'ambos');
-    
-    // Select do Filtro
-    const selFiltro = getPageElement(root, 'cp-filtro-categoria');
-    if (selFiltro) {
-      selFiltro.innerHTML = '<option value="todas">Todas as Categorias</option>' + 
-        categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
-    }
+function aplicarCategorias(root, todasCategorias) {
+  categorias = todasCategorias.filter(c => c.tipo === 'gasto' || c.tipo === 'ambos');
+  const opcoes = categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+  const selFiltro = getPageElement(root, 'cp-filtro-categoria');
+  if (selFiltro) selFiltro.innerHTML = `<option value="todas">Todas as Categorias</option>${opcoes}`;
+  const selForm = getPageElement(root, 'form-cp-categoria');
+  if (selForm) selForm.innerHTML = opcoes;
+}
 
-    // Select do Formulário
-    const selForm = getPageElement(root, 'form-cp-categoria');
-    if (selForm) {
-      selForm.innerHTML = categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
-    }
+async function loadPainelInicial(root) {
+  try {
+    const painel = await fetchAPI(`/contas-pagar-painel?mes=${mesAtual}&categoria=${filtroCategoria}&status=${filtroStatus}`);
+    if (!isActiveRoot(root)) return;
+    aplicarCategorias(root, painel.categorias);
+    contas = painel.contas;
+    resumo = painel.resumo;
+    renderMetrics(root);
+    renderChart(root);
+    renderProximosVencimentos(root);
+    renderTabela(root);
   } catch (err) {
-    if (isActiveRoot(root)) showToast('Erro ao carregar categorias: ' + err.message, 'error');
+    if (isActiveRoot(root)) showToast('Erro ao carregar contas: ' + err.message, 'error');
   }
 }
 
@@ -107,13 +108,10 @@ window.filtrarContasPagar = async function() {
 
 async function loadDados(root = getPageRoot()) {
   try {
-    const p1 = fetchAPI(`/contas-pagar?mes=${mesAtual}&categoria=${filtroCategoria}&status=${filtroStatus}`);
-    const p2 = fetchAPI(`/contas-pagar/resumo?mes=${mesAtual}`);
-    
-    const [cData, rData] = await Promise.all([p1, p2]);
+    const painel = await fetchAPI(`/contas-pagar-painel?mes=${mesAtual}&categoria=${filtroCategoria}&status=${filtroStatus}`);
     if (!isActiveRoot(root)) return;
-    contas = cData;
-    resumo = rData;
+    contas = painel.contas;
+    resumo = painel.resumo;
 
     renderMetrics(root);
     renderChart(root);

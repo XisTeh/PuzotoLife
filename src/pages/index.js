@@ -41,9 +41,6 @@ export function preloadPage(pageId) {
   return pageModulePromises.get(pageId);
 }
 
-export function warmPageModules() {
-  return Promise.allSettled(Object.keys(pageModuleLoaders).map(preloadPage));
-}
 
 
 

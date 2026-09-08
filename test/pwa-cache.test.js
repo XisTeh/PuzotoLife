@@ -98,6 +98,7 @@ test('registro do service worker ignora o cache HTTP e solicita atualização', 
   const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(mainSource, /register\('\/sw\.js', \{ updateViaCache: 'none' \}\)/);
   assert.match(mainSource, /registration\.update\(\)/);
+  assert.doesNotMatch(mainSource, /warmPageModules/);
 });
 
 test('entrypoints estáveis não são armazenados e chunks antigos têm recuperação transitória', () => {

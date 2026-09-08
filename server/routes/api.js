@@ -83,6 +83,7 @@ import {
 } from '../services/importarDados.js';
 import { executarDiagnostico } from '../services/diagnostico.js';
 import { executarLimpezaDadosTeste } from '../services/limpezaDados.js';
+import { obterPainelGastos, obterPainelContasPagar, obterPainelReceitas, obterPainelInvestimentos } from '../services/pageData.js';
 import {
   listarPagadores, listarTodosPagadores, criarPagador, atualizarPagador, 
   obterResumoPorPagador, ativarPagador, desativarPagador, obterRecebimentosPendentes, processarRecebimentoPagador
@@ -285,6 +286,7 @@ router.post('/financas/categorias/:id/ativar', asyncHandler(async (req) => { (aw
 // FINANÇAS — GASTOS
 // ═══════════════════════════════════════
 router.get('/financas/gastos', asyncHandler(async (req) => (await listarGastos(req.query))));
+router.get('/financas/gastos-painel', asyncHandler(async (req) => obterPainelGastos(req.query)));
 router.post('/financas/gastos', asyncHandler(async (req) => (await criarGasto(req.body))));
 router.put('/financas/gastos/:id', asyncHandler(async (req) => (await atualizarGasto(Number(req.params.id), req.body))));
 router.delete('/financas/gastos/:id', asyncHandler(async (req) => { (await removerGasto(Number(req.params.id))); return { success: true }; }));
@@ -319,6 +321,7 @@ router.post('/financas/cartoes/:id/ativar', asyncHandler(async (req) => (await a
 // FINANÇAS — CONTAS A PAGAR
 // ═══════════════════════════════════════
 router.get('/financas/contas-pagar', asyncHandler(async (req) => (await listarContasPagar(req.query))));
+router.get('/financas/contas-pagar-painel', asyncHandler(async (req) => obterPainelContasPagar(req.query)));
 router.post('/financas/contas-pagar', asyncHandler(async (req) => (await criarContaPagar(req.body))));
 router.post('/financas/contas-pagar/:id/pagar', asyncHandler((req) => marcarPagaCP(Number(req.params.id))));
 router.post('/financas/contas-pagar/:id/cancelar', asyncHandler(async (req) => (await cancelarContaPagar(Number(req.params.id)))));
@@ -373,6 +376,7 @@ router.delete('/financas/dividas-parceladas/:id', asyncHandler(async (req) => (a
 // FINANÇAS — RECEITAS
 // ═══════════════════════════════════════
 router.get('/financas/receitas', asyncHandler(async (req) => (await listarReceitas(req.query))));
+router.get('/financas/receitas-painel', asyncHandler(async (req) => obterPainelReceitas(req.query)));
 router.post('/financas/receitas', asyncHandler(async (req) => (await criarReceita(req.body))));
 router.put('/financas/receitas/:id', asyncHandler(async (req) => (await atualizarReceita(Number(req.params.id), req.body))));
 router.post('/financas/receitas/:id/receber', asyncHandler(async (req) => (await marcarReceitaComoRecebida(Number(req.params.id)))));
@@ -382,6 +386,7 @@ router.get('/financas/receitas/resumo', asyncHandler(async (req) => (await calcu
 router.get('/financas/receitas/origens', asyncHandler(async () => (await listarOrigensReceitaUnicas())));
 
 // INVESTIMENTOS
+router.get('/financas/investimentos-painel', asyncHandler(async (req) => obterPainelInvestimentos(req.query.incluir_inativos !== 'false')));
 router.get('/financas/investimentos', asyncHandler(async (req) => (await listarInvestimentos(req.query.incluir_inativos !== 'false'))));
 router.post('/financas/investimentos', asyncHandler(async (req) => (await criarInvestimento(req.body))));
 router.get('/financas/investimentos/:id', asyncHandler(async (req) => (await obterInvestimento(Number(req.params.id)))));

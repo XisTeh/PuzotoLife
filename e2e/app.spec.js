@@ -105,10 +105,10 @@ test('Contas a Pagar ignora resposta concluída depois da troca de página', asy
   const responseReleased = new Promise((resolve) => { releaseResponse = resolve; });
   const requestStarted = new Promise((resolve) => { markStarted = resolve; });
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.route('**/api/financas/contas-pagar?*', async (route) => {
+  await page.route('**/api/financas/contas-pagar-painel?*', async (route) => {
     markStarted();
     await responseReleased;
-    await route.fulfill({ json: { ok: true, data: [] } });
+    await route.fulfill({ json: { ok: true, data: { categorias: [], contas: [], resumo: { totalPendente: 0, totalVencido: 0, totalPago: 0, quantidadeContas: 0, proximoVencimento: null, categorias: [] } } } });
   });
   await page.goto('/');
   await page.evaluate(() => { window.navigateTo('contas_pagar'); });
@@ -253,10 +253,10 @@ test('Cofre ignora uma resposta concluída depois da troca de página', async ({
   const respostaLiberada = new Promise(resolve => { liberarResposta = resolve; });
   const requisicaoIniciada = new Promise(resolve => { marcarInicio = resolve; });
   page.on('pageerror', error => errors.push(error.message));
-  await page.route('**/api/financas/investimentos?*', async route => {
+  await page.route('**/api/financas/investimentos-painel?*', async route => {
     marcarInicio();
     await respostaLiberada;
-    await route.fulfill({ json: { ok: true, data: [{ id: 1, nome: 'Cofre teste', instituicao: 'Banco teste', saldo_atual: 20, ativo: 1 }] } });
+    await route.fulfill({ json: { ok: true, data: { investimentos: [{ id: 1, nome: 'Cofre teste', instituicao: 'Banco teste', saldo_atual: 20, ativo: 1 }], movimentos: [] } } });
   });
   await page.goto('/');
   if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
@@ -301,28 +301,25 @@ test('logo usa transparência real e se integra ao fundo da barra lateral', asyn
   await expect(page.locator('.sidebar__logo')).toHaveCSS('object-fit', 'contain');
 });
 
-test('resumo de Gastos tem hierarquia e carrega leituras em paralelo', async ({ page }, info) => {
+test('resumo de Gastos tem hierarquia e usa uma carga autenticada', async ({ page }, info) => {
   let iniciarPainel;
   const liberarPainel = new Promise(resolve => { iniciarPainel = resolve; });
   const requisicoes = [];
-  const suspender = async (route, data) => {
+  const suspender = async (route) => {
     requisicoes.push(new URL(route.request().url()).pathname);
     await liberarPainel;
-    await route.fulfill({ json: { ok: true, data } });
+    await route.fulfill({ json: { ok: true, data: {
+      categorias: [], gastos: [], resumo: {
+        totalPago: 261.87, totalPendente: 0, qtdLancamentos: 6, mediaPorDia: 37.41,
+        maiorCategoria: { nome: 'Alimentação' }, gastosPorCategoria: []
+      }
+    } } });
   };
-  await page.route('**/api/financas/gastos?*', route => suspender(route, []));
-  await page.route('**/api/financas/gastos/resumo?*', route => suspender(route, {
-    totalPago: 261.87,
-    totalPendente: 0,
-    qtdLancamentos: 6,
-    mediaPorDia: 37.41,
-    maiorCategoria: { nome: 'Alimentação' },
-    gastosPorCategoria: []
-  }));
+  await page.route('**/api/financas/gastos-painel?*', route => suspender(route));
   await page.goto('/');
   if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
   await page.locator('[data-page="gastos"]').click();
-  await expect.poll(() => requisicoes.length).toBe(2);
+  await expect.poll(() => requisicoes.length).toBe(1);
   iniciarPainel();
   await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('.expense-summary__tile')).toHaveCount(5);
