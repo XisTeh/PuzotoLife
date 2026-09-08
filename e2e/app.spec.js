@@ -106,3 +106,90 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   const worker = await workerResponse.text();
   expect(worker).toContain("url.pathname.startsWith('/api/')");
 });
+
+test('Cofre ignora uma resposta concluída depois da troca de página', async ({ page }, info) => {
+  const errors = [];
+  let liberarResposta;
+  let marcarInicio;
+  const respostaLiberada = new Promise(resolve => { liberarResposta = resolve; });
+  const requisicaoIniciada = new Promise(resolve => { marcarInicio = resolve; });
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/api/financas/investimentos?*', async route => {
+    marcarInicio();
+    await respostaLiberada;
+    await route.fulfill({ json: { ok: true, data: [{ id: 1, nome: 'Cofre teste', instituicao: 'Banco teste', saldo_atual: 20, ativo: 1 }] } });
+  });
+  await page.goto('/');
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.locator('[data-page="investimentos"]').click();
+  await requisicaoIniciada;
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.locator('[data-page="gastos"]').click();
+  liberarResposta();
+  await expect(page.getByRole('heading', { name: 'Gastos', exact: true })).toBeVisible();
+  await page.waitForTimeout(150);
+  await expect(page.locator('body')).not.toContainText('Cannot set properties of null');
+  expect(errors).toEqual([]);
+});
+
+test('ações de Trabalho e Dr. Ranon permanecem alinhadas', async ({ page }, info) => {
+  await page.goto('/');
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.locator('[data-page="configuracoes"]').click();
+  const trabalho = page.getByRole('button', { name: 'Salvar Trabalho' });
+  const ranon = page.getByRole('button', { name: 'Salvar Dr. Ranon / RX' });
+  await expect(trabalho).toBeVisible();
+  await expect(ranon).toBeVisible();
+  const [caixaTrabalho, caixaRanon] = await Promise.all([trabalho.boundingBox(), ranon.boundingBox()]);
+  if (info.project.name === 'desktop') expect(Math.abs(caixaTrabalho.y - caixaRanon.y)).toBeLessThanOrEqual(1);
+  expect(caixaTrabalho.width).toBeGreaterThanOrEqual(44);
+  expect(caixaRanon.width).toBeGreaterThanOrEqual(44);
+});
+
+test('logo usa transparência real e se integra ao fundo da barra lateral', async ({ page }) => {
+  await page.goto('/');
+  const cantoAlpha = await page.evaluate(async () => {
+    const response = await fetch('/images/PuzotoLifeBlue.png');
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d');
+    context.drawImage(bitmap, 0, 0);
+    return context.getImageData(0, 0, 1, 1).data[3];
+  });
+  expect(cantoAlpha).toBe(0);
+  await expect(page.locator('.sidebar__logo')).toHaveCSS('object-fit', 'contain');
+});
+
+test('resumo de Gastos tem hierarquia e carrega leituras em paralelo', async ({ page }, info) => {
+  let iniciarPainel;
+  const liberarPainel = new Promise(resolve => { iniciarPainel = resolve; });
+  const requisicoes = [];
+  const suspender = async (route, data) => {
+    requisicoes.push(new URL(route.request().url()).pathname);
+    await liberarPainel;
+    await route.fulfill({ json: { ok: true, data } });
+  };
+  await page.route('**/api/financas/gastos?*', route => suspender(route, []));
+  await page.route('**/api/financas/gastos/resumo?*', route => suspender(route, {
+    totalPago: 261.87,
+    totalPendente: 0,
+    qtdLancamentos: 6,
+    mediaPorDia: 37.41,
+    maiorCategoria: { nome: 'Alimentação' },
+    gastosPorCategoria: []
+  }));
+  await page.goto('/');
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.locator('[data-page="gastos"]').click();
+  await expect.poll(() => requisicoes.length).toBe(2);
+  iniciarPainel();
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('.expense-summary__tile')).toHaveCount(5);
+  await expect(page.locator('.expense-summary svg')).toHaveCount(6);
+  await expect(page.locator('#card-total-pago')).toHaveText('R$ 261,87');
+  const delays = await page.locator('#pageContent .animate-in').evaluateAll(elements => elements.map(element => getComputedStyle(element).animationDelay));
+  expect(delays.every(delay => delay === '0s')).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});

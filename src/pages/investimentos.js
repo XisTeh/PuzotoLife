@@ -49,33 +49,41 @@ function tipoAmigavel(tipo) {
 }
 
 async function carregarCofre() {
+  const root = document.getElementById('cofre-page');
+  if (!root) return;
   const cofres = await listarInvestimentos(true);
-  cofreAtual = cofres[0] || null;
-  movimentos = cofreAtual ? await listarMovimentosInvestimento(cofreAtual.id) : [];
-  renderizarCofre();
+  if (!root.isConnected) return;
+  const proximoCofre = cofres[0] || null;
+  const proximosMovimentos = proximoCofre ? await listarMovimentosInvestimento(proximoCofre.id) : [];
+  if (!root.isConnected) return;
+  cofreAtual = proximoCofre;
+  movimentos = proximosMovimentos;
+  renderizarCofre(root);
 }
 
-function renderizarCofre() {
+function renderizarCofre(root = document.getElementById('cofre-page')) {
+  if (!root?.isConnected) return;
   const saldo = Number(cofreAtual?.saldo_atual || 0);
-  document.getElementById('cofre-titulo').textContent = tituloCofre(cofreAtual);
-  document.getElementById('cofre-saldo').textContent = formatarMoedaBR(saldo);
-  document.getElementById('cofre-detalhe').textContent = cofreAtual
+  root.querySelector('#cofre-titulo').textContent = tituloCofre(cofreAtual);
+  root.querySelector('#cofre-saldo').textContent = formatarMoedaBR(saldo);
+  root.querySelector('#cofre-detalhe').textContent = cofreAtual
     ? `${cofreAtual.instituicao} · ${cofreAtual.nome}`
     : 'Nenhum cofre cadastrado.';
-  document.getElementById('cofre-acoes').style.display = cofreAtual ? 'grid' : 'none';
-  document.getElementById('cofre-inativo').style.display = cofreAtual && !cofreAtual.ativo ? 'block' : 'none';
-  document.getElementById('cofre-resgate-disponivel').textContent = `Disponível para retirar: ${formatarMoedaBR(saldo)}`;
-  document.querySelectorAll('[data-acao-cofre]').forEach(botao => { botao.disabled = !cofreAtual?.ativo; });
+  root.querySelector('#cofre-acoes').style.display = cofreAtual ? 'grid' : 'none';
+  root.querySelector('#cofre-inativo').style.display = cofreAtual && !cofreAtual.ativo ? 'block' : 'none';
+  root.querySelector('#cofre-resgate-disponivel').textContent = `Disponível para retirar: ${formatarMoedaBR(saldo)}`;
+  root.querySelectorAll('[data-acao-cofre]').forEach(botao => { botao.disabled = !cofreAtual?.ativo; });
   ['aporte', 'resgate'].forEach(tipo => {
-    const campoData = document.getElementById(`cofre-${tipo}-data`);
+    const campoData = root.querySelector(`#cofre-${tipo}-data`);
     if (campoData && !campoData.value) campoData.value = dataAtualISO();
   });
-  renderizarHistorico();
+  renderizarHistorico(root);
   if (window.lucide) window.lucide.createIcons();
 }
 
-function renderizarHistorico() {
-  const tbody = document.getElementById('cofre-tbody-movimentos');
+function renderizarHistorico(root = document.getElementById('cofre-page')) {
+  const tbody = root?.querySelector('#cofre-tbody-movimentos');
+  if (!tbody) return;
   if (!movimentos.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">Nenhuma movimentação registrada.</td></tr>';
     return;
@@ -95,10 +103,11 @@ function renderizarHistorico() {
 }
 
 export async function initInvestimentos() {
+  const root = document.getElementById('cofre-page');
   try {
     await carregarCofre();
   } catch (erro) {
-    showToast('Erro ao carregar o Cofre: ' + erro.message, 'error');
+    if (root?.isConnected) showToast('Erro ao carregar o Cofre: ' + erro.message, 'error');
   }
 }
 
@@ -224,6 +233,7 @@ function modalCorrecao() {
 export function renderInvestimentosPage() {
 
   return `
+    <section id="cofre-page">
     <div id="toast-container" class="toast-container"></div>
     <div class="page-header animate-in"><div><h1 class="page-header__title">Cofre</h1><p class="page-header__subtitle">Dinheiro separado para seus planos e compras futuras.</p></div></div>
 
@@ -251,5 +261,6 @@ export function renderInvestimentosPage() {
     <div class="form-card animate-in" style="padding:24px;"><h3 style="margin-bottom:16px;color:var(--text-primary);">Histórico do Cofre</h3><div class="table-container"><table class="table"><thead><tr><th>Data</th><th>Movimentação</th><th>Valor</th><th>Observação</th><th>Saldo resultante</th></tr></thead><tbody id="cofre-tbody-movimentos"></tbody></table></div></div>
 
     <details class="animate-in" style="margin-top:18px;color:var(--text-muted);"><summary style="cursor:pointer;font-size:.85rem;">Mais opções</summary><div style="margin-top:10px;"><button class="btn-secondary" onclick="window.abrirCorrecaoCofre()" data-acao-cofre><i data-lucide="sliders-horizontal"></i> Corrigir saldo</button></div></details>
-    ${modalCorrecao()}`;
+    ${modalCorrecao()}
+    </section>`;
 }

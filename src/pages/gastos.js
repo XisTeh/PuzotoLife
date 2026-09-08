@@ -117,12 +117,14 @@ async function atualizarPainel() {
   var queryParams = new URLSearchParams({ mes: mes, categoria: categoria, status: status, forma_pagamento: pagamento });
 
   try {
-    var resGastos = await apiFetch(API_BASE + '/gastos?' + queryParams);
-    var jsonGastos = await resGastos.json();
+    var respostas = await Promise.all([
+      apiFetch(API_BASE + '/gastos?' + queryParams),
+      apiFetch(API_BASE + '/gastos/resumo?' + queryParams)
+    ]);
+    var dados = await Promise.all(respostas.map(function(resposta) { return resposta.json(); }));
+    var jsonGastos = dados[0];
+    var jsonResumo = dados[1];
     if (jsonGastos.ok) gastosAtuais = jsonGastos.data;
-
-    var resResumo = await apiFetch(API_BASE + '/gastos/resumo?' + queryParams);
-    var jsonResumo = await resResumo.json();
     if (jsonResumo.ok) resumoAtual = jsonResumo.data;
 
     renderCards();
@@ -475,31 +477,20 @@ export function renderGastos() {
   h += '  </div>';
   h += '</div>';
 
-  h += '<h4 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px; font-weight: 500;" id="resumo-ref-texto">Carregando...</h4>';
-
-  // CARDS DE RESUMO
-  h += '<div class="dashboard-grid animate-in" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 32px; gap: 16px;">';
-  h += '  <div class="dashboard-card" style="padding: 16px;">';
-  h += '    <div class="dashboard-card__title">Total Gasto (Pago)</div>';
-  h += '    <div class="dashboard-card__value" id="card-total-pago" style="color: var(--color-teal);">R$ 0,00</div>';
+  // RESUMO MENSAL
+  h += '<section class="expense-summary animate-in" aria-labelledby="resumo-gastos-titulo">';
+  h += '  <div class="expense-summary__header">';
+  h += '    <span class="expense-summary__header-icon" aria-hidden="true"><i data-lucide="calendar"></i></span>';
+  h += '    <div><span class="expense-summary__eyebrow">RESUMO DO MÊS</span><h2 class="expense-summary__month" id="resumo-gastos-titulo"><span id="resumo-ref-texto">Carregando...</span></h2></div>';
   h += '  </div>';
-  h += '  <div class="dashboard-card" style="padding: 16px;">';
-  h += '    <div class="dashboard-card__title">Gastos Pendentes</div>';
-  h += '    <div class="dashboard-card__value" id="card-total-pendente" style="color: var(--color-warning);">R$ 0,00</div>';
+  h += '  <div class="expense-summary__grid">';
+  h += '    <article class="expense-summary__tile expense-summary__tile--primary"><span class="expense-summary__icon" aria-hidden="true"><i data-lucide="wallet"></i></span><div><span class="expense-summary__label">Total pago</span><strong class="expense-summary__value" id="card-total-pago">R$ 0,00</strong></div></article>';
+  h += '    <article class="expense-summary__tile expense-summary__tile--warning"><span class="expense-summary__icon" aria-hidden="true"><i data-lucide="clock"></i></span><div><span class="expense-summary__label">Gastos pendentes</span><strong class="expense-summary__value" id="card-total-pendente">R$ 0,00</strong></div></article>';
+  h += '    <article class="expense-summary__tile"><span class="expense-summary__icon" aria-hidden="true"><i data-lucide="list"></i></span><div><span class="expense-summary__label">Lançamentos</span><strong class="expense-summary__value" id="card-qtd-lancamentos">0</strong></div></article>';
+  h += '    <article class="expense-summary__tile"><span class="expense-summary__icon" aria-hidden="true"><i data-lucide="activity"></i></span><div><span class="expense-summary__label">Média diária</span><strong class="expense-summary__value" id="card-media-dia">R$ 0,00</strong></div></article>';
+  h += '    <article class="expense-summary__tile"><span class="expense-summary__icon" aria-hidden="true"><i data-lucide="tags"></i></span><div><span class="expense-summary__label">Maior categoria</span><strong class="expense-summary__value expense-summary__value--text" id="card-maior-categoria">-</strong></div></article>';
   h += '  </div>';
-  h += '  <div class="dashboard-card" style="padding: 16px;">';
-  h += '    <div class="dashboard-card__title">Lan\u00e7amentos</div>';
-  h += '    <div class="dashboard-card__value" id="card-qtd-lancamentos">0</div>';
-  h += '  </div>';
-  h += '  <div class="dashboard-card" style="padding: 16px;">';
-  h += '    <div class="dashboard-card__title">M\u00e9dia Di\u00e1ria</div>';
-  h += '    <div class="dashboard-card__value" id="card-media-dia">R$ 0,00</div>';
-  h += '  </div>';
-  h += '  <div class="dashboard-card" style="padding: 16px;">';
-  h += '    <div class="dashboard-card__title">Maior Categoria</div>';
-  h += '    <div class="dashboard-card__value" id="card-maior-categoria" style="font-size: 1.2rem; text-transform: capitalize;">-</div>';
-  h += '  </div>';
-  h += '</div>';
+  h += '</section>';
 
   // GRID PRINCIPAL
   h += '<div class="dashboard-grid" style="grid-template-columns: 1fr 400px;">';

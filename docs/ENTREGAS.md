@@ -83,3 +83,28 @@ A lista de meses fechados virou uma lista responsiva de botões com rolagem est�
 Validação local: revisão visual em desktop e 390 × 844; 12 jornadas Playwright aprovadas em desktop/iPhone 13, incluindo todos os fluxos existentes, sidebar móvel, reduced motion, lista cheia de meses e metadados PWA. `npm run quality` aprovado com 57 testes, build, arquitetura, Biome e orçamento gzip de 203 KB. A PWA torna a interface instalável, mas não transforma SQLite em serviço remoto.
 
 A URL informada `https://puzoto-life.vercel.app/` retornou 404 em 04/09/2026. Publicação segue bloqueada pelas Issues #5, #7 e #9: o backend atual impede produção por segurança e o acervo ainda depende do SQLite local. Não publicar somente `dist`, pois login, persistência e sincronização entre dispositivos não funcionariam.
+
+## Navegação, Cofre e alinhamento — branch codex/navigation-performance-fixes
+
+Refs #6 e resolve #20, #21, #22, #23 e #24; depende do PR visual. Os módulos das páginas são aquecidos em segundo plano depois do primeiro conteúdo, e o foco ou ponteiro sobre a navegação antecipa somente o código estático da seção. Clicar na seção atual não inicia outra renderização. O skeleton aparece apenas quando a importação excede 100 ms, e as entradas deixam de usar atrasos escalonados de até 600 ms; nenhuma consulta ou dado pessoal é antecipado. Leituras independentes de Gastos, Lançamentos, Dr. Ranon e Pessoas/Dívidas são executadas em paralelo, preservando a ordem de gravações e transações.
+
+O Cofre associa cada carregamento ao elemento raiz que o iniciou. Se o usuário sair antes da resposta, o resultado obsoleto é descartado e não atualiza outro DOM. As ações de Trabalho e Dr. Ranon / RX usam cartões flexíveis de mesma altura no desktop e fluxo empilhado no celular. A marca mantém o símbolo aprovado e passa a ter transparência real, integrada à superfície da sidebar sem quadrado preto. O resumo mensal de Gastos agora forma um painel único com cinco cartões, ícones, valores e hierarquia responsiva, em grafite, azul e dourado discreto.
+
+Validação local: `npm run quality` aprovado com 57 testes, build, arquitetura, Biome, zero vulnerabilidades de produção em `npm audit --omit=dev` e orçamento gzip de 204 KB. O Playwright cobre a troca de tela durante uma resposta suspensa do Cofre, leituras paralelas, ausência de atrasos CSS, alinhamento desktop, alvos mobile, painel de Gastos e canal alfa da logo, além das jornadas existentes. São 20 testes aprovados em Desktop Chrome e iPhone 13.
+
+### Auditoria de prontidão em 07/09/2026
+
+| Área | Evidência verificada | Estado |
+| --- | --- | --- |
+| Repositório | `origin/main` contém somente `README.md`; esta linha de trabalho está 11 commits à frente | Bloqueado por revisão/merge dos PRs empilhados |
+| Proteção da `main` | `quality`, `security` e `e2e` obrigatórios, administração incluída e 1 aprovação exigida | Configurada corretamente |
+| PRs | #12, #13, #14, #15, #18 e #19 estão limpos e com checks verdes; #11 tem checks verdes, mas está bloqueado pela aprovação obrigatória | Precisa de revisor diferente do autor |
+| Vercel | produção aponta ao commit `5f641bc` da `main`; `https://puzoto-life.vercel.app/` continua respondendo 404 | Não há aplicação publicável na `main` |
+| Backend | `server/index.js` bloqueia explicitamente `NODE_ENV=production`; não existe adaptador Vercel/`vercel.json` | Publicação intencionalmente bloqueada |
+| Banco | PostgreSQL foi testado localmente com dados sintéticos; migrações e paridade ainda não foram executadas no Supabase pessoal | Issue #5 aberta |
+| Sessão | sessões Auth ficam em `Map` na memória do processo | Incompatível com reinícios e múltiplas funções/réplicas |
+| Arquivos | planilhas de laudos ainda são gravadas no disco local | Exige Supabase Storage privado ou volume persistente |
+| Segurança | CSP e parte dos escapes estão validados; templates legados ainda têm saídas sem escape contextual completo | Issue #7 aberta |
+| Dados privados | `.env`, `Info/`, Casaê, bancos, `data/` e `dist/` estão ignorados; nenhum apareceu entre os arquivos rastreados na auditoria | Proteção local confirmada |
+
+Não promover o preview nem empurrar código diretamente para `main`. Para produção na Vercel, primeiro concluir #5 e #7, substituir a sessão em memória, mover planilhas para armazenamento privado e criar a entrega de runtime da Issue #9. Depois, configurar no Supabase as URLs HTTPS finais, SMTP de recuperação e segredos do ambiente protegido; validar login, leitura e gravação entre celular e computador antes da promoção.

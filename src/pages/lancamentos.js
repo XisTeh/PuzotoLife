@@ -53,15 +53,17 @@ function showToast(message, type = 'success') {
 
 export async function initLancamentos() {
   try {
-    // 1. Carregar Empresas (apenas comuns, exclui Ranon)
-    const todasEmpresas = await listarEmpresas();
+    // Empresas e preferência são leituras independentes.
+    const [todasEmpresas, configuracaoEmpresa] = await Promise.all([
+      listarEmpresas(),
+      obterConfiguracao('ultima_empresa_selecionada')
+    ]);
     empresasCache = todasEmpresas.filter(e => e.tipo !== 'ranon');
     
     renderOptionsEmpresa();
     renderEmpresaCards();
 
-    // 2. Carregar configuracao ultima empresa
-    let ultimaConfig = await obterConfiguracao('ultima_empresa_selecionada');
+    let ultimaConfig = configuracaoEmpresa;
     if (!ultimaConfig) ultimaConfig = 'Diagnostico';
     
     const select = document.getElementById('form-empresa');
@@ -178,9 +180,11 @@ function calcularTotalForm() {
 
 async function recarregarDados() {
   try {
-    loteAtual = await listarLoteTrabalhoPendente();
-    resumoAtual = await calcularResumoLoteTrabalho();
-    historicoFechamentos = await listarFechamentosDiarios();
+    [loteAtual, resumoAtual, historicoFechamentos] = await Promise.all([
+      listarLoteTrabalhoPendente(),
+      calcularResumoLoteTrabalho(),
+      listarFechamentosDiarios()
+    ]);
     
     renderMetricas();
     renderTabela();

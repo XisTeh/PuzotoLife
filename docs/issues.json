@@ -94,5 +94,45 @@
     "body": "Adicionar manifesto, ícones, tema, metadados mobile e service worker seguro para permitir instalação no celular. O cache deve conter somente o shell estático; nunca armazenar respostas /api, dados financeiros, laudos, sessões ou arquivos privados. Validar instalação, atualização, navegação autenticada e comportamento offline. A PWA não autoriza publicar o frontend isolado: acesso entre dispositivos depende do backend PostgreSQL e da revisão de segurança.",
     "number": 17,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/17"
+  },
+  {
+    "key": "navigation-performance",
+    "type": "Melhoria",
+    "title": "Tornar a navegação entre seções imediata",
+    "body": "Eliminar a espera percebida ao trocar de seção e executar ações internas, sem remover os estados de carregamento necessários. Aquecer os módulos após a entrada, remover atrasos escalonados, impedir trabalho repetido ao clicar na seção atual e paralelizar leituras independentes nos painéis críticos. Validar o primeiro acesso, filtros e a troca repetida de páginas em desktop e celular, respeitando prefers-reduced-motion. Risco: pré-carregamento excessivo pode aumentar o tráfego inicial; manter apenas código estático e nunca antecipar dados pessoais.",
+    "number": 20,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/20"
+  },
+  {
+    "key": "cofre-stale-dom",
+    "type": "Correção",
+    "title": "Impedir erro do Cofre após troca rápida de página",
+    "body": "Corrigir a corrida em que o carregamento assíncrono do Cofre termina após o usuário sair da página e tenta atualizar elementos removidos do DOM, gerando Cannot set properties of null. Cancelar a renderização obsoleta e proteger todos os pontos de atualização. Validar a abertura do Cofre e a saída imediata durante respostas lentas, sem toast de erro ou exceção.",
+    "number": 21,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/21"
+  },
+  {
+    "key": "settings-actions-alignment",
+    "type": "Correção",
+    "title": "Alinhar botões das configurações de Trabalho e Dr. Ranon",
+    "body": "Manter as ações Salvar Trabalho e Salvar Dr. Ranon / RX na mesma linha quando os cartões estiverem lado a lado, preservando o fluxo natural e alvos de toque no celular. Substituir a diferença causada pelo conteúdo dos formulários por uma estrutura flexível responsiva. Validar desktop e viewport mobile sem cortes ou espaço excessivo.",
+    "number": 22,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/22"
+  },
+  {
+    "key": "expenses-summary-cards",
+    "type": "Correção",
+    "title": "Dar hierarquia visual ao resumo mensal de Gastos",
+    "body": "O resumo mensal de Gastos aparece como textos soltos, sem superfície, agrupamento ou hierarquia. Transformar a área em um painel responsivo com cartões compactos, ícones funcionais e acentos coerentes com a identidade grafite e azul do Puzoto Life. Preservar legibilidade, valores, semântica e adaptação ao celular. Validar desktop, mobile, foco e ausência de overflow.",
+    "number": 23,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/23"
+  },
+  {
+    "key": "production-readiness-audit",
+    "type": "Melhoria",
+    "title": "Auditar prontidão para uso remoto e produção",
+    "body": "Revisar repositório, CI, segurança, persistência, desempenho, responsividade, PWA e configuração de hospedagem para identificar bloqueios concretos antes do uso remoto. Registrar evidências, prioridade, dependências e próximos passos em docs/ENTREGAS.md. Não publicar a aplicação enquanto SQLite estiver na fonte de verdade ou enquanto os gates de migração e segurança estiverem abertos.",
+    "number": 24,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/24"
   }
 ]
