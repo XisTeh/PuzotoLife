@@ -1,3 +1,4 @@
+import { snapshot } from '../database/connection.js';
 /**
  * Serviço de Analytics do Trabalho
  * Cruza lancamentos_trabalho + laudos_ranon para gerar métricas e gráficos.
@@ -11,7 +12,8 @@ import { getDatabase } from '../database/connection.js';
  * @param {string} empresa - "todas" ou nome específico
  * @param {string} status - "todos" ou status específico
  */
-export function obterAnalyticsTrabalho(mes, empresa = 'todas', status = 'todos') {
+export async function obterAnalyticsTrabalho(mes, empresa = 'todas', status = 'todos') {
+  return snapshot(async () => {
   const db = getDatabase();
   const mesLike = `${mes}%`;
 
@@ -34,7 +36,7 @@ export function obterAnalyticsTrabalho(mes, empresa = 'todas', status = 'todos')
     paramsLanc.push(status);
   }
 
-  const lancamentos = db.prepare(sqlLanc).all(...paramsLanc);
+  const lancamentos = (await db.prepare(sqlLanc).all(...paramsLanc));
 
   // ═══════════════════════════════════════
   // 2. LAUDOS RANON (histórico definitivo)
@@ -54,7 +56,7 @@ export function obterAnalyticsTrabalho(mes, empresa = 'todas', status = 'todos')
   let laudosRanon = [];
   // Só inclui Ranon se empresa = todas ou Dr. Ranon / RX
   if (empresa === 'todas' || empresa === 'Dr. Ranon / RX') {
-    laudosRanon = db.prepare(sqlRanon).all(...paramsRanon);
+    laudosRanon = (await db.prepare(sqlRanon).all(...paramsRanon));
   }
 
   // ═══════════════════════════════════════
@@ -209,4 +211,5 @@ export function obterAnalyticsTrabalho(mes, empresa = 'todas', status = 'todos')
     faturamento_diario: faturamentoDiario,
     evolucao_por_empresa: evolucaoPorEmpresa
   };
+  });
 }

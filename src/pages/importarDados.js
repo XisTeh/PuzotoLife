@@ -40,6 +40,12 @@ function formatarData(d) {
 // ===========================================
 
 export async function initImportarDados() {
+  const health = await (await apiFetch('/api/health')).json();
+  if (health.storage === 'postgres') {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = '<section class="card"><h1>Importar dados</h1><p>A importação na nuvem ainda está em preparação. Seus dados continuam disponíveis nas outras telas.</p><p>Você pode exportar uma cópia pela página Backup.</p></section>';
+    return;
+  }
   // File input
   const fileInput = document.getElementById('import-file-input');
   if (fileInput) {

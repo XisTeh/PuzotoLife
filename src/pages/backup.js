@@ -222,6 +222,17 @@ function renderInfo() {
   el('info-ultimo-backup').textContent = infoAtual.ultimoBackup ? formatarData(infoAtual.ultimoBackup) : 'Nenhum';
   
   const statusEl = el('info-status');
+  if (infoAtual.provider === 'postgres') {
+    statusEl.textContent = 'A conferir';
+    el('info-caminho').textContent = 'Supabase';
+    el('info-tamanho').textContent = 'No painel';
+    el('info-ultimo-backup').textContent = 'Consulte o painel';
+    const button = el('btn-criar-backup');
+    button.querySelector('strong').textContent = 'Gerenciar backups';
+    button.querySelector('small').textContent = 'Abrir o painel do Supabase';
+    button.onclick = () => window.open('https://supabase.com/dashboard', '_blank', 'noopener,noreferrer');
+    return;
+  }
   if (infoAtual.status === 'Protegido') {
     statusEl.innerHTML = `<span style="color:var(--color-teal);">● Protegido</span> <small style="color:var(--text-muted);">(${infoAtual.totalBackups} backup${infoAtual.totalBackups > 1 ? 's' : ''})</small>`;
   } else {
@@ -235,6 +246,11 @@ function renderBackupList() {
   if (!container) return;
 
   badge.textContent = backupsLista.length;
+
+  if (infoAtual?.provider === 'postgres') {
+    container.innerHTML = '<div class="backup-empty-state"><h3>Seu banco está no Supabase</h3><p>Consulte as cópias disponíveis e a retenção no painel. Você também pode exportar seus dados em JSON aqui.</p></div>';
+    return;
+  }
 
   if (backupsLista.length === 0) {
     container.innerHTML = `

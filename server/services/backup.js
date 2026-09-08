@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getDatabase, getDatabasePath, closeDatabase } from '../database/connection.js';
+import { getDatabase, getDatabasePath, getLocalDatabase, reopenLocalDatabase, snapshot } from '../database/connection.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +66,7 @@ function gerarNomeBackup() {
 // ═══════════════════════════════════════
 
 export function obterInfoBanco() {
+  if (getDatabase().dialect === 'postgres') return { provider: 'postgres', caminho: 'Supabase PostgreSQL', tamanho: null, tamanhoFormatado: 'Gerenciado no Supabase', ultimaModificacao: null, ultimoBackup: null, totalBackups: 0, status: 'Verifique backups no painel Supabase' };
   const dbPath = getDatabasePath();
   const stats = fs.statSync(dbPath);
   const backups = listarBackups();
@@ -88,6 +89,7 @@ export function obterInfoBanco() {
 // ═══════════════════════════════════════
 
 export async function criarBackupManual() {
+  getLocalDatabase();
   const dbPath = getDatabasePath();
 
   if (!fs.existsSync(dbPath)) {
@@ -117,6 +119,8 @@ export async function criarBackupManual() {
 // ═══════════════════════════════════════
 
 export function listarBackups() {
+  if (getDatabase().dialect === 'postgres') return [];
+  getLocalDatabase();
   if (!fs.existsSync(BACKUP_DIR)) {
     return [];
   }
@@ -145,6 +149,7 @@ export function listarBackups() {
 // ═══════════════════════════════════════
 
 export function obterCaminhoBackup(filename) {
+  getLocalDatabase();
   const filePath = validarNomeArquivo(filename);
 
   if (!fs.existsSync(filePath)) {
@@ -158,7 +163,9 @@ export function obterCaminhoBackup(filename) {
 // RESTAURAR BACKUP
 // ═══════════════════════════════════════
 
-export function restaurarBackup(filename, confirmacao) {
+export async function restaurarBackup(filename, confirmacao) {
+  getLocalDatabase();
+  return getDatabase().exclusive(async () => {
   if (confirmacao !== 'RESTAURAR') {
     throw new Error('Confirmação inválida. Digite exatamente: RESTAURAR');
   }
@@ -181,16 +188,16 @@ export function restaurarBackup(filename, confirmacao) {
   try {
     if (candidate.pragma('integrity_check', { simple: true }) !== 'ok') throw new Error('Backup inválido.');
     const required = ['empresas', 'configuracoes', 'gastos', 'investimentos'];
-    const tables = candidate.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
+    const tables = (await candidate.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).map(row => row.name);
     if (!required.every(name => tables.includes(name))) throw new Error('Backup incompatível com esta versão.');
   } finally { candidate.close(); }
-  const checkpoint = getDatabase().pragma('wal_checkpoint(TRUNCATE)')[0];
+  const checkpoint = getLocalDatabase().pragma('wal_checkpoint(TRUNCATE)')[0];
   if (checkpoint.busy) throw new Error('Banco ocupado. Feche outros processos antes de restaurar.');
   fs.copyFileSync(dbPath, caminhoSeguranca);
   console.log(`[RESTORE] Backup de segurança criado: ${nomeSeguranca}`);
 
   // 2. Fechar conexão ativa
-  closeDatabase();
+  getLocalDatabase().close();
   console.log('[RESTORE] Conexão com banco fechada.');
 
   // 3. Substituir banco atual pelo backup selecionado
@@ -204,7 +211,7 @@ export function restaurarBackup(filename, confirmacao) {
   if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
 
   // 5. Reconectar — o getDatabase() vai recriar a conexão automaticamente
-  getDatabase();
+  reopenLocalDatabase();
   console.log('[RESTORE] Conexão reestabelecida.');
 
   return {
@@ -213,6 +220,7 @@ export function restaurarBackup(filename, confirmacao) {
     backupSeguranca: nomeSeguranca,
     mensagem: 'Backup restaurado com sucesso. Reinicie o servidor ou recarregue a página para garantir que os dados atualizados sejam carregados.'
   };
+  });
 }
 
 // ═══════════════════════════════════════
@@ -220,6 +228,7 @@ export function restaurarBackup(filename, confirmacao) {
 // ═══════════════════════════════════════
 
 export function excluirBackup(filename) {
+  getLocalDatabase();
   const filePath = validarNomeArquivo(filename);
 
   if (!fs.existsSync(filePath)) {
@@ -242,44 +251,18 @@ export function excluirBackup(filename) {
 // EXPORTAR JSON
 // ═══════════════════════════════════════
 
-export function exportarJSON() {
-  const db = getDatabase();
-
-  const tabelas = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(row => row.name);
-
-  const exportData = {
-    _meta: {
-      app: 'Puzoto Life',
-      versao: '1.0.0',
-      exportadoEm: new Date().toISOString(),
-      totalTabelas: 0,
-      totalRegistros: 0
+export async function exportarJSON() {
+  return snapshot(async () => {
+    const db = getDatabase();
+    const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
+    const data = { _meta: { app: 'Puzoto Life', versao: '1.0.0', exportadoEm: new Date().toISOString(), totalTabelas: tables.length, totalRegistros: 0 } };
+    for (const { name } of tables) {
+      if (!/^[a-z_]+$/.test(name)) throw new Error('Tabela inesperada na exportação.');
+      data[name] = await db.prepare('SELECT * FROM "' + name + '"').all();
+      data._meta.totalRegistros += data[name].length;
     }
-  };
-
-  let totalRegistros = 0;
-  let tabelasExportadas = 0;
-
-  for (const tabela of tabelas) {
-    try {
-      // Verificar se a tabela existe
-      const exists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(tabela);
-      if (exists) {
-        const rows = db.prepare(`SELECT * FROM ${tabela}`).all();
-        exportData[tabela] = rows;
-        totalRegistros += rows.length;
-        tabelasExportadas++;
-      }
-    } catch (err) {
-      console.warn(`[EXPORT] Tabela "${tabela}" não encontrada ou erro: ${err.message}`);
-      exportData[tabela] = [];
-    }
-  }
-
-  exportData._meta.totalTabelas = tabelasExportadas;
-  exportData._meta.totalRegistros = totalRegistros;
-
-  return exportData;
+    return data;
+  });
 }
 
 // ═══════════════════════════════════════
@@ -299,24 +282,23 @@ function arrayToCSV(data, columns) {
   return [header, ...rows].join('\n');
 }
 
-export function exportarCSVTrabalho() {
+export async function exportarCSVTrabalho() {
   const db = getDatabase();
   const sections = {};
 
-  try {
-    const lancamentos = db.prepare('SELECT * FROM lancamentos_trabalho ORDER BY data DESC').all();
+    const lancamentos = (await db.prepare('SELECT * FROM lancamentos_trabalho ORDER BY data DESC').all());
     sections['lancamentos_trabalho'] = arrayToCSV(lancamentos);
-  } catch (e) { sections['lancamentos_trabalho'] = ''; }
+  
 
-  try {
-    const laudos = db.prepare('SELECT * FROM laudos_ranon ORDER BY id DESC').all();
+  
+    const laudos = (await db.prepare('SELECT * FROM laudos_ranon ORDER BY id DESC').all());
     sections['laudos_ranon'] = arrayToCSV(laudos);
-  } catch (e) { sections['laudos_ranon'] = ''; }
+  
 
-  try {
-    const fechamentos = db.prepare('SELECT * FROM fechamentos_mensais ORDER BY referencia DESC').all();
+  
+    const fechamentos = (await db.prepare('SELECT * FROM fechamentos_mensais ORDER BY referencia DESC').all());
     sections['fechamentos_mensais'] = arrayToCSV(fechamentos);
-  } catch (e) { sections['fechamentos_mensais'] = ''; }
+  
 
   return sections;
 }
@@ -325,37 +307,37 @@ export function exportarCSVTrabalho() {
 // EXPORTAR CSV (FINANÇAS)
 // ═══════════════════════════════════════
 
-export function exportarCSVFinancas() {
+export async function exportarCSVFinancas() {
   const db = getDatabase();
   const sections = {};
 
-  try {
-    sections['receitas'] = arrayToCSV(db.prepare('SELECT * FROM receitas ORDER BY data DESC').all());
-  } catch (e) { sections['receitas'] = ''; }
+  
+    sections['receitas'] = arrayToCSV((await db.prepare('SELECT * FROM receitas ORDER BY data DESC').all()));
+  
 
-  try {
-    sections['gastos'] = arrayToCSV(db.prepare('SELECT * FROM gastos ORDER BY data DESC').all());
-  } catch (e) { sections['gastos'] = ''; }
+  
+    sections['gastos'] = arrayToCSV((await db.prepare('SELECT * FROM gastos ORDER BY data DESC').all()));
+  
 
-  try {
-    sections['faturas_cartao'] = arrayToCSV(db.prepare('SELECT * FROM faturas_cartao ORDER BY id DESC').all());
-  } catch (e) { sections['faturas_cartao'] = ''; }
+  
+    sections['faturas_cartao'] = arrayToCSV((await db.prepare('SELECT * FROM faturas_cartao ORDER BY id DESC').all()));
+  
 
-  try {
-    sections['contas_pagar'] = arrayToCSV(db.prepare('SELECT * FROM contas_pagar ORDER BY vencimento DESC').all());
-  } catch (e) { sections['contas_pagar'] = ''; }
+  
+    sections['contas_pagar'] = arrayToCSV((await db.prepare('SELECT * FROM contas_pagar ORDER BY vencimento DESC').all()));
+  
 
-  try {
-    sections['pessoas_dividas'] = arrayToCSV(db.prepare('SELECT * FROM pessoas_dividas ORDER BY id DESC').all());
-  } catch (e) { sections['pessoas_dividas'] = ''; }
+  
+    sections['pessoas_dividas'] = arrayToCSV((await db.prepare('SELECT * FROM pessoas_dividas ORDER BY id DESC').all()));
+  
 
-  try {
-    sections['investimentos'] = arrayToCSV(db.prepare('SELECT * FROM investimentos ORDER BY nome ASC').all());
-  } catch (e) { sections['investimentos'] = ''; }
+  
+    sections['investimentos'] = arrayToCSV((await db.prepare('SELECT * FROM investimentos ORDER BY nome ASC').all()));
+  
 
-  try {
-    sections['investimento_movimentos'] = arrayToCSV(db.prepare('SELECT * FROM investimento_movimentos ORDER BY data DESC, id DESC').all());
-  } catch (e) { sections['investimento_movimentos'] = ''; }
+  
+    sections['investimento_movimentos'] = arrayToCSV((await db.prepare('SELECT * FROM investimento_movimentos ORDER BY data DESC, id DESC').all()));
+  
 
   return sections;
 }

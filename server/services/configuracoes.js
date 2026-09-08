@@ -1,18 +1,22 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Configurações (chave/valor)
  */
 
 import { getDatabase } from '../database/connection.js';
 
-export function obterConfiguracao(chave) {
+export async function obterConfiguracao(chave) {
+  return snapshot(async () => {
   const db = getDatabase();
-  const row = db.prepare('SELECT valor FROM configuracoes WHERE chave = ?').get(chave);
+  const row = (await db.prepare('SELECT valor FROM configuracoes WHERE chave = ?').get(chave));
   return row ? row.valor : null;
+  });
 }
 
-export function obterTodasConfiguracoes() {
+export async function obterTodasConfiguracoes() {
+  return snapshot(async () => {
   const db = getDatabase();
-  const rows = db.prepare('SELECT * FROM configuracoes ORDER BY chave').all();
+  const rows = (await db.prepare('SELECT * FROM configuracoes ORDER BY chave').all());
   
   // Transforma em objeto { chave: valor }
   const obj = {};
@@ -20,9 +24,11 @@ export function obterTodasConfiguracoes() {
     obj[row.chave] = row.valor;
   }
   return obj;
+  });
 }
 
-export function salvarConfiguracao(chave, valor) {
+export async function salvarConfiguracao(chave, valor) {
+  return atomic(async () => {
   const db = getDatabase();
   const stmt = db.prepare(`
     INSERT INTO configuracoes (chave, valor, atualizado_em)
@@ -31,17 +37,21 @@ export function salvarConfiguracao(chave, valor) {
       valor = @valor,
       atualizado_em = datetime('now', 'localtime')
   `);
-  return stmt.run({ chave, valor: String(valor) });
+  return (await stmt.run({ chave, valor: String(valor) }));
+  });
 }
 
-export function criarConfiguracoesIniciaisSeNaoExistirem() {
+export async function criarConfiguracoesIniciaisSeNaoExistirem() {
+  return snapshot(async () => {
   // Já é feito no init.js, mas pode ser chamado explicitamente
   const db = getDatabase();
-  const count = db.prepare('SELECT COUNT(*) as total FROM configuracoes').get();
+  const count = (await db.prepare('SELECT COUNT(*) as total FROM configuracoes').get());
   return { total: count.total };
+  });
 }
 
-export function garantirConfiguracoesPadrao() {
+export async function garantirConfiguracoesPadrao() {
+  return atomic(async () => {
   const defaults = {
     preco_padrao_ranon: '2.00',
     chave_pix: 'ronnanpc@gmail.com',
@@ -54,10 +64,11 @@ export function garantirConfiguracoesPadrao() {
 
   };
 
-  const cfgs = obterTodasConfiguracoes();
+  const cfgs = (await obterTodasConfiguracoes());
   for (const [chave, valor] of Object.entries(defaults)) {
     if (cfgs[chave] === undefined || cfgs[chave] === null || String(cfgs[chave]).trim() === '') {
-      salvarConfiguracao(chave, valor);
+      (await salvarConfiguracao(chave, valor));
     }
   }
+  });
 }

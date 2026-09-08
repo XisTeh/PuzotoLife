@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 import { dataHojeLocal } from '../utils/dataLocal.js';
@@ -36,8 +37,8 @@ function validarValorPositivo(valor, campo = 'Valor') {
   return numero;
 }
 
-function buscarInvestimento(db, id) {
-  const investimento = db.prepare('SELECT * FROM investimentos WHERE id = ?').get(Number(id));
+async function buscarInvestimento(db, id) {
+  const investimento = (await db.prepare('SELECT * FROM investimentos WHERE id = ?').get(Number(id)));
   if (!investimento) throw new Error('Investimento não encontrado.');
   return investimento;
 }
@@ -52,7 +53,7 @@ function expressaoSaldo(alias = '') {
     ELSE 0 END`;
 }
 
-function calcularSaldo(db, investimentoId, ateData = null) {
+async function calcularSaldo(db, investimentoId, ateData = null) {
   let sql = `SELECT COALESCE(SUM(${expressaoSaldo()}), 0) AS saldo
     FROM investimento_movimentos WHERE investimento_id = ?`;
   const params = [Number(investimentoId)];
@@ -60,14 +61,14 @@ function calcularSaldo(db, investimentoId, ateData = null) {
     sql += ' AND data <= ?';
     params.push(ateData);
   }
-  return arredondarMoeda(db.prepare(sql).get(...params).saldo);
+  return arredondarMoeda((await db.prepare(sql).get(...params)).saldo);
 }
 
-function validarHistoricoNaoNegativo(db, investimentoId) {
-  const movimentos = db.prepare(`
+async function validarHistoricoNaoNegativo(db, investimentoId) {
+  const movimentos = (await db.prepare(`
     SELECT tipo, valor FROM investimento_movimentos
     WHERE investimento_id = ? ORDER BY data ASC, id ASC
-  `).all(Number(investimentoId));
+  `).all(Number(investimentoId)));
   let saldo = 0;
   for (const movimento of movimentos) {
     saldo = arredondarMoeda(saldo + (movimento.tipo === 'resgate' ? -movimento.valor : movimento.valor));
@@ -75,10 +76,11 @@ function validarHistoricoNaoNegativo(db, investimentoId) {
   }
 }
 
-export function listarInvestimentos(incluirInativos = true) {
+export async function listarInvestimentos(incluirInativos = true) {
+  return snapshot(async () => {
   const db = getDatabase();
   const filtro = incluirInativos ? '' : ' WHERE i.ativo = 1';
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT i.*,
       COALESCE(SUM(${expressaoSaldo('m')}), 0) AS saldo_atual,
       COUNT(m.id) AS quantidade_movimentos
@@ -87,22 +89,26 @@ export function listarInvestimentos(incluirInativos = true) {
     ${filtro}
     GROUP BY i.id
     ORDER BY i.ativo DESC, i.nome COLLATE NOCASE ASC
-  `).all(dataHojeLocal()).map(item => ({
+  `).all(dataHojeLocal())).map(item => ({
     ...item,
     saldo_atual: arredondarMoeda(item.saldo_atual)
   }));
+  });
 }
 
-export function obterInvestimento(id) {
+export async function obterInvestimento(id) {
+  return snapshot(async () => {
   const db = getDatabase();
-  const investimento = buscarInvestimento(db, id);
+  const investimento = (await buscarInvestimento(db, id));
   return {
     ...investimento,
-    saldo_atual: calcularSaldo(db, investimento.id, dataHojeLocal())
+    saldo_atual: (await calcularSaldo(db, investimento.id, dataHojeLocal()))
   };
+  });
 }
 
-export function criarInvestimento(dados) {
+export async function criarInvestimento(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const registro = {
     nome: validarTexto(dados.nome, 'Nome'),
@@ -110,18 +116,20 @@ export function criarInvestimento(dados) {
     conta_titular: validarTexto(dados.conta_titular, 'Titular/conta')
   };
 
-  const info = db.prepare(`
+  const info = (await db.prepare(`
     INSERT INTO investimentos (nome, instituicao, conta_titular)
     VALUES (@nome, @instituicao, @conta_titular)
-  `).run(registro);
-  const criado = obterInvestimento(info.lastInsertRowid);
-  registrarAuditoria('INVESTIMENTO_CRIAR', `Investimento ${criado.nome} cadastrado`, null, criado);
+  `).run(registro));
+  const criado = (await obterInvestimento(info.lastInsertRowid));
+  (await registrarAuditoria('INVESTIMENTO_CRIAR', `Investimento ${criado.nome} cadastrado`, null, criado));
   return criado;
+  });
 }
 
-export function atualizarInvestimento(id, dados) {
+export async function atualizarInvestimento(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
-  const anterior = buscarInvestimento(db, id);
+  const anterior = (await buscarInvestimento(db, id));
   const registro = {
     id: anterior.id,
     nome: validarTexto(dados.nome ?? anterior.nome, 'Nome'),
@@ -129,42 +137,46 @@ export function atualizarInvestimento(id, dados) {
     conta_titular: validarTexto(dados.conta_titular ?? anterior.conta_titular, 'Titular/conta')
   };
 
-  db.prepare(`
+  (await db.prepare(`
     UPDATE investimentos
     SET nome = @nome, instituicao = @instituicao, conta_titular = @conta_titular,
         atualizado_em = datetime('now', 'localtime')
     WHERE id = @id
-  `).run(registro);
-  const atualizado = obterInvestimento(anterior.id);
-  registrarAuditoria('INVESTIMENTO_ATUALIZAR', `Investimento ${anterior.nome} atualizado`, anterior, atualizado);
+  `).run(registro));
+  const atualizado = (await obterInvestimento(anterior.id));
+  (await registrarAuditoria('INVESTIMENTO_ATUALIZAR', `Investimento ${anterior.nome} atualizado`, anterior, atualizado));
   return atualizado;
+  });
 }
 
-export function definirInvestimentoAtivo(id, ativo) {
+export async function definirInvestimentoAtivo(id, ativo) {
+  return atomic(async () => {
   const db = getDatabase();
-  const anterior = buscarInvestimento(db, id);
+  const anterior = (await buscarInvestimento(db, id));
   const novoAtivo = ativo ? 1 : 0;
-  db.prepare(`
+  (await db.prepare(`
     UPDATE investimentos SET ativo = ?, atualizado_em = datetime('now', 'localtime') WHERE id = ?
-  `).run(novoAtivo, anterior.id);
-  const atualizado = obterInvestimento(anterior.id);
-  registrarAuditoria(
+  `).run(novoAtivo, anterior.id));
+  const atualizado = (await obterInvestimento(anterior.id));
+  (await registrarAuditoria(
     novoAtivo ? 'INVESTIMENTO_ATIVAR' : 'INVESTIMENTO_DESATIVAR',
     `Investimento ${anterior.nome} ${novoAtivo ? 'ativado' : 'desativado'}`,
     anterior,
     atualizado
-  );
+  ));
   return atualizado;
+  });
 }
 
-export function listarMovimentosInvestimento(investimentoId) {
+export async function listarMovimentosInvestimento(investimentoId) {
+  return snapshot(async () => {
   const db = getDatabase();
-  buscarInvestimento(db, investimentoId);
-  const movimentos = db.prepare(`
+  (await buscarInvestimento(db, investimentoId));
+  const movimentos = (await db.prepare(`
     SELECT * FROM investimento_movimentos
     WHERE investimento_id = ?
     ORDER BY data ASC, id ASC
-  `).all(Number(investimentoId));
+  `).all(Number(investimentoId)));
 
   let saldo = 0;
   const enriquecidos = movimentos.map(movimento => {
@@ -173,9 +185,11 @@ export function listarMovimentosInvestimento(investimentoId) {
     return { ...movimento, saldo_resultante: saldo };
   });
   return enriquecidos.reverse();
+  });
 }
 
-export function registrarMovimentoInvestimento(investimentoId, dados) {
+export async function registrarMovimentoInvestimento(investimentoId, dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const tipo = String(dados.tipo || '').trim().toLowerCase();
   if (!TIPOS_MOVIMENTO.has(tipo)) {
@@ -185,35 +199,37 @@ export function registrarMovimentoInvestimento(investimentoId, dados) {
   const data = validarData(dados.data);
   const observacao = String(dados.observacao || '').trim();
 
-  const transacao = db.transaction(() => {
-    const investimento = buscarInvestimento(db, investimentoId);
+  const transacao = db.transaction(async () => {
+    const investimento = (await buscarInvestimento(db, investimentoId));
     if (!investimento.ativo) throw new Error('O investimento está inativo. Ative-o antes de registrar movimentos.');
 
-    const saldoAntes = calcularSaldo(db, investimento.id, dataHojeLocal());
+    const saldoAntes = (await calcularSaldo(db, investimento.id, dataHojeLocal()));
     if (tipo === 'resgate' && valor > saldoAntes) {
       throw new Error(`Resgate superior ao saldo disponível de R$ ${saldoAntes.toFixed(2)}.`);
     }
 
-    const info = db.prepare(`
+    const info = (await db.prepare(`
       INSERT INTO investimento_movimentos (investimento_id, tipo, valor, data, observacao)
       VALUES (?, ?, ?, ?, ?)
-    `).run(investimento.id, tipo, valor, data, observacao);
-    validarHistoricoNaoNegativo(db, investimento.id);
-    const movimento = db.prepare('SELECT * FROM investimento_movimentos WHERE id = ?').get(info.lastInsertRowid);
-    const saldoDepois = calcularSaldo(db, investimento.id, dataHojeLocal());
-    registrarAuditoria(
+    `).run(investimento.id, tipo, valor, data, observacao));
+    (await validarHistoricoNaoNegativo(db, investimento.id));
+    const movimento = (await db.prepare('SELECT * FROM investimento_movimentos WHERE id = ?').get(info.lastInsertRowid));
+    const saldoDepois = (await calcularSaldo(db, investimento.id, dataHojeLocal()));
+    (await registrarAuditoria(
       'INVESTIMENTO_MOVIMENTO',
       `${tipo} de ${valor} em ${investimento.nome}`,
       { saldo: saldoAntes },
       { movimento, saldo: saldoDepois }
-    );
+    ));
     return { ...movimento, saldo_anterior: saldoAntes, saldo_resultante: saldoDepois };
   });
 
-  return transacao();
+  return (await transacao());
+  });
 }
 
-export function ajustarSaldoInvestimento(investimentoId, dados) {
+export async function ajustarSaldoInvestimento(investimentoId, dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const saldoInformado = dados?.saldo_correto;
   if (saldoInformado === null || saldoInformado === undefined || String(saldoInformado).trim() === '') {
@@ -226,11 +242,11 @@ export function ajustarSaldoInvestimento(investimentoId, dados) {
   const data = validarData(dados.data);
   const observacaoInformada = String(dados.observacao || '').trim();
 
-  const transacao = db.transaction(() => {
-    const investimento = buscarInvestimento(db, investimentoId);
+  const transacao = db.transaction(async () => {
+    const investimento = (await buscarInvestimento(db, investimentoId));
     if (!investimento.ativo) throw new Error('O investimento está inativo. Ative-o antes de ajustar o saldo.');
 
-    const saldoAntes = calcularSaldo(db, investimento.id, dataHojeLocal());
+    const saldoAntes = (await calcularSaldo(db, investimento.id, dataHojeLocal()));
     const diferenca = arredondarMoeda(saldoCorreto - saldoAntes);
     if (diferenca === 0) {
       return { movimento_criado: false, saldo_anterior: saldoAntes, saldo_resultante: saldoAntes };
@@ -240,25 +256,27 @@ export function ajustarSaldoInvestimento(investimentoId, dados) {
     }
 
     const observacao = observacaoInformada || `Ajuste para saldo correto de R$ ${saldoCorreto.toFixed(2)}`;
-    const info = db.prepare(`
+    const info = (await db.prepare(`
       INSERT INTO investimento_movimentos (investimento_id, tipo, valor, data, observacao)
       VALUES (?, 'ajuste', ?, ?, ?)
-    `).run(investimento.id, diferenca, data, observacao);
-    validarHistoricoNaoNegativo(db, investimento.id);
-    const movimento = db.prepare('SELECT * FROM investimento_movimentos WHERE id = ?').get(info.lastInsertRowid);
-    registrarAuditoria(
+    `).run(investimento.id, diferenca, data, observacao));
+    (await validarHistoricoNaoNegativo(db, investimento.id));
+    const movimento = (await db.prepare('SELECT * FROM investimento_movimentos WHERE id = ?').get(info.lastInsertRowid));
+    (await registrarAuditoria(
       'INVESTIMENTO_AJUSTE',
       `Saldo de ${investimento.nome} ajustado de ${saldoAntes} para ${saldoCorreto}`,
       { saldo: saldoAntes },
       { movimento, saldo: saldoCorreto }
-    );
+    ));
     return { movimento_criado: true, ...movimento, saldo_anterior: saldoAntes, saldo_resultante: saldoCorreto };
   });
 
-  return transacao();
+  return (await transacao());
+  });
 }
 
-export function obterResumoInvestimentosDashboard(mes) {
+export async function obterResumoInvestimentosDashboard(mes) {
+  return snapshot(async () => {
   if (!/^\d{4}-\d{2}$/.test(String(mes || ''))) throw new Error('Competência inválida.');
   const db = getDatabase();
   const inicioMes = `${mes}-01`;
@@ -266,22 +284,22 @@ export function obterResumoInvestimentosDashboard(mes) {
   const proximoMesData = new Date(ano, numeroMes, 1);
   const proximoMes = `${proximoMesData.getFullYear()}-${String(proximoMesData.getMonth() + 1).padStart(2, '0')}-01`;
 
-  const saldoAtual = db.prepare(`
+  const saldoAtual = (await db.prepare(`
     SELECT COALESCE(SUM(${expressaoSaldo()}), 0) AS total
     FROM investimento_movimentos WHERE data <= ?
-  `).get(dataHojeLocal()).total;
-  const saldoCompetencia = db.prepare(`
+  `).get(dataHojeLocal())).total;
+  const saldoCompetencia = (await db.prepare(`
     SELECT COALESCE(SUM(${expressaoSaldo()}), 0) AS total
     FROM investimento_movimentos WHERE data < ?
-  `).get(proximoMes).total;
-  const impactoAnterior = db.prepare(`
+  `).get(proximoMes)).total;
+  const impactoAnterior = (await db.prepare(`
     SELECT COALESCE(SUM(CASE tipo WHEN 'aporte' THEN -valor WHEN 'resgate' THEN valor ELSE 0 END), 0) AS total
     FROM investimento_movimentos WHERE data < ?
-  `).get(inicioMes).total;
-  const impactoMes = db.prepare(`
+  `).get(inicioMes)).total;
+  const impactoMes = (await db.prepare(`
     SELECT COALESCE(SUM(CASE tipo WHEN 'aporte' THEN -valor WHEN 'resgate' THEN valor ELSE 0 END), 0) AS total
     FROM investimento_movimentos WHERE data >= ? AND data < ?
-  `).get(inicioMes, proximoMes).total;
+  `).get(inicioMes, proximoMes)).total;
 
   return {
     saldo_investido_atual: arredondarMoeda(saldoAtual),
@@ -289,4 +307,5 @@ export function obterResumoInvestimentosDashboard(mes) {
     impacto_caixa_anterior: arredondarMoeda(impactoAnterior),
     impacto_caixa_mes: arredondarMoeda(impactoMes)
   };
+  });
 }

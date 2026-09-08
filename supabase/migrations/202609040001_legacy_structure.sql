@@ -1,5 +1,5 @@
 -- Estrutura importada do SQLite; sem dados pessoais. Revisar antes de aplicar.
--- O runtime ainda precisa ser portado: este schema não altera o banco utilizado pela aplicação.
+-- Exige migração validada e seleção explícita do runtime; este SQL não copia registros.
 BEGIN;
 CREATE SCHEMA IF NOT EXISTS puzoto;
 REVOKE ALL ON SCHEMA puzoto FROM PUBLIC, anon, authenticated;
@@ -385,7 +385,7 @@ CREATE TABLE "receitas" (
   "categoria_nome" TEXT,
   "status" TEXT NOT NULL DEFAULT 'recebido',
   "recebido_em" TEXT,
-  "vinculado_trabalho" TEXT DEFAULT 0,
+  "vinculado_trabalho" BIGINT DEFAULT 0,
   "referencia_trabalho_tipo" TEXT,
   "referencia_trabalho_id" BIGINT,
   "observacao" TEXT,

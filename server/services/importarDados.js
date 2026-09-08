@@ -6,7 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getDatabase, getDatabasePath } from '../database/connection.js';
+import { getDatabase, getDatabasePath, getLocalDatabase } from '../database/connection.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,7 +150,8 @@ export function gerarPreviewImportacao(conteudo) {
 // BACKUP AUTOMATICO ANTES DA IMPORTACAO
 // ===========================================
 
-export function criarBackupAntesImportacao() {
+export async function criarBackupAntesImportacao() {
+  getLocalDatabase();
   const dbPath = getDatabasePath();
 
   if (!fs.existsSync(dbPath)) {
@@ -163,7 +164,7 @@ export function criarBackupAntesImportacao() {
   const nomeArquivo = `puzoto_life_auto_before_import_${ts}.db`;
   const destino = path.join(BACKUP_DIR, nomeArquivo);
 
-  fs.copyFileSync(dbPath, destino);
+  await getDatabase().backup(destino);
   console.log(`[IMPORT] Backup de seguranca criado: ${nomeArquivo}`);
 
   const stats = fs.statSync(destino);
@@ -186,17 +187,17 @@ function formatarTamanho(bytes) {
 // OBTER COLUNAS DA TABELA NO BANCO
 // ===========================================
 
-function obterColunasTabela(db, nomeTabela) {
+async function obterColunasTabela(db, nomeTabela) {
   try {
-    const info = db.prepare(`PRAGMA table_info(${nomeTabela})`).all();
+    const info = (await db.prepare(`PRAGMA table_info(${nomeTabela})`).all());
     return info.map(col => col.name);
   } catch (e) {
     return [];
   }
 }
 
-function tabelaExisteNoBanco(db, nomeTabela) {
-  const result = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(nomeTabela);
+async function tabelaExisteNoBanco(db, nomeTabela) {
+  const result = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(nomeTabela));
   return !!result;
 }
 
@@ -227,21 +228,21 @@ function normalizarRegistro(registro, colunasDestino, incluirId = false) {
 // INSERIR REGISTROS NA TABELA
 // ===========================================
 
-function inserirRegistrosTabela(db, nomeTabela, registros, opcoes = {}) {
+async function inserirRegistrosTabela(db, nomeTabela, registros, opcoes = {}) {
   const { evitarDuplicados = true, modo = 'adicionar' } = opcoes;
 
   if (!registros || registros.length === 0) {
     return { importados: 0, ignorados: 0, erros: [] };
   }
 
-  const colunasDestino = obterColunasTabela(db, nomeTabela);
+  const colunasDestino = (await obterColunasTabela(db, nomeTabela));
   if (colunasDestino.length === 0) {
     return { importados: 0, ignorados: 0, erros: [`Tabela ${nomeTabela} nao encontrada no banco.`] };
   }
 
   // No modo substituir, apagar dados existentes da tabela
   if (modo === 'substituir') {
-    db.prepare(`DELETE FROM ${nomeTabela}`).run();
+    (await db.prepare(`DELETE FROM ${nomeTabela}`).run());
     console.log(`[IMPORT] Dados da tabela ${nomeTabela} apagados (modo substituir).`);
   }
 
@@ -258,7 +259,7 @@ function inserirRegistrosTabela(db, nomeTabela, registros, opcoes = {}) {
 
       // Verificar duplicidade por ID
       if (evitarDuplicados && reg.id && modo !== 'substituir') {
-        const existe = db.prepare(`SELECT id FROM ${nomeTabela} WHERE id = ?`).get(reg.id);
+        const existe = (await db.prepare(`SELECT id FROM ${nomeTabela} WHERE id = ?`).get(reg.id));
         if (existe) {
           ignorados++;
           continue;
@@ -277,7 +278,7 @@ function inserirRegistrosTabela(db, nomeTabela, registros, opcoes = {}) {
       const valores = colunas.map(c => normalizado[c]);
 
       const sql = `INSERT INTO ${nomeTabela} (${colunas.join(', ')}) VALUES (${placeholders})`;
-      db.prepare(sql).run(...valores);
+      (await db.prepare(sql).run(...valores));
       importados++;
     } catch (err) {
       // Se for duplicado (UNIQUE constraint), contabilizar como ignorado
@@ -297,7 +298,7 @@ function inserirRegistrosTabela(db, nomeTabela, registros, opcoes = {}) {
 // IMPORTAR JSON COMPLETO
 // ===========================================
 
-export function importarJSON(conteudo, opcoes = {}) {
+export async function importarJSON(conteudo, opcoes = {}) {
   const { modo = 'adicionar', evitarDuplicados = true, confirmacao } = opcoes;
 
   // Validar confirmacao
@@ -319,7 +320,7 @@ export function importarJSON(conteudo, opcoes = {}) {
   }
 
   // Criar backup automatico antes da importacao
-  const backupCriado = criarBackupAntesImportacao();
+  const backupCriado = await criarBackupAntesImportacao();
   console.log(`[IMPORT] Backup de seguranca criado: ${backupCriado.nomeArquivo}`);
 
   const db = getDatabase();
@@ -333,7 +334,7 @@ export function importarJSON(conteudo, opcoes = {}) {
     erros: []
   };
 
-  const transacao = db.transaction(() => {
+  const transacao = db.transaction(async () => {
     for (const [chave, valor] of Object.entries(json)) {
       // Ignorar metadados internos
       if (chave.startsWith('_')) continue;
@@ -341,7 +342,7 @@ export function importarJSON(conteudo, opcoes = {}) {
       if (!TABELAS_PERMITIDAS.includes(chave)) continue;
 
       // Verificar se tabela existe no banco
-      if (!tabelaExisteNoBanco(db, chave)) {
+      if (!(await tabelaExisteNoBanco(db, chave))) {
         resultado.erros.push(`Tabela ${chave} nao existe no banco atual. Ignorada.`);
         resultado.detalhes.push({
           tabela: chave,
@@ -352,7 +353,7 @@ export function importarJSON(conteudo, opcoes = {}) {
         continue;
       }
 
-      const res = inserirRegistrosTabela(db, chave, valor, { evitarDuplicados, modo });
+      const res = (await inserirRegistrosTabela(db, chave, valor, { evitarDuplicados, modo }));
 
       resultado.tabelas_importadas++;
       resultado.registros_importados += res.importados;
@@ -371,7 +372,7 @@ export function importarJSON(conteudo, opcoes = {}) {
   });
 
   try {
-    transacao();
+    (await transacao());
   } catch (err) {
     console.error('[IMPORT] Erro durante importacao (rollback automatico):', err.message);
     throw new Error(`Importacao falhou e foi revertida: ${err.message}`);

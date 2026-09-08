@@ -234,16 +234,16 @@ export async function gerarBufferExcel(laudos, chavePix) {
 export async function gerarExcelRanon() {
   const db = getDatabase();
 
-  const laudos = db.prepare(`
+  const laudos = (await db.prepare(`
     SELECT * FROM laudos_ranon_pendentes
     ORDER BY data ASC, criado_em ASC
-  `).all();
+  `).all());
 
   if (laudos.length === 0) {
     throw new Error('Não há laudos pendentes para exportar.');
   }
 
-  const pixRow = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'chave_pix'").get();
+  const pixRow = (await db.prepare("SELECT valor FROM configuracoes WHERE chave = 'chave_pix'").get());
   const chavePix = pixRow ? pixRow.valor : 'ronnanpc@gmail.com';
 
   const buffer = await gerarBufferExcel(laudos, chavePix);

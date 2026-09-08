@@ -1,37 +1,49 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Empresas
  */
 
 import { getDatabase } from '../database/connection.js';
 
-export function listarEmpresas() {
+export async function listarEmpresas() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM empresas WHERE ativa = 1 ORDER BY id').all();
+  return (await db.prepare('SELECT * FROM empresas WHERE ativa = 1 ORDER BY id').all());
+  });
 }
 
-export function listarTodasEmpresas() {
+export async function listarTodasEmpresas() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM empresas ORDER BY id').all();
+  return (await db.prepare('SELECT * FROM empresas ORDER BY id').all());
+  });
 }
 
-export function obterEmpresaPorId(id) {
+export async function obterEmpresaPorId(id) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM empresas WHERE id = ?').get(id);
+  return (await db.prepare('SELECT * FROM empresas WHERE id = ?').get(id));
+  });
 }
 
-export function obterEmpresaPorNome(nome) {
+export async function obterEmpresaPorNome(nome) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM empresas WHERE nome = ?').get(nome);
+  return (await db.prepare('SELECT * FROM empresas WHERE nome = ?').get(nome));
+  });
 }
 
-export function criarEmpresasIniciaisSeNaoExistirem() {
+export async function criarEmpresasIniciaisSeNaoExistirem() {
+  return snapshot(async () => {
   // Já é feito no init.js, mas pode ser chamado explicitamente
   const db = getDatabase();
-  const count = db.prepare('SELECT COUNT(*) as total FROM empresas').get();
+  const count = (await db.prepare('SELECT COUNT(*) as total FROM empresas').get());
   return { total: count.total, mensagem: `${count.total} empresas no sistema.` };
+  });
 }
 
-export function atualizarEmpresa(id, dados) {
+export async function atualizarEmpresa(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { nome, tipo, valor_padrao, ativa, cor, icone, observacao, pagador_id } = dados;
   
@@ -56,10 +68,12 @@ export function atualizarEmpresa(id, dados) {
     if (typeof params[k] === 'boolean') params[k] = params[k] ? 1 : 0;
   });
 
-  return stmt.run(params);
+  return (await stmt.run(params));
+  });
 }
 
-export function criarEmpresa(dados) {
+export async function criarEmpresa(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { nome, tipo, valor_padrao, cor, icone, observacao, pagador_id } = dados;
 
@@ -74,16 +88,21 @@ export function criarEmpresa(dados) {
     if (typeof params[k] === 'boolean') params[k] = params[k] ? 1 : 0;
   });
 
-  const result = stmt.run(params);
+  const result = (await stmt.run(params));
   return result.lastInsertRowid;
+  });
 }
 
-export function desativarEmpresa(id) {
+export async function desativarEmpresa(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare('UPDATE empresas SET ativa = 0, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id);
+  return (await db.prepare('UPDATE empresas SET ativa = 0, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id));
+  });
 }
 
-export function ativarEmpresa(id) {
+export async function ativarEmpresa(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare('UPDATE empresas SET ativa = 1, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id);
+  return (await db.prepare('UPDATE empresas SET ativa = 1, atualizado_em = datetime("now", "localtime") WHERE id = ?').run(id));
+  });
 }

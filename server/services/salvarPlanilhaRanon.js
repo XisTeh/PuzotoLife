@@ -3,10 +3,11 @@
  * Fecha o lote pendente: salva no histórico definitivo, gera backup Excel e limpa pendentes.
  */
 
-import fs from 'fs';
+import fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getDatabase } from '../database/connection.js';
+import { getDatabase, getDatabasePath, atomic } from '../database/connection.js';
 import { gerarBufferExcel } from './exportarExcelRanon.js';
 import { registrarAuditoria } from './auditoria.js';
 
@@ -14,27 +15,31 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Pasta de backups
-const PASTA_BACKUPS = path.resolve(__dirname, '../../data/backups/laudos_ranon');
+const backupFolder = () => path.join(path.dirname(getDatabasePath()), 'backups', 'laudos_ranon');
 
 /**
  * Salvar Planilha: fecha o lote pendente do Dr. Ranon / RX.
  * @param {string} mesReferencia - Mês de referência no formato "MM/AAAA" (ex: "04/2026")
  */
 export async function salvarPlanilhaRanon(mesReferencia) {
+  if (!/^(0[1-9]|1[0-2])\/20\d{2}$/.test(String(mesReferencia))) throw new Error('Mês de referência inválido. Use MM/AAAA.');
+  let createdFile;
+  try {
+    return await atomic(async () => {
   const db = getDatabase();
 
   // 1. Buscar laudos pendentes
-  const laudos = db.prepare(`
+  const laudos = (await db.prepare(`
     SELECT * FROM laudos_ranon_pendentes
     ORDER BY data ASC, criado_em ASC
-  `).all();
+  `).all());
 
   if (laudos.length === 0) {
     return { success: false, message: 'Não há laudos pendentes para salvar.' };
   }
 
   // 2. Buscar chave PIX
-  const pixRow = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'chave_pix'").get();
+  const pixRow = (await db.prepare("SELECT valor FROM configuracoes WHERE chave = 'chave_pix'").get());
   const chavePix = pixRow ? pixRow.valor : 'ronnanpc@gmail.com';
 
   // 3. Gerar arquivo Excel de backup
@@ -46,24 +51,12 @@ export async function salvarPlanilhaRanon(mesReferencia) {
   const ano = partes[1].slice(2);
   const nomeBase = `Laudos ${mes}-${ano}`;
 
-  // Garantir que a pasta exista
-  if (!fs.existsSync(PASTA_BACKUPS)) {
-    fs.mkdirSync(PASTA_BACKUPS, { recursive: true });
-  }
-
-  // Evitar sobrescrever: adicionar timestamp se já existir
-  let nomeArquivo = `${nomeBase}.xlsx`;
-  let caminhoCompleto = path.join(PASTA_BACKUPS, nomeArquivo);
-
-  if (fs.existsSync(caminhoCompleto)) {
-    const agora = new Date();
-    const ts = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}_${String(agora.getHours()).padStart(2, '0')}-${String(agora.getMinutes()).padStart(2, '0')}`;
-    nomeArquivo = `${nomeBase}_${ts}.xlsx`;
-    caminhoCompleto = path.join(PASTA_BACKUPS, nomeArquivo);
-  }
-
-  // 5. Salvar arquivo no disco
-  fs.writeFileSync(caminhoCompleto, Buffer.from(buffer));
+  const folder = backupFolder();
+  await fs.mkdir(folder, { recursive: true });
+  const nomeArquivo = nomeBase + '_' + randomUUID() + '.xlsx';
+  const caminhoCompleto = path.join(folder, nomeArquivo);
+  await fs.writeFile(caminhoCompleto, Buffer.from(buffer), { flag: 'wx' });
+  createdFile = caminhoCompleto;
 
   // 6. Transação: mover pendentes → histórico + limpar pendentes
   const totalQuantidade = laudos.reduce((acc, l) => acc + (l.quantidade || 1), 0);
@@ -76,10 +69,10 @@ export async function salvarPlanilhaRanon(mesReferencia) {
       (@registro_paciente, @quantidade, @valor_unitario, @total, @data, @horario, @status, @arquivo_excel_backup, @observacao)
   `);
 
-  const transacao = db.transaction(() => {
+  const transacao = db.transaction(async () => {
     // Copiar cada laudo para histórico
     for (const laudo of laudos) {
-      inserirHistorico.run({
+      (await inserirHistorico.run({
         registro_paciente: laudo.registro_paciente,
         quantidade: laudo.quantidade || 1,
         valor_unitario: laudo.valor_unitario,
@@ -89,14 +82,14 @@ export async function salvarPlanilhaRanon(mesReferencia) {
         status: 'fechado',
         arquivo_excel_backup: nomeArquivo,
         observacao: laudo.observacao || null
-      });
+      }));
     }
 
     // Limpar pendentes
-    db.prepare('DELETE FROM laudos_ranon_pendentes').run();
+    (await db.prepare('DELETE FROM laudos_ranon_pendentes').run());
 
     // Registrar auditoria
-    registrarAuditoria(
+    (await registrarAuditoria(
       'salvar_planilha_ranon',
       'Planilha do Dr. Ranon / RX salva com sucesso',
       laudos,
@@ -107,10 +100,10 @@ export async function salvarPlanilhaRanon(mesReferencia) {
         mes_referencia: mesReferencia,
         salvo_em: new Date().toISOString()
       }
-    );
+    ));
   });
 
-  transacao();
+  (await transacao());
 
   return {
     success: true,
@@ -122,14 +115,19 @@ export async function salvarPlanilhaRanon(mesReferencia) {
       mes_referencia: mesReferencia
     }
   };
+    });
+  } catch (error) {
+    if (createdFile) await fs.unlink(createdFile).catch(() => {});
+    throw error;
+  }
 }
 
 /**
  * Listar últimas planilhas salvas (agrupadas por arquivo_excel_backup).
  */
-export function listarHistoricoPlanihas(limit = 5) {
+export async function listarHistoricoPlanihas(limit = 5) {
   const db = getDatabase();
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT 
       arquivo_excel_backup,
       COUNT(*) as quantidade,
@@ -142,5 +140,5 @@ export function listarHistoricoPlanihas(limit = 5) {
     GROUP BY arquivo_excel_backup
     ORDER BY MAX(criado_em) DESC
     LIMIT ?
-  `).all(limit);
+  `).all(limit));
 }

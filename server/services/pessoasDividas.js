@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 import crypto from 'crypto';
@@ -13,7 +14,8 @@ function dataIsoHoje() {
   return formatarDataIso(new Date());
 }
 
-export function listarPessoasDividas(filtros) {
+export async function listarPessoasDividas(filtros) {
+  return snapshot(async () => {
   const db = getDatabase();
   let sql = 'SELECT * FROM pessoas_dividas WHERE 1=1';
   const params = [];
@@ -39,7 +41,7 @@ export function listarPessoasDividas(filtros) {
 
   sql += ' ORDER BY data_combinada ASC';
   const stmt = db.prepare(sql);
-  const registros = stmt.all(...params);
+  const registros = (await stmt.all(...params));
 
   // Se tiver filtro de mês, gerar as parcelas de dividas_parceladas_grupos correspondentes a esse mês
   if (filtros && filtros.mes) {
@@ -55,7 +57,7 @@ export function listarPessoasDividas(filtros) {
       paramsDP.push(filtros.tipo);
     }
 
-    const grupos = db.prepare(queryDP).all(...paramsDP);
+    const grupos = (await db.prepare(queryDP).all(...paramsDP));
 
     grupos.forEach(grupo => {
       // Calcular qual parcela desse grupo cai no mês filtros.mes
@@ -128,10 +130,12 @@ export function listarPessoasDividas(filtros) {
     r.atrasado = (r.status === 'pendente' && r.data_combinada < hoje);
     return r;
   });
+  });
 }
 
 
-export function criarPessoaDivida(dados) {
+export async function criarPessoaDivida(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   
   if (!dados.nome_pessoa || !dados.tipo || !dados.valor || !dados.motivo || !dados.data_combinada) {
@@ -143,7 +147,7 @@ export function criarPessoaDivida(dados) {
   const valorTotal = parseFloat(dados.valor);
   const valorParcela = parcelas > 1 ? (valorTotal / parcelas) : valorTotal;
 
-  const transaction = db.transaction(() => {
+  const transaction = db.transaction(async () => {
     const stmt = db.prepare(`
       INSERT INTO pessoas_dividas (nome_pessoa, tipo, valor, motivo, data_combinada, parcela_atual, total_parcelas, grupo_parcelas_id, observacao)
       VALUES (@nome_pessoa, @tipo, @valor, @motivo, @data_combinada, @parcela_atual, @total_parcelas, @grupo_parcelas_id, @observacao)
@@ -165,7 +169,7 @@ export function criarPessoaDivida(dados) {
         novaData.setFullYear(novaData.getFullYear() + i);
       }
 
-      stmt.run({
+      (await stmt.run({
         nome_pessoa: dados.nome_pessoa,
         tipo: dados.tipo,
         valor: valorParcela,
@@ -175,74 +179,82 @@ export function criarPessoaDivida(dados) {
         total_parcelas: parcelas,
         grupo_parcelas_id: grupoId,
         observacao: dados.observacao || ''
-      });
+      }));
     }
   });
 
-  transaction();
-  registrarAuditoria('PESSOAS_DIVIDAS_CRIAR', `Registro p/ ${dados.nome_pessoa} de ${dados.valor} (${parcelas}x)`);
+  (await transaction());
+  (await registrarAuditoria('PESSOAS_DIVIDAS_CRIAR', `Registro p/ ${dados.nome_pessoa} de ${dados.valor} (${parcelas}x)`));
   return { sucesso: true };
+  });
 }
 
-export function marcarPessoaDividaResolvida(id) {
+export async function marcarPessoaDividaResolvida(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  const registro = db.prepare('SELECT id, tipo, status FROM pessoas_dividas WHERE id = ?').get(id);
+  const registro = (await db.prepare('SELECT id, tipo, status FROM pessoas_dividas WHERE id = ?').get(id));
   
   if (!registro) throw new Error('Registro não encontrado');
   if (registro.status !== 'pendente') throw new Error(`Registro já está ${registro.status}`);
 
   const novoStatus = registro.tipo === 'eu_devo' ? 'pago' : 'recebido';
 
-  db.prepare(`
+  (await db.prepare(`
     UPDATE pessoas_dividas 
     SET status = ?, pago_recebido_em = datetime('now', 'localtime'), atualizado_em = datetime('now', 'localtime')
     WHERE id = ?
-  `).run(novoStatus, id);
+  `).run(novoStatus, id));
 
-  registrarAuditoria('PESSOAS_DIVIDAS_RESOLVIDA', `Registro ${id} marcado como ${novoStatus}`);
+  (await registrarAuditoria('PESSOAS_DIVIDAS_RESOLVIDA', `Registro ${id} marcado como ${novoStatus}`));
   return { sucesso: true };
+  });
 }
 
-export function cancelarPessoaDivida(id, todasParcelas = false) {
+export async function cancelarPessoaDivida(id, todasParcelas = false) {
+  return atomic(async () => {
   const db = getDatabase();
-  const registro = db.prepare('SELECT id, status, grupo_parcelas_id FROM pessoas_dividas WHERE id = ?').get(id);
+  const registro = (await db.prepare('SELECT id, status, grupo_parcelas_id FROM pessoas_dividas WHERE id = ?').get(id));
   
   if (!registro) throw new Error('Registro não encontrado');
   if (registro.status === 'cancelado') throw new Error('Registro já está cancelado');
 
   if (todasParcelas && registro.grupo_parcelas_id) {
-    db.prepare(`
+    (await db.prepare(`
       UPDATE pessoas_dividas 
       SET status = 'cancelado', atualizado_em = datetime('now', 'localtime') 
       WHERE grupo_parcelas_id = ?
-    `).run(registro.grupo_parcelas_id);
-    registrarAuditoria('PESSOAS_DIVIDAS_CANCELAR', `Grupo de parcelas ${registro.grupo_parcelas_id} cancelado`);
+    `).run(registro.grupo_parcelas_id));
+    (await registrarAuditoria('PESSOAS_DIVIDAS_CANCELAR', `Grupo de parcelas ${registro.grupo_parcelas_id} cancelado`));
   } else {
-    db.prepare(`
+    (await db.prepare(`
       UPDATE pessoas_dividas 
       SET status = 'cancelado', atualizado_em = datetime('now', 'localtime') 
       WHERE id = ?
-    `).run(id);
-    registrarAuditoria('PESSOAS_DIVIDAS_CANCELAR', `Registro ${id} cancelado`);
+    `).run(id));
+    (await registrarAuditoria('PESSOAS_DIVIDAS_CANCELAR', `Registro ${id} cancelado`));
   }
   return { sucesso: true };
+  });
 }
 
-export function removerPessoaDivida(id, todasParcelas = false) {
+export async function removerPessoaDivida(id, todasParcelas = false) {
+  return atomic(async () => {
   const db = getDatabase();
-  const registro = db.prepare('SELECT grupo_parcelas_id FROM pessoas_dividas WHERE id = ?').get(id);
+  const registro = (await db.prepare('SELECT grupo_parcelas_id FROM pessoas_dividas WHERE id = ?').get(id));
   
   if (todasParcelas && registro && registro.grupo_parcelas_id) {
-    db.prepare('DELETE FROM pessoas_dividas WHERE grupo_parcelas_id = ?').run(registro.grupo_parcelas_id);
-    registrarAuditoria('PESSOAS_DIVIDAS_EXCLUIR', `Grupo de parcelas excluído fisicamente`);
+    (await db.prepare('DELETE FROM pessoas_dividas WHERE grupo_parcelas_id = ?').run(registro.grupo_parcelas_id));
+    (await registrarAuditoria('PESSOAS_DIVIDAS_EXCLUIR', `Grupo de parcelas excluído fisicamente`));
   } else {
-    db.prepare('DELETE FROM pessoas_dividas WHERE id = ?').run(id);
-    registrarAuditoria('PESSOAS_DIVIDAS_EXCLUIR', `Registro ${id} excluído fisicamente`);
+    (await db.prepare('DELETE FROM pessoas_dividas WHERE id = ?').run(id));
+    (await registrarAuditoria('PESSOAS_DIVIDAS_EXCLUIR', `Registro ${id} excluído fisicamente`));
   }
   return { sucesso: true };
+  });
 }
 
-export function calcularResumoPessoasDividas(mes) {
+export async function calcularResumoPessoasDividas(mes) {
+  return snapshot(async () => {
   const db = getDatabase();
   const hoje = dataIsoHoje();
   const mesParams = mes ? [mes + '-%'] : ['%'];
@@ -260,7 +272,7 @@ export function calcularResumoPessoasDividas(mes) {
   };
 
   // Eu Devo / Me Devem pendentes simples (Geral)
-  const pendentes = db.prepare("SELECT tipo, SUM(valor) as total FROM pessoas_dividas WHERE status = 'pendente' GROUP BY tipo").all();
+  const pendentes = (await db.prepare("SELECT tipo, SUM(valor) as total FROM pessoas_dividas WHERE status = 'pendente' GROUP BY tipo").all());
   pendentes.forEach(p => {
     if (p.tipo === 'eu_devo') resumo.euDevoPendenteTotalGeral = p.total || 0;
     if (p.tipo === 'me_deve') resumo.meDevemPendenteTotalGeral = p.total || 0;
@@ -268,7 +280,7 @@ export function calcularResumoPessoasDividas(mes) {
 
   // Somar apenas a parcela correspondente do mês das dívidas parceladas ativas se pendentes
   if (mes) {
-    const dp_ativas = db.prepare("SELECT * FROM dividas_parceladas_grupos WHERE status = 'ativa'").all();
+    const dp_ativas = (await db.prepare("SELECT * FROM dividas_parceladas_grupos WHERE status = 'ativa'").all());
     dp_ativas.forEach(grupo => {
       const [anoI, mesI] = grupo.competencia_inicio.split('-');
       const [anoF, mesF] = mes.split('-');
@@ -298,7 +310,7 @@ export function calcularResumoPessoasDividas(mes) {
   resumo.saldoLiquido = resumo.meDevemPendente - resumo.euDevoPendente;
 
   // Pagos / Recebidos no Mês (simples)
-  const pagos = db.prepare("SELECT tipo, SUM(valor) as total FROM pessoas_dividas WHERE (status = 'pago' OR status = 'recebido') AND (pago_recebido_em LIKE ? OR data_combinada LIKE ?) GROUP BY tipo").all(mesParams[0], mesParams[0]);
+  const pagos = (await db.prepare("SELECT tipo, SUM(valor) as total FROM pessoas_dividas WHERE (status = 'pago' OR status = 'recebido') AND (pago_recebido_em LIKE ? OR data_combinada LIKE ?) GROUP BY tipo").all(mesParams[0], mesParams[0]));
   pagos.forEach(p => {
     if (p.tipo === 'eu_devo') resumo.jaPagueiMes = p.total || 0;
     if (p.tipo === 'me_deve') resumo.jaRecebiMes = p.total || 0;
@@ -306,7 +318,7 @@ export function calcularResumoPessoasDividas(mes) {
 
   // Somar também parcelas de dívidas parceladas pagas no mês filtrado
   if (mes) {
-    const gruposParaResumo = db.prepare("SELECT * FROM dividas_parceladas_grupos WHERE status != 'cancelada'").all();
+    const gruposParaResumo = (await db.prepare("SELECT * FROM dividas_parceladas_grupos WHERE status != 'cancelada'").all());
     gruposParaResumo.forEach(grupo => {
       const [anoI, mesI] = grupo.competencia_inicio.split('-');
       const [anoF, mesF] = mes.split('-');
@@ -332,16 +344,18 @@ export function calcularResumoPessoasDividas(mes) {
   }
 
   // Atrasadas
-  const atrasadas = db.prepare("SELECT COUNT(*) as qtd, SUM(valor) as total FROM pessoas_dividas WHERE status = 'pendente' AND data_combinada < ?").get(hoje);
+  const atrasadas = (await db.prepare("SELECT COUNT(*) as qtd, SUM(valor) as total FROM pessoas_dividas WHERE status = 'pendente' AND data_combinada < ?").get(hoje));
   resumo.pendenciasAtrasadasQtd = atrasadas.qtd || 0;
   resumo.pendenciasAtrasadasValor = atrasadas.total || 0;
 
   return resumo;
+  });
 }
 
-export function obterHistoricoPessoa(nome) {
+export async function obterHistoricoPessoa(nome) {
+  return snapshot(async () => {
   const db = getDatabase();
-  const registros = db.prepare('SELECT * FROM pessoas_dividas WHERE nome_pessoa = ? ORDER BY data_combinada DESC').all(nome);
+  const registros = (await db.prepare('SELECT * FROM pessoas_dividas WHERE nome_pessoa = ? ORDER BY data_combinada DESC').all(nome));
 
   const resumo = {
     euDevo: 0,
@@ -361,19 +375,23 @@ export function obterHistoricoPessoa(nome) {
   resumo.saldo = resumo.meDeve - resumo.euDevo;
 
   return { resumo, registros };
+  });
 }
 
-export function listarPessoasUnicas() {
+export async function listarPessoasUnicas() {
+  return snapshot(async () => {
   const db = getDatabase();
-  const rows = db.prepare('SELECT DISTINCT nome_pessoa FROM pessoas_dividas UNION SELECT DISTINCT nome_pessoa FROM dividas_parceladas_grupos ORDER BY nome_pessoa ASC').all();
+  const rows = (await db.prepare('SELECT DISTINCT nome_pessoa FROM pessoas_dividas UNION SELECT DISTINCT nome_pessoa FROM dividas_parceladas_grupos ORDER BY nome_pessoa ASC').all());
   return rows.map(r => r.nome_pessoa);
+  });
 }
 
 // ═══════════════════════════════════════
 // DÍVIDAS PARCELADAS (GRUPOS)
 // ═══════════════════════════════════════
 
-export function listarDividasParceladas(filtros) {
+export async function listarDividasParceladas(filtros) {
+  return snapshot(async () => {
   const db = getDatabase();
   let sql = "SELECT * FROM dividas_parceladas_grupos WHERE status = 'ativa'";
   const params = [];
@@ -389,7 +407,7 @@ export function listarDividasParceladas(filtros) {
   
   sql += ' ORDER BY nome_pessoa ASC';
   const stmt = db.prepare(sql);
-  const grupos = stmt.all(...params);
+  const grupos = (await stmt.all(...params));
   
   // Enriquecer com próxima parcela
   return grupos.map(g => {
@@ -407,9 +425,11 @@ export function listarDividasParceladas(filtros) {
       saldo_restante: saldoRestante
     };
   });
+  });
 }
 
-export function criarDividaParcelada(dados) {
+export async function criarDividaParcelada(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   
   if (!dados.nome_pessoa || !dados.tipo || !dados.motivo || !dados.valor_parcela || !dados.total_parcelas) {
@@ -431,7 +451,7 @@ export function criarDividaParcelada(dados) {
     throw new Error('Deve haver ao menos 1 parcela restante.');
   }
   
-  const info = db.prepare(`
+  const info = (await db.prepare(`
     INSERT INTO dividas_parceladas_grupos 
     (nome_pessoa, tipo, motivo, valor_parcela, valor_total_original, total_parcelas, parcelas_pagas, parcelas_restantes, dia_vencimento, competencia_inicio, observacao)
     VALUES (@nome_pessoa, @tipo, @motivo, @valor_parcela, @valor_total_original, @total_parcelas, @parcelas_pagas, @parcelas_restantes, @dia_vencimento, @competencia_inicio, @observacao)
@@ -447,17 +467,19 @@ export function criarDividaParcelada(dados) {
     dia_vencimento,
     competencia_inicio,
     observacao: dados.observacao || ''
-  });
+  }));
   
-  registrarAuditoria('DIVIDA_PARCELADA_CRIAR', `Divida parcelada ${dados.nome_pessoa} - ${dados.motivo} (${total_parcelas}x R$${valor_parcela})`);
+  (await registrarAuditoria('DIVIDA_PARCELADA_CRIAR', `Divida parcelada ${dados.nome_pessoa} - ${dados.motivo} (${total_parcelas}x R$${valor_parcela})`));
   return { sucesso: true, id: info.lastInsertRowid };
+  });
 }
 
-export function pagarProximaParcelaDivida(grupoId) {
+export async function pagarProximaParcelaDivida(grupoId) {
+  return atomic(async () => {
   const db = getDatabase();
   
-  const transaction = db.transaction(() => {
-    const grupo = db.prepare('SELECT * FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId);
+  const transaction = db.transaction(async () => {
+    const grupo = (await db.prepare('SELECT * FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId));
     if (!grupo) throw new Error('Dívida parcelada não encontrada');
     if (grupo.status !== 'ativa') throw new Error('Esta dívida não está ativa.');
     if (grupo.parcelas_restantes <= 0) throw new Error('Todas as parcelas já foram pagas.');
@@ -466,11 +488,11 @@ export function pagarProximaParcelaDivida(grupoId) {
     const novasRestantes = grupo.parcelas_restantes - 1;
     const novoStatus = novasRestantes <= 0 ? 'encerrada' : 'ativa';
     
-    db.prepare(`
+    (await db.prepare(`
       UPDATE dividas_parceladas_grupos 
       SET parcelas_pagas = ?, parcelas_restantes = ?, status = ?, atualizado_em = datetime('now', 'localtime')
       WHERE id = ?
-    `).run(novasPagas, novasRestantes, novoStatus, grupoId);
+    `).run(novasPagas, novasRestantes, novoStatus, grupoId));
     
     // Calcular competência da parcela paga
     const [ano, mes] = grupo.competencia_inicio.split('-');
@@ -487,7 +509,7 @@ export function pagarProximaParcelaDivida(grupoId) {
       valorParcela = 194.57; // Exceção para Meu Peixe no mês 6
     }
 
-    db.prepare(`
+    (await db.prepare(`
       INSERT INTO pessoas_dividas (nome_pessoa, tipo, motivo, valor, status, data_combinada, pago_recebido_em, parcela_atual, total_parcelas, grupo_parcelas_id)
       VALUES (?, ?, ?, ?, ?, ?, date('now', 'localtime'), ?, ?, ?)
     `).run(
@@ -500,9 +522,9 @@ export function pagarProximaParcelaDivida(grupoId) {
       numParcela,
       grupo.total_parcelas,
       `dp_grupo_${grupo.id}`
-    );
+    ));
     
-    registrarAuditoria('DIVIDA_PARCELADA_PAGAR', `Parcela ${novasPagas}/${grupo.total_parcelas} de ${grupo.nome_pessoa} - ${grupo.motivo} paga (${parcelaComp})`);
+    (await registrarAuditoria('DIVIDA_PARCELADA_PAGAR', `Parcela ${novasPagas}/${grupo.total_parcelas} de ${grupo.nome_pessoa} - ${grupo.motivo} paga (${parcelaComp})`));
     
     return {
       sucesso: true,
@@ -514,22 +536,26 @@ export function pagarProximaParcelaDivida(grupoId) {
     };
   });
   
-  return transaction();
+  return (await transaction());
+  });
 }
 
-export function excluirDividaParcelada(grupoId) {
+export async function excluirDividaParcelada(grupoId) {
+  return atomic(async () => {
   const db = getDatabase();
-  const grupo = db.prepare('SELECT * FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId);
+  const grupo = (await db.prepare('SELECT * FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId));
   if (!grupo) throw new Error('Dívida parcelada não encontrada');
   
-  db.prepare('DELETE FROM dividas_parceladas_grupos WHERE id = ?').run(grupoId);
-  registrarAuditoria('DIVIDA_PARCELADA_EXCLUIR', `Divida parcelada ${grupo.nome_pessoa} - ${grupo.motivo} excluída`);
+  (await db.prepare('DELETE FROM dividas_parceladas_grupos WHERE id = ?').run(grupoId));
+  (await registrarAuditoria('DIVIDA_PARCELADA_EXCLUIR', `Divida parcelada ${grupo.nome_pessoa} - ${grupo.motivo} excluída`));
   return { sucesso: true };
+  });
 }
 
-export function obterDividaParcelada(grupoId) {
+export async function obterDividaParcelada(grupoId) {
+  return snapshot(async () => {
   const db = getDatabase();
-  const grupo = db.prepare('SELECT * FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId);
+  const grupo = (await db.prepare('SELECT * FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId));
   if (!grupo) throw new Error('Dívida parcelada não encontrada');
   
   // Gerar lista de parcelas virtual
@@ -562,9 +588,11 @@ export function obterDividaParcelada(grupoId) {
   }
   
   return { ...grupo, parcelas_lista: parcelas };
+  });
 }
 
-export function atualizarValorPessoaDivida(idStr, novoValor) {
+export async function atualizarValorPessoaDivida(idStr, novoValor) {
+  return atomic(async () => {
   const db = getDatabase();
   
   if (isNaN(novoValor) || novoValor <= 0) {
@@ -574,31 +602,32 @@ export function atualizarValorPessoaDivida(idStr, novoValor) {
   if (String(idStr).startsWith('dp_')) {
     const grupoId = Number(String(idStr).replace('dp_', ''));
     if (isNaN(grupoId)) throw new Error('ID de grupo inválido');
-    const grupo = db.prepare('SELECT id, nome_pessoa, motivo FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId);
+    const grupo = (await db.prepare('SELECT id, nome_pessoa, motivo FROM dividas_parceladas_grupos WHERE id = ?').get(grupoId));
     if (!grupo) throw new Error('Dívida parcelada não encontrada');
     
-    db.prepare(`
+    (await db.prepare(`
       UPDATE dividas_parceladas_grupos 
       SET valor_parcela = ?, atualizado_em = datetime('now', 'localtime') 
       WHERE id = ?
-    `).run(novoValor, grupoId);
+    `).run(novoValor, grupoId));
     
-    registrarAuditoria('DIVIDA_PARCELADA_VALOR_ATUALIZAR', `Valor da parcela do grupo ${grupoId} (${grupo.nome_pessoa} - ${grupo.motivo}) atualizado para ${novoValor}`);
+    (await registrarAuditoria('DIVIDA_PARCELADA_VALOR_ATUALIZAR', `Valor da parcela do grupo ${grupoId} (${grupo.nome_pessoa} - ${grupo.motivo}) atualizado para ${novoValor}`));
     return { sucesso: true };
   } else {
     const id = Number(idStr);
     if (isNaN(id)) throw new Error('ID inválido');
-    const registro = db.prepare('SELECT id, nome_pessoa, motivo FROM pessoas_dividas WHERE id = ?').get(id);
+    const registro = (await db.prepare('SELECT id, nome_pessoa, motivo FROM pessoas_dividas WHERE id = ?').get(id));
     if (!registro) throw new Error('Registro não encontrado');
     
-    db.prepare(`
+    (await db.prepare(`
       UPDATE pessoas_dividas 
       SET valor = ?, atualizado_em = datetime('now', 'localtime') 
       WHERE id = ?
-    `).run(novoValor, id);
+    `).run(novoValor, id));
     
-    registrarAuditoria('PESSOAS_DIVIDAS_VALOR_ATUALIZAR', `Valor do registro ${id} (${registro.nome_pessoa} - ${registro.motivo}) atualizado para ${novoValor}`);
+    (await registrarAuditoria('PESSOAS_DIVIDAS_VALOR_ATUALIZAR', `Valor do registro ${id} (${registro.nome_pessoa} - ${registro.motivo}) atualizado para ${novoValor}`));
     return { sucesso: true };
   }
+  });
 }
 

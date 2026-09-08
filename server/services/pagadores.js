@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Pagadores
  * Gerencia as fontes reais de recebimento (Dr. Alexandre, Dr. Ranon, Padrão).
@@ -16,25 +17,32 @@ function converterMesParaReferencia(mesYYYYMM) {
   return `${meses[mes - 1]}/${ano}`;
 }
 
-export function listarPagadores() {
+export async function listarPagadores() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM pagadores WHERE ativo = 1 ORDER BY nome').all();
+  return (await db.prepare('SELECT * FROM pagadores WHERE ativo = 1 ORDER BY nome').all());
+  });
 }
 
-export function listarTodosPagadores() {
+export async function listarTodosPagadores() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM pagadores ORDER BY nome').all();
+  return (await db.prepare('SELECT * FROM pagadores ORDER BY nome').all());
+  });
 }
 
-export function obterPagadorPorId(id) {
+export async function obterPagadorPorId(id) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM pagadores WHERE id = ?').get(id);
+  return (await db.prepare('SELECT * FROM pagadores WHERE id = ?').get(id));
+  });
 }
 
-export function criarPagador(dados) {
+export async function criarPagador(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { nome, tipo_pessoa, documento, email, telefone, tipo_recebimento, conta_destino, observacao } = dados;
-  const result = db.prepare(`
+  const result = (await db.prepare(`
     INSERT INTO pagadores (nome, tipo_pessoa, documento, email, telefone, tipo_recebimento, conta_destino, observacao)
     VALUES (@nome, @tipo_pessoa, @documento, @email, @telefone, @tipo_recebimento, @conta_destino, @observacao)
   `).run({
@@ -44,14 +52,16 @@ export function criarPagador(dados) {
     tipo_recebimento: tipo_recebimento || 'A definir',
     conta_destino: conta_destino || 'A definir',
     observacao: observacao || null
-  });
+  }));
   return { id: result.lastInsertRowid };
+  });
 }
 
-export function atualizarPagador(id, dados) {
+export async function atualizarPagador(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { nome, tipo_pessoa, documento, email, telefone, tipo_recebimento, conta_destino, observacao, ativo } = dados;
-  db.prepare(`
+  (await db.prepare(`
     UPDATE pagadores SET
       nome = COALESCE(@nome, nome),
       tipo_pessoa = COALESCE(@tipo_pessoa, tipo_pessoa),
@@ -72,35 +82,41 @@ export function atualizarPagador(id, dados) {
     conta_destino,
     observacao: observacao || null,
     ativo: ativo !== undefined ? (ativo ? 1 : 0) : null
+  }));
+  return (await obterPagadorPorId(id));
   });
-  return obterPagadorPorId(id);
 }
 
-export function ativarPagador(id) {
+export async function ativarPagador(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  db.prepare(`UPDATE pagadores SET ativo = 1, atualizado_em = datetime('now', 'localtime') WHERE id = ?`).run(id);
-  return obterPagadorPorId(id);
+  (await db.prepare(`UPDATE pagadores SET ativo = 1, atualizado_em = datetime('now', 'localtime') WHERE id = ?`).run(id));
+  return (await obterPagadorPorId(id));
+  });
 }
 
-export function desativarPagador(id) {
+export async function desativarPagador(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  db.prepare(`UPDATE pagadores SET ativo = 0, atualizado_em = datetime('now', 'localtime') WHERE id = ?`).run(id);
-  return obterPagadorPorId(id);
+  (await db.prepare(`UPDATE pagadores SET ativo = 0, atualizado_em = datetime('now', 'localtime') WHERE id = ?`).run(id));
+  return (await obterPagadorPorId(id));
+  });
 }
 
 /**
  * Obtém resumo de produção/recebimento agrupado por pagador para um mês.
  */
-export function obterResumoPorPagador(mes) {
+export async function obterResumoPorPagador(mes) {
+  return snapshot(async () => {
   const db = getDatabase();
-  const pagadores = db.prepare('SELECT * FROM pagadores WHERE ativo = 1 ORDER BY nome').all();
+  const pagadores = (await db.prepare('SELECT * FROM pagadores WHERE ativo = 1 ORDER BY nome').all());
   
   const mesFilter = mes || new Date().toISOString().slice(0, 7);
   const resultado = [];
 
   for (const pagador of pagadores) {
     // Buscar empresas vinculadas
-    const empresas = db.prepare('SELECT id, nome FROM empresas WHERE pagador_id = ? AND ativa = 1').all(pagador.id);
+    const empresas = (await db.prepare('SELECT id, nome FROM empresas WHERE pagador_id = ? AND ativa = 1').all(pagador.id));
     const empresaIds = empresas.map(e => e.id);
     const empresaNomes = empresas.map(e => e.nome);
 
@@ -113,7 +129,7 @@ export function obterResumoPorPagador(mes) {
       const placeholders = empresaIds.map(() => '?').join(',');
       
       // Lançamentos de trabalho (exceto cancelados)
-      const lancamentos = db.prepare(`
+      const lancamentos = (await db.prepare(`
         SELECT 
           COALESCE(SUM(quantidade), 0) as qtd,
           COALESCE(SUM(total), 0) as valor
@@ -121,51 +137,51 @@ export function obterResumoPorPagador(mes) {
         WHERE empresa_id IN (${placeholders})
           AND data LIKE ? || '%'
           AND status != 'cancelado'
-      `).get(...empresaIds, mesFilter);
+      `).get(...empresaIds, mesFilter));
       
       totalExames += lancamentos.qtd;
       totalProduzido += lancamentos.valor;
 
       // Recebidos
-      const recebidos = db.prepare(`
+      const recebidos = (await db.prepare(`
         SELECT COALESCE(SUM(total), 0) as valor
         FROM lancamentos_trabalho
         WHERE empresa_id IN (${placeholders})
           AND data LIKE ? || '%'
           AND status = 'recebido'
-      `).get(...empresaIds, mesFilter);
+      `).get(...empresaIds, mesFilter));
       
       totalRecebido += recebidos.valor;
 
       // Pendentes (fechado, mas não recebido)
-      const pendentes = db.prepare(`
+      const pendentes = (await db.prepare(`
         SELECT COALESCE(SUM(quantidade), 0) as qtd
         FROM lancamentos_trabalho
         WHERE empresa_id IN (${placeholders})
           AND data LIKE ? || '%'
           AND status = 'fechado'
-      `).get(...empresaIds, mesFilter);
+      `).get(...empresaIds, mesFilter));
       
       examesPendentes += pendentes.qtd;
     }
 
     // Se for Dr. Ranon, incluir também laudos_ranon
     if (pagador.nome === 'Dr. Ranon / RX') {
-      const laudos = db.prepare(`
+      const laudos = (await db.prepare(`
         SELECT 
           COALESCE(SUM(total), 0) as valor,
           COUNT(*) as qtd
         FROM laudos_ranon
         WHERE data LIKE ? || '%'
           AND status != 'cancelado'
-      `).get(mesFilter);
+      `).get(mesFilter));
 
-      const laudosRecebidos = db.prepare(`
+      const laudosRecebidos = (await db.prepare(`
         SELECT COALESCE(SUM(total), 0) as valor
         FROM laudos_ranon
         WHERE data LIKE ? || '%'
           AND status = 'recebido'
-      `).get(mesFilter);
+      `).get(mesFilter));
 
       totalProduzido += laudos.valor;
       totalExames += laudos.qtd;
@@ -188,26 +204,28 @@ export function obterResumoPorPagador(mes) {
   }
 
   return resultado;
+  });
 }
 
-export function obterRecebimentosPendentes(mes) {
+export async function obterRecebimentosPendentes(mes) {
+  return snapshot(async () => {
   const db = getDatabase();
   const mesFilter = mes || new Date().toISOString().slice(0, 7);
   
-  const pagadores = db.prepare('SELECT * FROM pagadores WHERE ativo = 1 ORDER BY nome').all();
+  const pagadores = (await db.prepare('SELECT * FROM pagadores WHERE ativo = 1 ORDER BY nome').all());
   const resultado = [];
 
   for (const pagador of pagadores) {
-    const empresas = db.prepare('SELECT id, nome FROM empresas WHERE pagador_id = ? AND ativa = 1').all(pagador.id);
+    const empresas = (await db.prepare('SELECT id, nome FROM empresas WHERE pagador_id = ? AND ativa = 1').all(pagador.id));
     const empresaIds = empresas.map(e => e.id);
     const placeholders = empresaIds.map(() => '?').join(',');
 
     if (pagador.nome === 'Dr. Alexandre') {
       if (empresaIds.length > 0) {
-        const remessas = db.prepare(`
+        const remessas = (await db.prepare(`
           SELECT 
             lt.origem_fechamento_dia_id as fechamento_id,
-            COALESCE(fd.data, lt.data) as data_referencia,
+            COALESCE(MAX(fd.data), MIN(lt.data)) as data_referencia,
             SUM(lt.quantidade) as qtd,
             SUM(lt.total) as valor,
             SUM(CASE WHEN lt.status = 'recebido' THEN 1 ELSE 0 END) as qtd_recebidos,
@@ -217,9 +235,10 @@ export function obterRecebimentosPendentes(mes) {
           WHERE lt.empresa_id IN (${placeholders})
             AND COALESCE(fd.data, lt.data) LIKE ? || '%'
             AND lt.status != 'cancelado'
-          GROUP BY COALESCE(lt.origem_fechamento_dia_id, lt.data)
+          GROUP BY lt.origem_fechamento_dia_id,
+            CASE WHEN lt.origem_fechamento_dia_id IS NULL THEN lt.data END
           ORDER BY data_referencia DESC
-        `).all(...empresaIds, mesFilter);
+        `).all(...empresaIds, mesFilter));
 
         for (const remessa of remessas) {
           resultado.push({
@@ -237,7 +256,7 @@ export function obterRecebimentosPendentes(mes) {
       if (empresaIds.length > 0) {
         // Filtra por lt.data (data da produção digitada), não pela data do fechamento físico.
         // Isso garante que exames de 31/05 fechados em 01/06 ainda aparecem em maio.
-        const totais = db.prepare(`
+        const totais = (await db.prepare(`
           SELECT 
             SUM(lt.quantidade) as qtd,
             SUM(lt.total) as valor,
@@ -247,19 +266,19 @@ export function obterRecebimentosPendentes(mes) {
           WHERE lt.empresa_id IN (${placeholders})
             AND lt.data LIKE ? || '%'
             AND lt.status IN ('fechado', 'recebido')
-        `).get(...empresaIds, mesFilter);
+        `).get(...empresaIds, mesFilter));
 
         const empresaNomes = empresas.map(e => e.nome);
         const placeholdersNomes = empresaNomes.map(() => '?').join(',');
         const referenciaVisivel = converterMesParaReferencia(mesFilter);
 
-        const ajustes = db.prepare(`
+        const ajustes = (await db.prepare(`
           SELECT 
             SUM(quantidade) as qtd,
             SUM(total) as valor
           FROM ajustes_retroativos
           WHERE referencia = ? AND empresa IN (${placeholdersNomes})
-        `).get(referenciaVisivel, ...empresaNomes);
+        `).get(referenciaVisivel, ...empresaNomes));
 
         const qtdAjustes = ajustes && ajustes.qtd ? ajustes.qtd : 0;
         const valorAjustes = ajustes && ajustes.valor ? ajustes.valor : 0;
@@ -280,7 +299,7 @@ export function obterRecebimentosPendentes(mes) {
       }
     } else if (pagador.nome === 'Dr. Ranon / RX') {
       // Planilhas já salvas (histórico definitivo)
-      const planilhas = db.prepare(`
+      const planilhas = (await db.prepare(`
         SELECT 
           arquivo_excel_backup,
           MAX(data) as max_data,
@@ -293,7 +312,7 @@ export function obterRecebimentosPendentes(mes) {
           AND data LIKE ? || '%'
           AND status != 'cancelado'
         GROUP BY arquivo_excel_backup
-      `).all(mesFilter);
+      `).all(mesFilter));
 
       for (const p of planilhas) {
         resultado.push({
@@ -307,11 +326,11 @@ export function obterRecebimentosPendentes(mes) {
       }
 
       // Laudos pendentes ainda não salvos (em tempo real)
-      const pendentes = db.prepare(`
+      const pendentes = (await db.prepare(`
         SELECT COALESCE(SUM(quantidade), 0) as qtd, COALESCE(SUM(total), 0) as valor
         FROM laudos_ranon_pendentes
         WHERE data LIKE ? || '%'
-      `).get(mesFilter);
+      `).get(mesFilter));
 
       if (pendentes && pendentes.qtd > 0) {
         resultado.push({
@@ -336,16 +355,18 @@ export function obterRecebimentosPendentes(mes) {
     const dataB = b.data_referencia || b.referencia || '';
     return dataB.localeCompare(dataA); // mais recentes primeiro
   });
+  });
 }
 
-export function processarRecebimentoPagador(dados) {
+export async function processarRecebimentoPagador(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { pagador, tipo, referencia, mes } = dados; // mes é necessário para Padrão
   
-  const pagadorInfo = db.prepare('SELECT * FROM pagadores WHERE nome = ?').get(pagador);
+  const pagadorInfo = (await db.prepare('SELECT * FROM pagadores WHERE nome = ?').get(pagador));
   if (!pagadorInfo) throw new Error('Pagador não encontrado.');
   
-  const empresas = db.prepare('SELECT id, nome FROM empresas WHERE pagador_id = ?').all(pagadorInfo.id);
+  const empresas = (await db.prepare('SELECT id, nome FROM empresas WHERE pagador_id = ?').all(pagadorInfo.id));
   const empresaIds = empresas.map(e => e.id);
   const placeholders = empresaIds.map(() => '?').join(',');
 
@@ -353,58 +374,58 @@ export function processarRecebimentoPagador(dados) {
   let idsLancamentos = [];
   let idsLaudos = [];
 
-  const transacao = db.transaction(() => {
+  const transacao = db.transaction(async () => {
     if (pagador === 'Dr. Alexandre' && tipo === 'remessa') {
       const ehId = !isNaN(referencia) && !referencia.includes('-');
       const condition = ehId ? `origem_fechamento_dia_id = ?` : `data = ?`;
 
-      const lancamentos = db.prepare(`
+      const lancamentos = (await db.prepare(`
         SELECT id, total 
         FROM lancamentos_trabalho
         WHERE empresa_id IN (${placeholders}) 
           AND ${condition} 
           AND status = 'fechado'
-      `).all(...empresaIds, referencia);
+      `).all(...empresaIds, referencia));
       
       idsLancamentos = lancamentos.map(l => l.id);
       
       if (idsLancamentos.length > 0) {
         const pIds = idsLancamentos.map(() => '?').join(',');
-        db.prepare(`UPDATE lancamentos_trabalho SET status = 'recebido', recebido_em = ? WHERE id IN (${pIds})`).run(dataAtual, ...idsLancamentos);
+        (await db.prepare(`UPDATE lancamentos_trabalho SET status = 'recebido', recebido_em = ? WHERE id IN (${pIds})`).run(dataAtual, ...idsLancamentos));
       }
     } else if (pagador === 'Padrão' && tipo === 'mensal') {
-      const lancamentos = db.prepare(`
+      const lancamentos = (await db.prepare(`
         SELECT id, total 
         FROM lancamentos_trabalho
         WHERE empresa_id IN (${placeholders}) 
           AND data LIKE ? || '%' 
           AND status = 'fechado'
-      `).all(...empresaIds, mes || referencia);
+      `).all(...empresaIds, mes || referencia));
       
       idsLancamentos = lancamentos.map(l => l.id);
       
       if (idsLancamentos.length > 0) {
         const pIds = idsLancamentos.map(() => '?').join(',');
-        db.prepare(`UPDATE lancamentos_trabalho SET status = 'recebido', recebido_em = ? WHERE id IN (${pIds})`).run(dataAtual, ...idsLancamentos);
+        (await db.prepare(`UPDATE lancamentos_trabalho SET status = 'recebido', recebido_em = ? WHERE id IN (${pIds})`).run(dataAtual, ...idsLancamentos));
       }
     } else if (pagador === 'Dr. Ranon / RX' && tipo === 'planilha') {
-      const laudos = db.prepare(`
+      const laudos = (await db.prepare(`
         SELECT id, total FROM laudos_ranon 
         WHERE arquivo_excel_backup = ? AND status = 'fechado'
-      `).all(referencia);
+      `).all(referencia));
       
       idsLaudos = laudos.map(l => l.id);
       
       if (idsLaudos.length > 0) {
         const pIds = idsLaudos.map(() => '?').join(',');
-        db.prepare(`UPDATE laudos_ranon SET status = 'recebido', recebido_em = ? WHERE id IN (${pIds})`).run(dataAtual, ...idsLaudos);
+        (await db.prepare(`UPDATE laudos_ranon SET status = 'recebido', recebido_em = ? WHERE id IN (${pIds})`).run(dataAtual, ...idsLaudos));
       }
     }
 
     // Criar uma receita única para o somatório
     let totalSomado = 0;
     if (idsLancamentos.length > 0) {
-       const sumL = db.prepare(`SELECT SUM(total) as val FROM lancamentos_trabalho WHERE id IN (${idsLancamentos.map(()=>'?').join(',')})`).get(...idsLancamentos);
+       const sumL = (await db.prepare(`SELECT SUM(total) as val FROM lancamentos_trabalho WHERE id IN (${idsLancamentos.map(()=>'?').join(',')})`).get(...idsLancamentos));
        totalSomado += sumL.val || 0;
     }
 
@@ -412,23 +433,23 @@ export function processarRecebimentoPagador(dados) {
        const refVisivel = converterMesParaReferencia(mes || referencia);
        const placeholdersNomes = empresas.map(() => '?').join(',');
        const empresaNomes = empresas.map(e => e.nome);
-       const sumA = db.prepare(`
+       const sumA = (await db.prepare(`
          SELECT SUM(total) as val 
          FROM ajustes_retroativos 
          WHERE referencia = ? AND empresa IN (${placeholdersNomes})
-       `).get(refVisivel, ...empresaNomes);
+       `).get(refVisivel, ...empresaNomes));
        if (sumA && sumA.val) {
          totalSomado += sumA.val;
        }
     }
 
     if (idsLaudos.length > 0) {
-       const sumR = db.prepare(`SELECT SUM(total) as val FROM laudos_ranon WHERE id IN (${idsLaudos.map(()=>'?').join(',')})`).get(...idsLaudos);
+       const sumR = (await db.prepare(`SELECT SUM(total) as val FROM laudos_ranon WHERE id IN (${idsLaudos.map(()=>'?').join(',')})`).get(...idsLaudos));
        totalSomado += sumR.val || 0;
     }
 
     if (totalSomado > 0) {
-      db.prepare(`
+      (await db.prepare(`
         INSERT INTO receitas (descricao, valor, data, origem, categoria_nome, observacao, status, recebido_em)
         VALUES (?, ?, ?, ?, ?, ?, 'recebido', ?)
       `).run(
@@ -439,11 +460,11 @@ export function processarRecebimentoPagador(dados) {
         'Trabalho',
         `Recebimento gerado automaticamente em Histórico (Por Pagador).`,
         dataAtual
-      );
+      ));
     }
   });
 
-  transacao();
+  (await transacao());
   return { success: true, message: 'Recebimento processado com sucesso.' };
+  });
 }
-

@@ -1,3 +1,4 @@
+import { atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 import crypto from 'crypto';
@@ -21,15 +22,16 @@ function dataIsoHoje() {
 // SERVIÇOS DE CONTAS A PAGAR
 // ═══════════════════════════════════════
 
-export function listarContasPagar(filtros) {
+export async function listarContasPagar(filtros) {
+  return atomic(async () => {
   var db = getDatabase();
   var hoje = dataIsoHoje();
 
   // Atualizar visualmente (no banco) as atrasadas antes de retornar?
   // O usuário disse: "Pode atualizar automaticamente o status para atrasado ao listar"
-  db.prepare(
+  (await db.prepare(
     "UPDATE contas_pagar SET status = 'atrasado' WHERE status = 'pendente' AND vencimento < ?"
-  ).run(hoje);
+  ).run(hoje));
 
   var sql = 'SELECT * FROM contas_pagar WHERE 1=1';
   var params = [];
@@ -64,10 +66,12 @@ export function listarContasPagar(filtros) {
 
   sql += ' ORDER BY vencimento ASC';
   var stmt = db.prepare(sql);
-  return stmt.all.apply(stmt, params);
+  return await stmt.all(...params);
+  });
 }
 
-export function criarContaPagar(dados) {
+export async function criarContaPagar(dados) {
+  return atomic(async () => {
   var db = getDatabase();
   
   var nome = dados.nome;
@@ -84,17 +88,17 @@ export function criarContaPagar(dados) {
     throw new Error('Campos obrigatorios faltando');
   }
 
-  var categoria = db.prepare('SELECT nome FROM categorias WHERE id = ?').get(categoria_id);
+  var categoria = (await db.prepare('SELECT nome FROM categorias WHERE id = ?').get(categoria_id));
   if (!categoria) throw new Error('Categoria nao encontrada');
 
-  var transaction = db.transaction(function() {
+  var transaction = db.transaction(async function() {
     var insertStmt = db.prepare(
       'INSERT INTO contas_pagar (nome, descricao, valor, vencimento, categoria_id, categoria_nome, forma_pagamento, recorrente, frequencia, parcela_atual, total_parcelas, grupo_recorrencia_id, status, observacao) VALUES (@nome, @descricao, @valor, @vencimento, @categoria_id, @categoria_nome, @forma_pagamento, @recorrente, @frequencia, @parcela_atual, @total_parcelas, @grupo_recorrencia_id, @status, @observacao)'
     );
 
     if (recorrente === 0 || frequencia === 'nenhuma') {
       // Conta Única
-      var info = insertStmt.run({
+      var info = (await insertStmt.run({
         nome: nome,
         descricao: descricao,
         valor: valor,
@@ -109,8 +113,8 @@ export function criarContaPagar(dados) {
         grupo_recorrencia_id: null,
         status: (vencimento < dataIsoHoje()) ? 'atrasado' : 'pendente',
         observacao: observacao
-      });
-      registrarAuditoria('CONTA_PAGAR_CRIAR', 'Conta ' + nome + ' cadastrada');
+      }));
+      (await registrarAuditoria('CONTA_PAGAR_CRIAR', 'Conta ' + nome + ' cadastrada'));
     } else {
       // Conta Recorrente
       var qtd = dados.quantidade || 12; // Usa o valor enviado ou 12 como fallback
@@ -138,7 +142,7 @@ export function criarContaPagar(dados) {
         var novaDataStr = formatarDataIso(novaData);
         var statusCalc = (novaDataStr < dataIsoHoje()) ? 'atrasado' : 'pendente';
 
-        insertStmt.run({
+        (await insertStmt.run({
           nome: nome + ' (' + (i + 1) + '/' + qtd + ')',
           descricao: descricao,
           valor: valor,
@@ -153,66 +157,72 @@ export function criarContaPagar(dados) {
           grupo_recorrencia_id: grupoId,
           status: statusCalc,
           observacao: observacao
-        });
+        }));
       }
-      registrarAuditoria('CONTA_PAGAR_CRIAR_RECORRENTE', 'Conta recorrente ' + nome + ' gerada com ' + qtd + ' ocorrencias');
+      (await registrarAuditoria('CONTA_PAGAR_CRIAR_RECORRENTE', 'Conta recorrente ' + nome + ' gerada com ' + qtd + ' ocorrencias'));
     }
   });
 
-  transaction();
+  (await transaction());
   return { sucesso: true };
+  });
 }
 
-export function marcarContaComoPaga(id) {
+export async function marcarContaComoPaga(id) {
+  return atomic(async () => {
   var db = getDatabase();
-  var conta = db.prepare('SELECT id, status FROM contas_pagar WHERE id = ?').get(id);
+  var conta = (await db.prepare('SELECT id, status FROM contas_pagar WHERE id = ?').get(id));
   if (!conta) throw new Error('Conta nao encontrada');
   if (conta.status === 'paga') throw new Error('Conta ja esta paga');
 
-  db.prepare(
+  (await db.prepare(
     "UPDATE contas_pagar SET status = 'pago', pago_em = datetime('now', 'localtime'), atualizado_em = datetime('now', 'localtime') WHERE id = ?"
-  ).run(id);
+  ).run(id));
 
-  registrarAuditoria('CONTA_PAGAR_PAGA', 'Conta id=' + id + ' marcada como paga');
+  (await registrarAuditoria('CONTA_PAGAR_PAGA', 'Conta id=' + id + ' marcada como paga'));
   return { sucesso: true };
+  });
 }
 
-export function cancelarContaPagar(id) {
+export async function cancelarContaPagar(id) {
+  return atomic(async () => {
   var db = getDatabase();
-  var conta = db.prepare('SELECT id, status FROM contas_pagar WHERE id = ?').get(id);
+  var conta = (await db.prepare('SELECT id, status FROM contas_pagar WHERE id = ?').get(id));
   if (!conta) throw new Error('Conta nao encontrada');
   if (conta.status === 'cancelado') throw new Error('Conta ja esta cancelada');
 
-  db.prepare(
+  (await db.prepare(
     "UPDATE contas_pagar SET status = 'cancelado', atualizado_em = datetime('now', 'localtime') WHERE id = ?"
-  ).run(id);
+  ).run(id));
 
-  registrarAuditoria('CONTA_PAGAR_CANCELAR', 'Conta id=' + id + ' cancelada');
+  (await registrarAuditoria('CONTA_PAGAR_CANCELAR', 'Conta id=' + id + ' cancelada'));
   return { sucesso: true };
+  });
 }
 
-export function calcularResumoContasPagar(mes) {
+export async function calcularResumoContasPagar(mes) {
+  return atomic(async () => {
   var db = getDatabase();
   var hoje = dataIsoHoje();
 
   // Primeiro atualiza possíveis atrasos
-  db.prepare(
+  (await db.prepare(
     "UPDATE contas_pagar SET status = 'atrasado' WHERE status = 'pendente' AND vencimento < ?"
-  ).run(hoje);
+  ).run(hoje));
 
   var params = [mes + '-%'];
   
-  var pendenteQuery = db.prepare("SELECT SUM(valor) as val FROM contas_pagar WHERE status = 'pendente' AND vencimento LIKE ?").get(params);
-  var atrasadoQuery = db.prepare("SELECT SUM(valor) as val FROM contas_pagar WHERE status = 'atrasado' AND vencimento LIKE ?").get(params);
-  var pagoQuery = db.prepare("SELECT SUM(valor) as val FROM contas_pagar WHERE status = 'pago' AND vencimento LIKE ?").get(params);
-  var qtdQuery = db.prepare("SELECT COUNT(*) as qtd FROM contas_pagar WHERE status != 'cancelado' AND vencimento LIKE ?").get(params);
+  var pendenteQuery = (await db.prepare("SELECT SUM(valor) as val FROM contas_pagar WHERE status = 'pendente' AND vencimento LIKE ?").get(params));
+  var atrasadoQuery = (await db.prepare("SELECT SUM(valor) as val FROM contas_pagar WHERE status = 'atrasado' AND vencimento LIKE ?").get(params));
+  var pagoQuery = (await db.prepare("SELECT SUM(valor) as val FROM contas_pagar WHERE status = 'pago' AND vencimento LIKE ?").get(params));
+  var qtdQuery = (await db.prepare("SELECT COUNT(*) as qtd FROM contas_pagar WHERE status != 'cancelado' AND vencimento LIKE ?").get(params));
   
-  var proxRow = db.prepare("SELECT nome, valor, vencimento FROM contas_pagar WHERE status IN ('pendente', 'atrasado') AND vencimento >= ? ORDER BY vencimento ASC LIMIT 1").get(hoje);
+  var proxRow = (await db.prepare("SELECT nome, valor, vencimento FROM contas_pagar WHERE status IN ('pendente', 'atrasado') AND vencimento >= ? ORDER BY vencimento ASC LIMIT 1").get(hoje));
 
   // Agrupado por categoria (para gráfico no frontend)
-  var graficoCats = db.prepare(
+  var graficoCats = (await db.prepare(
     "SELECT categoria_nome, SUM(valor) as total FROM contas_pagar WHERE status IN ('pendente', 'atrasado', 'pago') AND vencimento LIKE ? GROUP BY categoria_nome ORDER BY total DESC"
-  ).all(params);
+  ).all(params));
 
   return {
     totalPendente: pendenteQuery.val || 0,
@@ -222,17 +232,20 @@ export function calcularResumoContasPagar(mes) {
     proximoVencimento: proxRow || null,
     categorias: graficoCats
   };
+  });
 }
 
-export function atualizarValorContaPagar(id, valor) {
+export async function atualizarValorContaPagar(id, valor) {
+  return atomic(async () => {
   var db = getDatabase();
-  var conta = db.prepare('SELECT id, nome, valor FROM contas_pagar WHERE id = ?').get(id);
+  var conta = (await db.prepare('SELECT id, nome, valor FROM contas_pagar WHERE id = ?').get(id));
   if (!conta) throw new Error('Conta nao encontrada');
 
-  db.prepare(
+  (await db.prepare(
     "UPDATE contas_pagar SET valor = ?, atualizado_em = datetime('now', 'localtime') WHERE id = ?"
-  ).run(valor, id);
+  ).run(valor, id));
 
-  registrarAuditoria('CONTA_PAGAR_VALOR_ATUALIZADO', 'Conta ' + conta.nome + ' (id=' + id + ') teve valor alterado de ' + conta.valor + ' para ' + valor);
+  (await registrarAuditoria('CONTA_PAGAR_VALOR_ATUALIZADO', 'Conta ' + conta.nome + ' (id=' + id + ') teve valor alterado de ' + conta.valor + ' para ' + valor));
   return { sucesso: true };
+  });
 }

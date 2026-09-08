@@ -1,3 +1,4 @@
+import { snapshot, atomic } from '../database/connection.js';
 /**
  * Serviço de Lote de Trabalho Pendente
  * Representa o lote temporário antes de Fechar o Dia.
@@ -5,20 +6,25 @@
 
 import { getDatabase } from '../database/connection.js';
 
-export function listarLoteTrabalhoPendente() {
+export async function listarLoteTrabalhoPendente() {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT * FROM lotes_trabalho_pendentes 
     ORDER BY data DESC, criado_em DESC
-  `).all();
+  `).all());
+  });
 }
 
-export function obterItemLoteTrabalho(id) {
+export async function obterItemLoteTrabalho(id) {
+  return snapshot(async () => {
   const db = getDatabase();
-  return db.prepare('SELECT * FROM lotes_trabalho_pendentes WHERE id = ?').get(id);
+  return (await db.prepare('SELECT * FROM lotes_trabalho_pendentes WHERE id = ?').get(id));
+  });
 }
 
-export function adicionarItemLoteTrabalho(dados) {
+export async function adicionarItemLoteTrabalho(dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { empresa_id, empresa_nome, quantidade, valor_unitario, data, horario, observacao } = dados;
   const total = quantidade * valor_unitario;
@@ -30,7 +36,7 @@ export function adicionarItemLoteTrabalho(dados) {
       (@empresa_id, @empresa_nome, @quantidade, @valor_unitario, @total, @data, @horario, @observacao)
   `);
 
-  const result = stmt.run({
+  const result = (await stmt.run({
     empresa_id,
     empresa_nome,
     quantidade,
@@ -39,12 +45,14 @@ export function adicionarItemLoteTrabalho(dados) {
     data,
     horario: horario || null,
     observacao: observacao || null
-  });
+  }));
 
   return { id: result.lastInsertRowid, total };
+  });
 }
 
-export function atualizarItemLoteTrabalho(id, dados) {
+export async function atualizarItemLoteTrabalho(id, dados) {
+  return atomic(async () => {
   const db = getDatabase();
   const { empresa_id, empresa_nome, quantidade, valor_unitario, data, horario, observacao } = dados;
   const total = quantidade * valor_unitario;
@@ -63,33 +71,39 @@ export function atualizarItemLoteTrabalho(id, dados) {
     WHERE id = @id
   `);
 
-  return stmt.run({ id, empresa_id, empresa_nome, quantidade, valor_unitario, total, data, horario, observacao });
+  return (await stmt.run({ id, empresa_id, empresa_nome, quantidade, valor_unitario, total, data, horario, observacao }));
+  });
 }
 
-export function removerItemLoteTrabalho(id) {
+export async function removerItemLoteTrabalho(id) {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare('DELETE FROM lotes_trabalho_pendentes WHERE id = ?').run(id);
+  return (await db.prepare('DELETE FROM lotes_trabalho_pendentes WHERE id = ?').run(id));
+  });
 }
 
-export function limparLoteTrabalho() {
+export async function limparLoteTrabalho() {
+  return atomic(async () => {
   const db = getDatabase();
-  return db.prepare('DELETE FROM lotes_trabalho_pendentes').run();
+  return (await db.prepare('DELETE FROM lotes_trabalho_pendentes').run());
+  });
 }
 
-export function calcularResumoLoteTrabalho() {
+export async function calcularResumoLoteTrabalho() {
+  return snapshot(async () => {
   const db = getDatabase();
 
   // Resumo geral
-  const geral = db.prepare(`
+  const geral = (await db.prepare(`
     SELECT 
       COUNT(*) as total_itens,
       COALESCE(SUM(quantidade), 0) as total_quantidade,
       COALESCE(SUM(total), 0) as total_valor
     FROM lotes_trabalho_pendentes
-  `).get();
+  `).get());
 
   // Resumo por empresa
-  const porEmpresa = db.prepare(`
+  const porEmpresa = (await db.prepare(`
     SELECT 
       empresa_nome,
       COUNT(*) as itens,
@@ -98,7 +112,8 @@ export function calcularResumoLoteTrabalho() {
     FROM lotes_trabalho_pendentes
     GROUP BY empresa_nome
     ORDER BY empresa_nome
-  `).all();
+  `).all());
 
   return { geral, porEmpresa };
+  });
 }

@@ -1,42 +1,44 @@
+import { snapshot } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { dataHojeLocal, dataFuturaLocal } from '../utils/dataLocal.js';
 import { obterResumoInvestimentosDashboard } from './investimentos.js';
 
-export function obterRelatorioGeral(mes) {
+export async function obterRelatorioGeral(mes) {
+  return snapshot(async () => {
   const db = getDatabase();
   const hoje = dataHojeLocal();
-  const investimentos = obterResumoInvestimentosDashboard(mes);
+  const investimentos = (await obterResumoInvestimentosDashboard(mes));
 
   // 1. Trabalho Produzido e Recebido (Histórico bruto)
-  const trabProd = db.prepare(`
+  const trabProd = (await db.prepare(`
     SELECT COALESCE(SUM(total), 0) as total 
     FROM lancamentos_trabalho
     WHERE data LIKE ? AND status != 'cancelado'
-  `).get(`${mes}%`).total;
-  const ranonProdClosed = db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM laudos_ranon WHERE data LIKE ? AND status != 'cancelado'`).get(`${mes}%`).total;
-  const ranonProdPend = db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM laudos_ranon_pendentes WHERE data LIKE ?`).get(`${mes}%`).total;
+  `).get(`${mes}%`)).total;
+  const ranonProdClosed = (await db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM laudos_ranon WHERE data LIKE ? AND status != 'cancelado'`).get(`${mes}%`)).total;
+  const ranonProdPend = (await db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM laudos_ranon_pendentes WHERE data LIKE ?`).get(`${mes}%`)).total;
   const ranonProd = ranonProdClosed + ranonProdPend;
   const trabalho_produzido = trabProd + ranonProd;
 
-  const trabRec = db.prepare(`
+  const trabRec = (await db.prepare(`
     SELECT COALESCE(SUM(total), 0) as total 
     FROM lancamentos_trabalho
     WHERE data LIKE ? AND status = 'recebido'
-  `).get(`${mes}%`).total;
-  const ranonRec = db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM laudos_ranon WHERE data LIKE ? AND status = 'recebido'`).get(`${mes}%`).total;
+  `).get(`${mes}%`)).total;
+  const ranonRec = (await db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM laudos_ranon WHERE data LIKE ? AND status = 'recebido'`).get(`${mes}%`)).total;
   const trabalho_recebido = trabRec + ranonRec;
   
   const trabalho_a_receber = trabalho_produzido - trabalho_recebido;
 
   // 2. Entradas
-  const entradas_recebidas = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM receitas WHERE data LIKE ? AND status = 'recebido'`).get(`${mes}%`).total;
-  const receitas_previstas = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM receitas WHERE data LIKE ? AND status = 'previsto'`).get(`${mes}%`).total;
-  let me_devem = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas WHERE tipo = 'me_deve' AND status = 'pendente'`).get().total; // total pendente global
+  const entradas_recebidas = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM receitas WHERE data LIKE ? AND status = 'recebido'`).get(`${mes}%`)).total;
+  const receitas_previstas = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM receitas WHERE data LIKE ? AND status = 'previsto'`).get(`${mes}%`)).total;
+  let me_devem = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas WHERE tipo = 'me_deve' AND status = 'pendente'`).get()).total; // total pendente global
   
   // Somar apenas a parcela pendente do mês atual das dívidas parceladas ativas (me_devem)
-  const dp_ativas_me = db.prepare(`
+  const dp_ativas_me = (await db.prepare(`
     SELECT * FROM dividas_parceladas_grupos WHERE status = 'ativa' AND tipo = 'me_deve'
-  `).all();
+  `).all());
   dp_ativas_me.forEach(grupo => {
     const [anoI, mesI] = grupo.competencia_inicio.split('-');
     const [anoF, mesF] = mes.split('-');
@@ -58,22 +60,22 @@ export function obterRelatorioGeral(mes) {
   const total_entradas_potenciais = entradas_recebidas + entradas_previstas;
 
   // 3. Saídas Pagas
-  const gastos_pagos = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE data LIKE ? AND status = 'pago'`).get(`${mes}%`).total;
-  const contas_pagas = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM contas_pagar WHERE vencimento LIKE ? AND status = 'pago'`).get(`${mes}%`).total;
-  const cartoes_pagos = db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM faturas_cartao WHERE competencia = ? AND status = 'paga'`).get(mes).total;
+  const gastos_pagos = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE data LIKE ? AND status = 'pago'`).get(`${mes}%`)).total;
+  const contas_pagas = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM contas_pagar WHERE vencimento LIKE ? AND status = 'pago'`).get(`${mes}%`)).total;
+  const cartoes_pagos = (await db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM faturas_cartao WHERE competencia = ? AND status = 'paga'`).get(mes)).total;
   
   const saidas_pagas = gastos_pagos + contas_pagas + cartoes_pagos;
 
   // 4. Saídas Pendentes
-  const gastos_pendentes = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE data LIKE ? AND status = 'pendente'`).get(`${mes}%`).total;
-  const contas_pendentes = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM contas_pagar WHERE vencimento LIKE ? AND status IN ('pendente', 'atrasado')`).get(`${mes}%`).total;
-  const cartoes_abertos = db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM faturas_cartao WHERE competencia = ? AND status IN ('aberta', 'fechada')`).get(mes).total;
-  let eu_devo = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas WHERE tipo = 'eu_devo' AND status = 'pendente'`).get().total; // total pendente global
+  const gastos_pendentes = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE data LIKE ? AND status = 'pendente'`).get(`${mes}%`)).total;
+  const contas_pendentes = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM contas_pagar WHERE vencimento LIKE ? AND status IN ('pendente', 'atrasado')`).get(`${mes}%`)).total;
+  const cartoes_abertos = (await db.prepare(`SELECT COALESCE(SUM(total), 0) as total FROM faturas_cartao WHERE competencia = ? AND status IN ('aberta', 'fechada')`).get(mes)).total;
+  let eu_devo = (await db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas WHERE tipo = 'eu_devo' AND status = 'pendente'`).get()).total; // total pendente global
 
   // Somar apenas a parcela pendente do mês atual das dívidas parceladas ativas (eu_devo)
-  const dp_ativas_eu = db.prepare(`
+  const dp_ativas_eu = (await db.prepare(`
     SELECT * FROM dividas_parceladas_grupos WHERE status = 'ativa' AND tipo = 'eu_devo'
-  `).all();
+  `).all());
   dp_ativas_eu.forEach(grupo => {
     const [anoI, mesI] = grupo.competencia_inicio.split('-');
     const [anoF, mesF] = mes.split('-');
@@ -96,45 +98,45 @@ export function obterRelatorioGeral(mes) {
 
   // 5. Saldos e Comprometimento
   // Calcular saldo acumulado de meses anteriores (carryover)
-  const receitas_recebidas_ant = db.prepare(`
+  const receitas_recebidas_ant = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM receitas WHERE status = 'recebido' AND data < ?
-  `).get(`${mes}-01`).total;
+  `).get(`${mes}-01`)).total;
 
-  const gastos_pagos_ant = db.prepare(`
+  const gastos_pagos_ant = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE status = 'pago' AND data < ?
-  `).get(`${mes}-01`).total;
+  `).get(`${mes}-01`)).total;
 
-  const cartoes_pagos_ant = db.prepare(`
+  const cartoes_pagos_ant = (await db.prepare(`
     SELECT COALESCE(SUM(total), 0) as total FROM faturas_cartao WHERE status = 'paga' AND competencia < ?
-  `).get(mes).total;
+  `).get(mes)).total;
 
-  const contas_pagas_ant = db.prepare(`
+  const contas_pagas_ant = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM contas_pagar WHERE status = 'pago' AND vencimento < ?
-  `).get(`${mes}-01`).total;
+  `).get(`${mes}-01`)).total;
 
   // Dívidas pessoais pagas/recebidas em meses anteriores (impactam o caixa)
-  const dividas_pagas_ant = db.prepare(`
+  const dividas_pagas_ant = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas 
     WHERE tipo = 'eu_devo' AND status = 'pago' AND pago_recebido_em < ? AND pago_recebido_em >= '2026-06-01'
-  `).get(`${mes}-01`).total;
+  `).get(`${mes}-01`)).total;
 
-  const dividas_recebidas_ant = db.prepare(`
+  const dividas_recebidas_ant = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas 
     WHERE tipo = 'me_deve' AND status = 'recebido' AND pago_recebido_em < ? AND pago_recebido_em >= '2026-06-01'
-  `).get(`${mes}-01`).total;
+  `).get(`${mes}-01`)).total;
 
   const saldo_anterior = receitas_recebidas_ant + dividas_recebidas_ant - gastos_pagos_ant - cartoes_pagos_ant - contas_pagas_ant - dividas_pagas_ant + investimentos.impacto_caixa_anterior;
 
   // Dívidas pessoais pagas/recebidas neste mês (impactam o caixa atual)
-  const dividas_pagas_mes = db.prepare(`
+  const dividas_pagas_mes = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas 
     WHERE tipo = 'eu_devo' AND status = 'pago' AND pago_recebido_em LIKE ? AND pago_recebido_em >= '2026-06-01'
-  `).get(`${mes}%`).total;
+  `).get(`${mes}%`)).total;
 
-  const dividas_recebidas_mes = db.prepare(`
+  const dividas_recebidas_mes = (await db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM pessoas_dividas 
     WHERE tipo = 'me_deve' AND status = 'recebido' AND pago_recebido_em LIKE ? AND pago_recebido_em >= '2026-06-01'
-  `).get(`${mes}%`).total;
+  `).get(`${mes}%`)).total;
 
   const saldo_real = saldo_anterior + entradas_recebidas + dividas_recebidas_mes - saidas_pagas - dividas_pagas_mes + investimentos.impacto_caixa_mes;
   const comprometido = saidas_pendentes;
@@ -150,58 +152,58 @@ export function obterRelatorioGeral(mes) {
     { nome: 'Pessoas / Dívidas', valor: eu_devo }
   ].filter(i => i.valor > 0);
 
-  const gastos_por_categoria = db.prepare(`
+  const gastos_por_categoria = (await db.prepare(`
     SELECT categoria_nome as nome, SUM(valor) as valor 
     FROM gastos 
     WHERE data LIKE ? 
     GROUP BY categoria_nome
     ORDER BY valor DESC
-  `).all(`${mes}%`);
+  `).all(`${mes}%`));
 
-  const receitas_por_origem = db.prepare(`
+  const receitas_por_origem = (await db.prepare(`
     SELECT origem as nome, SUM(valor) as valor 
     FROM receitas 
     WHERE data LIKE ? 
     GROUP BY origem
     ORDER BY valor DESC
-  `).all(`${mes}%`);
+  `).all(`${mes}%`));
 
   // ==========================================
   // RANKINGS
   // ==========================================
-  const maiores_gastos = db.prepare(`
+  const maiores_gastos = (await db.prepare(`
     SELECT descricao, categoria_nome as categoria, valor, data 
     FROM gastos 
     WHERE data LIKE ? 
     ORDER BY valor DESC LIMIT 5
-  `).all(`${mes}%`);
+  `).all(`${mes}%`));
 
-  const maiores_receitas = db.prepare(`
+  const maiores_receitas = (await db.prepare(`
     SELECT descricao, origem, valor, data 
     FROM receitas 
     WHERE data LIKE ? 
     ORDER BY valor DESC LIMIT 5
-  `).all(`${mes}%`);
+  `).all(`${mes}%`));
 
   const limiteStr = dataFuturaLocal(15);
 
-  const alertas_contas = db.prepare(`
+  const alertas_contas = (await db.prepare(`
     SELECT 'Conta' as tipo, nome as descricao, valor, vencimento as data 
     FROM contas_pagar 
     WHERE status = 'pendente' AND vencimento <= ?
-  `).all(limiteStr);
+  `).all(limiteStr));
 
-  const alertas_faturas = db.prepare(`
+  const alertas_faturas = (await db.prepare(`
     SELECT 'Fatura' as tipo, cartao_nome as descricao, total as valor, vencimento as data 
     FROM faturas_cartao 
     WHERE status IN ('aberta', 'fechada') AND vencimento <= ?
-  `).all(limiteStr);
+  `).all(limiteStr));
 
-  const alertas_pessoas = db.prepare(`
+  const alertas_pessoas = (await db.prepare(`
     SELECT 'Pessoa' as tipo, nome_pessoa as descricao, valor, data_combinada as data 
     FROM pessoas_dividas 
     WHERE status = 'pendente' AND data_combinada <= ? AND tipo = 'eu_devo'
-  `).all(limiteStr);
+  `).all(limiteStr));
 
   let proximos_vencimentos = [...alertas_contas, ...alertas_faturas, ...alertas_pessoas];
   proximos_vencimentos.sort((a, b) => new Date(a.data) - new Date(b.data));
@@ -238,4 +240,5 @@ export function obterRelatorioGeral(mes) {
       proximos_vencimentos
     }
   };
+  });
 }

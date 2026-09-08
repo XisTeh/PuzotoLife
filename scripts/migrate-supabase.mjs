@@ -11,7 +11,7 @@ const manifest = JSON.parse(fs.readFileSync('supabase/schema-manifest.json', 'ut
 const quote = (name) => `"${name.replaceAll('"', '""')}"`;
 const digest = (rows, columns) => createHash('sha256').update(JSON.stringify(rows.map((row) => columns.map((column) => {
   const value = row[column.name];
-  return value == null ? null : ['INTEGER', 'REAL'].includes(column.type) ? Number(value) : value;
+  return value == null ? null : ['INTEGER', 'REAL', 'BOOLEAN'].includes(column.type) ? Number(value) : value;
 })))).digest('hex');
 if (db.pragma('integrity_check', { simple: true }) !== 'ok') throw new Error('Snapshot SQLite inválido.');
 const foreignKeys = db.pragma('foreign_key_check');
