@@ -17,6 +17,24 @@ test('navegação de todas as páginas em desktop e celular', async ({ page }, i
     await expect(page.locator('#pageContent')).not.toContainText('Não foi possível abrir esta página');
     await expect(page.locator('#pageContent')).not.toBeEmpty();
     await page.waitForTimeout(150);
+    const tableIntegrity = await page.locator('#pageContent').evaluate((root) => ({
+      malformed: [...root.querySelectorAll('table')].flatMap((table, tableIndex) => {
+        const headerCount = table.querySelectorAll('thead th').length;
+        const body = table.tBodies[0];
+        if (!body) return [];
+        const rows = [...body.rows];
+        if (body.textContent.trim() && rows.length === 0) return [{ tableIndex, reason: 'conteúdo sem linhas' }];
+        return rows.flatMap((row, rowIndex) => {
+          const isSpanningState = row.cells.length === 1 && row.cells[0].colSpan > 1;
+          return !isSpanningState && headerCount > 0 && row.cells.length !== headerCount
+            ? [{ tableIndex, rowIndex, headerCount, cellCount: row.cells.length }]
+            : [];
+        });
+      }),
+      literalMarkup: (root.textContent.match(/<\/?(?:div|span|table|thead|tbody|tr|td)\b[^>]*>/gi) || []).slice(0, 5),
+    }));
+    expect(tableIntegrity.malformed, `estrutura das tabelas em ${id}`).toEqual([]);
+    expect(tableIntegrity.literalMarkup, `markup aparecendo como texto em ${id}`).toEqual([]);
     const inlineHandlers = await page.locator('[onclick], [onchange], [oninput], [onsubmit], [onkeydown], [onkeyup], [onerror], [onmouseover], [onmouseout]').evaluateAll((elements) => elements.map((element) => ({ tag: element.tagName, id: element.id, code: ['onclick', 'onchange', 'oninput', 'onsubmit', 'onkeydown', 'onkeyup', 'onerror', 'onmouseover', 'onmouseout'].map((name) => element.getAttribute(name)).find(Boolean) })));
     expect(inlineHandlers, `handlers inline em ${id}`).toEqual([]);
     await expect(page.locator('#pageContent [data-inline-handler-blocked]')).toHaveCount(0);
@@ -76,25 +94,47 @@ test('todas as páginas cabem entre 320 e 390 px e mantêm leitura vertical', as
   expect(await page.locator('body').evaluate((body) => getComputedStyle(body).fontFamily)).toMatch(/Segoe UI|Roboto|system-ui/);
 });
 
-test('tabelas recebem rótulos móveis e viram cartões legíveis', async ({ page }, info) => {
-  test.skip(info.project.name !== 'mobile');
-  await page.setViewportSize({ width: 320, height: 760 });
+test('tabelas preservam colunas no desktop e viram cartões legíveis no celular', async ({ page }, info) => {
+  if (info.project.name === 'mobile') await page.setViewportSize({ width: 320, height: 760 });
   await page.goto('/');
-  await page.evaluate(() => window.navigateTo('gastos'));
+  await page.evaluate(() => window.navigateTo('configuracoes'));
   await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
   const table = page.locator('#pageContent table.table').first();
-  expect(await table.evaluate((element) => ({ ready: element.dataset.responsiveReady, html: element.outerHTML.slice(0, 300) }))).toMatchObject({ ready: 'true' });
-  await table.locator('tbody').evaluate((tbody) => {
-    const row = tbody.insertRow();
-    const columnCount = tbody.closest('table').querySelectorAll('thead th').length;
-    for (let index = 0; index < columnCount; index += 1) row.insertCell().textContent = `Valor ${index + 1}`;
-  });
+  await expect(table.locator('tbody tr').first()).toBeVisible();
+  const structure = await table.evaluate((element) => ({
+    ready: element.dataset.responsiveReady,
+    headers: element.querySelectorAll('thead th').length,
+    rows: [...element.tBodies[0].rows].map((row) => row.cells.length),
+    text: element.textContent,
+  }));
+  expect(structure.ready).toBe('true');
+  expect(structure.rows.length).toBeGreaterThan(0);
+  expect(structure.rows.every((cellCount) => cellCount === structure.headers)).toBe(true);
+  expect(structure.text).not.toContain('<span');
+
   const firstDataRow = table.locator('tbody tr').first();
+  if (info.project.name === 'desktop') {
+    await expect(firstDataRow).toHaveCSS('display', 'table-row');
+    return;
+  }
+
   await expect(firstDataRow).toHaveCSS('display', 'grid');
   const cells = firstDataRow.locator('td:not([colspan])');
-  if (await cells.count()) {
-    await expect(cells.first()).toHaveAttribute('data-label', /.+/);
-  }
+  await expect(cells.first()).toHaveAttribute('data-label', /.+/);
+});
+
+test('sanitização contextual preserva fragmentos de tabela e bloqueia ações injetadas', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => window.navigateTo('configuracoes'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const table = page.locator('#pageContent table.table').first();
+  await table.locator('tbody').evaluate((tbody) => {
+    tbody.innerHTML = '<tr id="context-row"><td>Seguro</td><td><button onclick="window.alert(1)">Ação</button></td><td>Tipo</td><td>Status</td><td>Ações</td></tr>';
+  });
+  const injectedRow = table.locator('#context-row');
+  await expect(injectedRow.locator('td')).toHaveCount(5);
+  await expect(injectedRow.locator('button')).not.toHaveAttribute('onclick');
+  await expect(injectedRow.locator('button')).toHaveAttribute('data-inline-handler-blocked', 'true');
 });
 
 test('Contas a Pagar ignora resposta concluída depois da troca de página', async ({ page }, info) => {

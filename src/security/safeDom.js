@@ -23,21 +23,37 @@ export function installSafeHtmlPolicy(scope = globalThis.window) {
   const insertAdjacentHTML = prototype.insertAdjacentHTML;
   if (!inner?.set || !outer?.set || typeof insertAdjacentHTML !== 'function') throw new Error('Navegador sem suporte à política segura de HTML.');
 
-  const sanitize = (value) => {
+  const sanitize = (value, context) => {
     if (sanitizing) return String(value ?? '');
     sanitizing = true;
     try {
-      return purifier.sanitize(quarantineLegacyHandlers(value));
+      const range = scope.document.createRange();
+      range.selectNodeContents(context);
+      const fragment = range.createContextualFragment(quarantineLegacyHandlers(value));
+      const sanitizedFragment = purifier.sanitize(fragment, { RETURN_DOM_FRAGMENT: true });
+
+      // Serializar o fragmento já sanitizado evita que o DOMPurify interprete
+      // linhas e células em um <body>. O setter nativo fará a segunda leitura
+      // no contexto correto de tbody, tr, select ou do elemento de destino.
+      const serializer = scope.document.createElement('div');
+      serializer.append(sanitizedFragment);
+      return inner.get.call(serializer);
     } finally {
       sanitizing = false;
     }
   };
-  Object.defineProperty(prototype, 'innerHTML', { ...inner, set(value) { inner.set.call(this, sanitize(value)); } });
-  Object.defineProperty(prototype, 'outerHTML', { ...outer, set(value) { outer.set.call(this, sanitize(value)); } });
+  Object.defineProperty(prototype, 'innerHTML', { ...inner, set(value) { inner.set.call(this, sanitize(value, this)); } });
+  Object.defineProperty(prototype, 'outerHTML', {
+    ...outer,
+    set(value) { outer.set.call(this, sanitize(value, this.parentElement || this)); },
+  });
   Object.defineProperty(prototype, 'insertAdjacentHTML', {
     configurable: true,
     writable: true,
-    value(position, value) { return insertAdjacentHTML.call(this, position, sanitize(value)); },
+    value(position, value) {
+      const context = position === 'beforebegin' || position === 'afterend' ? this.parentElement || this : this;
+      return insertAdjacentHTML.call(this, position, sanitize(value, context));
+    },
   });
   installed = true;
 }
