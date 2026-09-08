@@ -670,10 +670,10 @@ export function renderRanon() {
 
     <!-- Tabela Lote -->
     <div class="animate-in" style="animation-delay: 0.3s; margin-top: 16px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div class="section-action-bar section-action-bar--toolbar">
         <h3 style="font-weight: 600; color: var(--text-primary);">Laudos Pendentes</h3>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="input-pesquisa-ranon" class="form-control" placeholder="Pesquisar registro..." oninput="window.filtrarLaudosRanon(this.value)" style="max-width: 200px;">
+        <div class="compact-toolbar">
+          <input type="text" id="input-pesquisa-ranon" class="form-control" placeholder="Pesquisar registro..." aria-label="Pesquisar laudos pendentes" oninput="window.filtrarLaudosRanon(this.value)">
           <button onclick="window.abrirModalLimparTudo()" class="btn-secondary" style="color: var(--color-red);">
             <i data-lucide="trash-2"></i> Limpar Tudo
           </button>

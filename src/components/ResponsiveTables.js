@@ -2,6 +2,23 @@ function normalizeLabel(value) {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function enhanceActionCell(cell, label) {
+  if (label.toLocaleLowerCase('pt-BR') !== 'ações') return;
+  cell.dataset.mobileActions = 'true';
+  if (cell.querySelector(':scope > .table-action-group')) return;
+
+  const elementChildren = [...cell.children];
+  if (elementChildren.length === 1 && elementChildren[0].querySelector('button')) {
+    elementChildren[0].classList.add('table-action-group');
+    return;
+  }
+
+  const group = document.createElement('div');
+  group.className = 'table-action-group';
+  while (cell.firstChild) group.append(cell.firstChild);
+  cell.append(group);
+}
+
 function enhanceTable(table) {
   if (!(table instanceof HTMLTableElement)) return;
 
@@ -18,7 +35,10 @@ function enhanceTable(table) {
         return;
       }
       const label = labels[index] || '';
-      if (label) cell.dataset.label = label;
+      if (label) {
+        cell.dataset.label = label;
+        enhanceActionCell(cell, label);
+      }
     });
   });
   table.dataset.responsiveReady = 'true';

@@ -7,7 +7,7 @@
   <meta name="description" content="Seu espaço pessoal para organizar trabalho e finanças." />
   <link rel="icon" type="image/png" href="/images/puzoto-192.png" />
   <link rel="alternate icon" type="image/x-icon" href="/images/PuzotoLife.ico" />
-  <link rel="apple-touch-icon" href="/images/puzoto-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/puzoto-180.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/src/styles/index.css" />
   <meta name="theme-color" content="#11131f" />
@@ -19,7 +19,18 @@
 </head>
 <body>
   <a class="skip-link" href="#pageContent">Pular para o conteúdo</a>
-  <div id="sessionPanel" class="session-panel"><p role="status">Preparando seu espaço…</p></div>
+  <div id="sessionPanel" class="session-panel">
+    <section class="puzoto-launch" role="status" aria-label="Preparando o Puzoto Life">
+      <div class="puzoto-launch__atmosphere" aria-hidden="true"></div>
+      <div class="puzoto-launch__mark" aria-hidden="true">
+        <img src="/images/PuzotoLifeBlue.png" alt="" width="96" height="96" />
+      </div>
+      <div class="puzoto-launch__wordmark">Puzoto <span>Life</span></div>
+      <p>Seu trabalho e suas finanças, no seu ritmo.</p>
+      <div class="puzoto-launch__progress" aria-hidden="true"><span></span></div>
+      <span class="sr-only">Preparando seu espaço…</span>
+    </section>
+  </div>
   <div id="app" class="app-layout" hidden>
     <aside class="sidebar" id="sidebar"></aside>
     <main class="main-content" id="mainContent">
