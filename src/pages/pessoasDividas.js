@@ -762,7 +762,7 @@ export function renderPessoasDividasPage() {
   h += '</div>';
 
   // MAIN LAYOUT
-  h += '<div class="dashboard-grid animate-in" style="grid-template-columns: 350px 1fr; gap: 24px; margin-bottom: 32px;">';
+  h += '<div class="dashboard-grid animate-in" style="grid-template-columns: 350px minmax(0, 1fr); gap: 24px; margin-bottom: 32px;">';
   
   // ESQUERDA: FORMULÁRIO E PRÓXIMOS VENCIMENTOS E GRÁFICO
   h += '  <div style="display: flex; flex-direction: column; gap: 24px;">';

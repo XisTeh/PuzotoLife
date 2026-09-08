@@ -39,6 +39,7 @@ test('navegação de todas as páginas em desktop e celular', async ({ page }, i
     expect(inlineHandlers, `handlers inline em ${id}`).toEqual([]);
     await expect(page.locator('#pageContent [data-inline-handler-blocked]')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `overflow em ${id}`).toBe(true);
+    expect(await page.locator('#pageContent').evaluate((root) => root.scrollWidth <= root.clientWidth + 1), `conteúdo interno fora do painel em ${id}`).toBe(true);
   }
   expect(errors).toEqual([]);
   expect(apiFailures).toEqual([]);

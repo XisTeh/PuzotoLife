@@ -4,7 +4,7 @@ Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](http
 
 ## Estado atual
 
-Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `ea5d7de` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.
+Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `14e22fe` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.
 
 ## 1. Crie seu acesso
 
