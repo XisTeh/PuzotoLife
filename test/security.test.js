@@ -18,11 +18,12 @@ const env = {
 async function fixture(t, userId = owner) {
   let revoked = false;
   let recoveryRequest;
+  const authCalls = { getUser: 0, setSession: 0, lastGetUserToken: null };
   const session = { access_token: 'test-access-token', refresh_token: 'test-refresh-token' };
   const auth = createAuth(env, () => ({ auth: {
     signInWithPassword: async ({ password }) => password === 'correct-password' ? { data: { user: { id: userId }, session } } : { error: true, data: {} },
-    setSession: async () => revoked ? { error: true, data: {} } : { error: null, data: { user: { id: userId }, session } },
-    getUser: async () => revoked ? { error: true, data: {} } : { data: { user: { id: userId } } },
+    setSession: async () => { authCalls.setSession++; return revoked ? { error: true, data: {} } : { error: null, data: { user: { id: userId }, session } }; },
+    getUser: async (token) => { authCalls.getUser++; authCalls.lastGetUserToken = token; return revoked ? { error: true, data: {} } : { data: { user: { id: userId } } }; },
     signOut: async () => { revoked = true; },
     updateUser: async () => ({ error: null }),
     resetPasswordForEmail: async (email, options) => { recoveryRequest = { email, options }; return { data: {}, error: null }; },
@@ -47,7 +48,7 @@ async function fixture(t, userId = owner) {
     outgoing.end();
   });
   const login = (password = 'correct-password') => request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Puzoto-Request': '1' }, body: JSON.stringify({ email: 'owner@example.com', password }) });
-  return { request, rawRequest, login, revoke: () => { revoked = true; }, recoveryRequest: () => recoveryRequest };
+  return { request, rawRequest, login, revoke: () => { revoked = true; }, recoveryRequest: () => recoveryRequest, authCalls };
 }
 test('configuração incompleta de Auth falha fechada', () => {
   assert.equal(authConfigured({}), false);
@@ -77,6 +78,14 @@ test('sessão HttpOnly permite proprietário e respeita revogação remota', asy
   assert.equal((await request('/api/private', { headers: { Cookie: cookie } })).status, 200);
   revoke();
   assert.equal((await request('/api/private', { headers: { Cookie: cookie } })).status, 401);
+});
+test('requisição privada valida o token remotamente uma vez sem criar sessão redundante', async (t) => {
+  const { request, login, authCalls } = await fixture(t);
+  const cookie = (await login()).headers.getSetCookie().at(-1).split(';')[0];
+  assert.equal((await request('/api/private', { headers: { Cookie: cookie } })).status, 200);
+  assert.equal(authCalls.getUser, 1);
+  assert.equal(authCalls.setSession, 0);
+  assert.equal(authCalls.lastGetUserToken, 'test-access-token');
 });
 test('sessão assinada permanece válida em outra instância do servidor', async (t) => {
   const first = await fixture(t);
