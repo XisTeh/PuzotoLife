@@ -632,7 +632,7 @@ export function renderLancamentos() {
             <input type="text" class="form-control" id="form-obs" placeholder="Ex: Ajuste manual...">
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+          <div class="form-action-bar">
             <div>
               <span class="form-label" style="display:inline; margin-right: 8px;">Total Previsto:</span>
               <span id="form-total-preview" style="font-size: 1.2rem; font-weight: 700; color: var(--color-teal);">R$ 0,00</span>
@@ -668,7 +668,7 @@ export function renderLancamentos() {
 
     <!-- Tabela Lote -->
     <div class="animate-in" style="animation-delay: 0.3s; margin-top: 16px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div class="section-action-bar">
         <h3 style="font-weight: 600; color: var(--text-primary);">Lote Temporario Pendente</h3>
         <button id="btn-fechar-dia" class="btn-primary" style="background: var(--color-teal); color: #fff; cursor: pointer;">
           <i data-lucide="check-circle"></i> Fechar o Dia

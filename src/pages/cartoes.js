@@ -1054,7 +1054,7 @@ export function renderCartoesPage() {
   h += '    <div class="form-card" style="padding: 24px;">';
   h += '      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">';
   h += '        <h3 style="font-weight: 600; color: var(--text-primary); margin: 0;">Compras Parceladas Ativas</h3>';
-  h += '        <div id="compras-filtro-container" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>';
+  h += '        <div id="compras-filtro-container" class="filter-chips"></div>';
   h += '      </div>';
   h += '      <div id="compras-resumo-card" style="display: none; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-body); border-radius: 8px; border: 1px solid var(--border-subtle); margin-bottom: 16px; font-size: 0.85rem;">';
   h += '        <i data-lucide="info" style="width:16px; height:16px; color: var(--color-teal);"></i>';

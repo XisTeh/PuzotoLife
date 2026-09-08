@@ -415,7 +415,7 @@ export function renderRelatorioTrabalho() {
       <div class="form-card animate-in">
         <h3 style="margin-bottom: 16px; font-weight: 600; color: var(--text-primary);">Resumo por empresa</h3>
         <div class="table-container" style="margin-bottom: 0;">
-          <table class="table">
+          <table class="table summary-cards-table">
             <thead>
               <tr>
                 <th>Empresa</th>

@@ -257,22 +257,21 @@ export function renderComparativoMensal() {
   let s = '';
 
   // Header
-  s += `<div class="page-header animate-in" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;flex-wrap:wrap;gap:16px;">
+  s += `<div class="page-header comparison-header animate-in">
     <div>
       <h1 class="page-header__title" style="font-size:2.2rem;font-weight:700;margin-bottom:6px;">Comparativo Mensal</h1>
       <p class="page-header__subtitle">Compare sua produção, entradas, despesas e saldo entre os meses.</p>
     </div>
-    <div style="display:flex;gap:12px;align-items:center;background:var(--bg-card);padding:6px 12px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);box-shadow:var(--shadow-sm);">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">De</span>
-        <input type="month" id="comp-mes-inicio" class="form-control" style="width:130px;height:36px;border:none;background:var(--bg-surface);color:var(--text-primary);border-radius:6px;padding:0 10px;">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:0.85rem;color:var(--text-muted);font-weight:500;">Até</span>
-        <input type="month" id="comp-mes-fim" class="form-control" style="width:130px;height:36px;border:none;background:var(--bg-surface);color:var(--text-primary);border-radius:6px;padding:0 10px;">
-      </div>
-      <div style="width:1px;height:24px;background:var(--border-default);"></div>
-      <button class="btn btn-primary" onclick="window.atualizarComparativoMensal()" style="height:36px;padding:0 16px;display:flex;align-items:center;gap:6px;">
+    <div class="comparison-filter">
+      <label class="comparison-filter__field">
+        <span>De</span>
+        <input type="month" id="comp-mes-inicio" class="form-control">
+      </label>
+      <label class="comparison-filter__field">
+        <span>Até</span>
+        <input type="month" id="comp-mes-fim" class="form-control">
+      </label>
+      <button class="btn btn-primary comparison-filter__submit" onclick="window.atualizarComparativoMensal()">
         <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Atualizar
       </button>
     </div>

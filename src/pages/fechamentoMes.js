@@ -540,7 +540,7 @@ export function renderFechamentoMes() {
       <div class="form-card animate-in monthly-close-card">
         <h3 style="margin-bottom: 24px; font-weight: 600; color: var(--text-primary);">Fechar novo mês</h3>
         
-        <div style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 24px;">
+        <div class="month-action-row">
           <div class="form-group" style="flex: 1;">
             <label class="form-label">Mês de referência</label>
             <input type="month" class="form-control" id="filtro-mes">
@@ -577,7 +577,7 @@ export function renderFechamentoMes() {
             </div>
 
             <div class="table-container" style="margin-bottom: 24px;">
-              <table class="table">
+              <table class="table summary-cards-table">
                 <thead>
                   <tr>
                     <th>Empresa</th>
@@ -634,7 +634,7 @@ export function renderFechamentoMes() {
           </div>
 
           <div class="table-container" style="margin-bottom: 0;">
-            <table class="table">
+            <table class="table summary-cards-table">
               <thead>
                 <tr>
                   <th>Empresa</th>

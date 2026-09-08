@@ -274,6 +274,24 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   const manifest = await manifestResponse.json();
   expect(manifest.display).toBe('standalone');
   expect(manifest.icons.some((icon) => icon.purpose.includes('maskable'))).toBe(true);
+  expect(manifest.icons.map((icon) => icon.src)).toEqual(expect.arrayContaining([
+    '/images/puzoto-180.png',
+    '/images/puzoto-192.png',
+    '/images/puzoto-512.png',
+    '/images/puzoto-maskable-512.png',
+  ]));
+  for (const icon of manifest.icons) {
+    const iconResponse = await page.request.get(icon.src);
+    expect(iconResponse.ok(), `ícone disponível: ${icon.src}`).toBe(true);
+    expect(iconResponse.headers()['content-type']).toContain('image/png');
+  }
+  const iconDimensions = await page.evaluate(async (icons) => Promise.all(icons.map((icon) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({ src: icon.src, size: `${image.naturalWidth}x${image.naturalHeight}` });
+    image.onerror = reject;
+    image.src = icon.src;
+  }))), manifest.icons);
+  expect(iconDimensions).toEqual(manifest.icons.map((icon) => ({ src: icon.src, size: icon.sizes })));
   const workerResponse = await page.request.get('/sw.js');
   expect(workerResponse.ok()).toBe(true);
   const worker = await workerResponse.text();
@@ -285,6 +303,98 @@ test('metadados da PWA permitem instalação sem cachear a API', async ({ page }
   const offlineResponse = await page.request.get('/offline.html');
   expect(offlineResponse.ok()).toBe(true);
   expect(await offlineResponse.text()).toContain('Você está sem conexão.');
+});
+
+test('abertura apresenta a identidade Puzoto sem atrasar a sessão', async ({ page }) => {
+  let releaseSession;
+  const sessionReleased = new Promise((resolve) => { releaseSession = resolve; });
+  await page.route('**/api/auth/session', async (route) => {
+    await sessionReleased;
+    await route.fulfill({ json: { ok: true, mode: 'local', authenticated: true } });
+  });
+  const navigation = page.goto('/');
+  const launch = page.locator('.puzoto-launch');
+  await expect(launch).toBeVisible();
+  await expect(launch.locator('img')).toHaveAttribute('src', '/images/PuzotoLifeBlue.png');
+  await expect(launch).toContainText('Puzoto Life');
+  releaseSession();
+  await navigation;
+  await expect(page.locator('#app')).toBeVisible();
+  await expect(launch).toBeHidden();
+});
+
+test('ações, filtros, resumos e competências mantêm geometria móvel', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/financas/gastos-painel?*', (route) => route.fulfill({ json: { ok: true, data: {
+    categorias: [{ id: 1, nome: 'Assinaturas' }],
+    gastos: [{ id: 1, data: '2026-09-04', descricao: 'Assinatura teste', categoria_nome: 'Assinaturas', forma_pagamento: 'Pix', valor: 20, status: 'pago', observacao: '' }],
+    resumo: { totalPago: 20, totalPendente: 0, qtdLancamentos: 1, mediaPorDia: 20, maiorCategoria: { nome: 'Assinaturas' }, gastosPorCategoria: [] },
+  } } }));
+  await page.route('**/api/financas/cartoes', (route) => route.fulfill({ json: { ok: true, data: [
+    { id: 1, nome: 'Caixa', banco: 'Caixa', cor: '#3b82f6', limite: 1000, ativo: 1 },
+    { id: 2, nome: 'Inter', banco: 'Inter', cor: '#f97316', limite: 1000, ativo: 1 },
+    { id: 3, nome: 'Mercado Pago', banco: 'Mercado Pago', cor: '#3b82f6', limite: 1000, ativo: 1 },
+  ] } }));
+  await page.route('**/api/fechamentos/mensais/preview?*', (route) => route.fulfill({ json: { ok: true, data: {
+    qtd_global: 5, total_global: 15,
+    diagnostico: { qtd: 1, total: 3 }, perfecta: { qtd: 1, total: 3 }, email: { qtd: 1, total: 3 },
+    padrao: { qtd: 1, total: 3 }, ranon: { qtd: 1, total: 3 },
+  } } }));
+  await page.route('**/api/trabalho/analytics?*', (route) => route.fulfill({ json: { ok: true, data: {
+    cards: { total_produzido: 15, qtd_total: 5, media_dia: 15, qtd_dias_considerados: 1, total_clinicas_principais: 9, qtd_clinicas_principais: 3, total_padrao: 3, qtd_padrao: 1, total_ranon: 3, qtd_ranon: 1 },
+    por_empresa: [{ empresa: 'Diagnóstico', quantidade: 1, total: 3, percentual: 20 }],
+    faturamento_diario: [], evolucao_por_empresa: [],
+  } } }));
+  await page.goto('/');
+
+  await page.evaluate(() => window.navigateTo('gastos'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const actionGroup = page.locator('#gastos-tabela-body td[data-mobile-actions="true"] .table-action-group').first();
+  await expect(actionGroup).toBeVisible();
+  const actionButtons = actionGroup.locator('button');
+  expect(await actionButtons.count()).toBeGreaterThanOrEqual(2);
+  const actionTops = await actionButtons.evaluateAll((buttons) => buttons.map((button) => Math.round(button.getBoundingClientRect().top)));
+  expect(new Set(actionTops).size).toBe(1);
+
+  await page.evaluate(() => window.navigateTo('dr_ranon'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const toolbar = page.locator('.compact-toolbar');
+  await expect(toolbar).toBeVisible();
+  const toolbarRows = await toolbar.locator(':scope > *').evaluateAll((elements) => elements.map((element) => Math.round(element.getBoundingClientRect().top)));
+  expect(Math.max(...toolbarRows) - Math.min(...toolbarRows)).toBeLessThanOrEqual(1);
+
+  await page.evaluate(() => window.navigateTo('cartoes'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const chips = page.locator('.filter-chips .btn-tab');
+  expect(await chips.count()).toBeGreaterThanOrEqual(4);
+  const chipRows = await chips.evaluateAll((elements) => elements.slice(0, 4).map((element) => Math.round(element.getBoundingClientRect().top)));
+  expect(new Set(chipRows).size).toBe(1);
+
+  await page.evaluate(() => window.navigateTo('rel_comparativo'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('.metric-card__icon svg')).toHaveCount(8);
+  const monthFields = page.locator('.comparison-filter input[type="month"]');
+  await expect(monthFields).toHaveCount(2);
+  const fieldsFit = await monthFields.evaluateAll((fields) => fields.every((field) => {
+    const fieldRect = field.getBoundingClientRect();
+    const parentRect = field.parentElement.getBoundingClientRect();
+    return fieldRect.left >= parentRect.left - 1 && fieldRect.right <= parentRect.right + 1;
+  }));
+  expect(fieldsFit).toBe(true);
+
+  await page.evaluate(() => window.navigateTo('fechamento_mes'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  await page.getByRole('button', { name: 'Carregar prévia' }).click();
+  const previewRow = page.locator('.summary-cards-table').first().locator('tbody tr').first();
+  await expect(previewRow).toBeVisible();
+  await expect(previewRow).toHaveCSS('grid-template-columns', /.+ .+/);
+
+  await page.evaluate(() => window.navigateTo('rel_trabalho'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const reportRow = page.locator('.summary-cards-table tbody tr').first();
+  await expect(reportRow).toBeVisible();
+  await expect(reportRow).toHaveCSS('grid-template-columns', /.+ .+/);
 });
 
 test('Cofre ignora uma resposta concluída depois da troca de página', async ({ page }, info) => {
