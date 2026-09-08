@@ -8,13 +8,13 @@ Issues #2 e #3: AGENTS.md, templates de Issue/PR, Biome, contratos de arquitetur
 
 Issue #4: backend de login Supabase e sessão HttpOnly, autorização pelo UUID de proprietário, recuperação, logout e rate limit implementados. O projeto real tem um usuário proprietário, cadastro público e acesso anônimo desativados, Site URL e redirect local exatos; URL, chave publishable e UUID estão somente no `.env` ignorado. A API local nega dados sem sessão. O Security Advisor registra zero erros e um aviso: prevenção de senhas vazadas não está disponível no plano Free. O login completo com a senha do proprietário ainda precisa de validação manual; integração de Auth não conclui a migração do banco.
 
-Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado, testado em PostgreSQL local via PGlite. Importador transacional com paridade de valores e pré-validação do snapshot. O port dos serviços e papel de runtime estão na entrega seguinte. **Ainda falta revisão e migrar/validar no Supabase real.** Não manter SQLite como fonte de verdade após o lançamento.
+Issue #5: schema PostgreSQL de 23 tabelas com RLS e acesso de clientes negado. Em 08/09/2026 foi criado um snapshot WAL consistente do banco corrente, com 5.386 registros, integridade OK e zero violações de chave estrangeira. As duas migrações foram aplicadas no Supabase real e a importação transacional confirmou paridade de todas as tabelas. O papel `puzoto_runtime` foi habilitado com senha exclusiva, sem DDL, superusuário ou bypass de RLS; uma conexão real confirmou as 23 tabelas, 5.386 registros e a negação de DDL. O `Info/` permaneceu intacto.
 
 Issue #6: sidebar com bordas arredondadas, superfícies escuras, navegação móvel, foco/teclado, lazy loading por página, skeleton de navegação, feedback e reduced motion. Inicializadores das páginas passam a ser aguardados, removendo atrasos artificiais. Revisão visual usa dados sintéticos; não publicar screenshots com registros pessoais.
 
-Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. A branch `codex/security-hardening` bloqueia IDs inválidos, poluição de protótipo, parâmetros duplicados, payloads excessivamente complexos e tipos de conteúdo inesperados antes dos serviços. A branch empilhada `codex/csp-inline-handlers` usa `script-src-attr 'none'` e converte as ações legadas por uma lista permitida restrita. **Ainda falta validar os campos de cada operação e concluir o escape contextual de todo HTML interpolado.** Não anunciar XSS como integralmente resolvido. Produção e bind externo continuam bloqueados até a revisão e a migração.
+Issues #7 e #8: origem, proteção CSRF, cookies, limites, headers, logs estruturados sem URL/corpo e API de mesma origem. A validação bloqueia IDs inválidos, poluição de protótipo, parâmetros duplicados, payloads excessivamente complexos e tipos de conteúdo inesperados antes dos serviços. A CSP usa `script-src-attr 'none'`; ações legadas passam por uma lista permitida. A branch `codex/xss-sanitization` completa a defesa dos sinks HTML com DOMPurify e testes de ataque sintéticos. A produção permanece condicionada ao merge desse PR com os três gates verdes.
 
-Issue #9: deploy não realizado. Definir hospedagem compatível e ambiente protegido após concluir migração, segurança e revisão. Este projeto não é um site estático; hospedar apenas dist não oferece persistência nem login funcional.
+Issue #9: o runtime Vercel está preparado na branch `codex/vercel-runtime`, com Express na mesma origem, PostgreSQL obrigatório em produção, sessão Supabase assinada e sem estado em memória, TLS verificado e planilhas no bucket privado `puzoto-private`. As nove variáveis necessárias foram adicionadas somente ao ambiente Production da Vercel, sem a conexão administrativa, e Site URL/redirect HTTPS foram configurados no Auth. **A publicação ainda não deve ser anunciada como concluída:** faltam mesclar o PR com CI verde e validar a URL pública.
 
 Issue #10: checklist para minutas, revisão e aprovação jurídica humana pendentes. Não há termos juridicamente aprovados.
 
@@ -36,7 +36,7 @@ Uma Issue só pode ser fechada quando todos os seus critérios forem cumpridos. 
 
 ## Rollback
 
-Enquanto a publicação não acontece, continuar usando o SQLite local. Para reverter código, usar o PR/commit anterior e preservar o banco. Para restaurar dados, parar todos os processos e usar snapshot validado; nunca copiar arquivo SQLite em uso ignorando WAL. O Info não substitui uma cópia externa protegida contra falha do disco.
+Enquanto a publicação não acontece, o SQLite local continua disponível, mas o snapshot migrado também está preservado no Supabase. Para reverter código, usar o PR/commit anterior. Antes de retornar ao SQLite depois de qualquer gravação em produção, exportar e reconciliar os registros novos. Nunca copiar arquivo SQLite em uso ignorando WAL. O Info não substitui uma cópia externa protegida contra falha do disco.
 
 ## Runtime PostgreSQL — branch codex/supabase-postgres
 
@@ -66,7 +66,7 @@ Validação: 53 testes Node, CSP com `script-src-attr 'none'`, ação legítima 
 
 Refs #7; depende do PR de CSP. Mensagens de sucesso/erro das páginas deixam de usar `innerHTML`: ícone e mensagem são nós separados e o texto nunca é interpretado como markup. Nomes de empresas, categorias, cartões, pagadores, origens e pessoas recebem escape antes de entrar em opções e listas financeiras. Descrições, observações, motivos, formas de pagamento e status das telas de gastos, receitas, contas e dívidas recebem escape em conteúdo e atributos. O contrato de arquitetura impede voltar a interpolar mensagens de toast com `innerHTML`.
 
-Esta entrega cobre as superfícies mais expostas de feedback e finanças, com testes sintéticos contendo tags, aspas e atributos de evento. Relatórios e partes extensas de cartões/configurações ainda possuem templates legados que precisam de revisão campo a campo; a Issue #7 e o bloqueio de produção permanecem abertos.
+Esta entrega cobre as superfícies mais expostas de feedback e finanças, com testes sintéticos contendo tags, aspas e atributos de evento. Os templates legados restantes passam pela política central descrita na entrega de sanitização abaixo.
 
 ## Origem local e recuperação — branch codex/local-origin-alias
 
@@ -114,3 +114,30 @@ A proteção da `main` continua exigindo `quality`, `security` e `e2e`, conversa
 | Dados privados | `.env`, `Info/`, Casaê, bancos, `data/` e `dist/` estão ignorados; nenhum apareceu entre os arquivos rastreados na auditoria | Proteção local confirmada |
 
 Não promover o preview nem empurrar código diretamente para `main`. Para produção na Vercel, primeiro concluir #5 e #7, substituir a sessão em memória, mover planilhas para armazenamento privado e criar a entrega de runtime da Issue #9. Depois, configurar no Supabase as URLs HTTPS finais, SMTP de recuperação e segredos do ambiente protegido; validar login, leitura e gravação entre celular e computador antes da promoção.
+
+## Migração real e runtime Vercel — branch codex/vercel-runtime
+
+Refs #5 e #9. Esta etapa parte da `main` depois da fusão de todos os PRs anteriores.
+
+- Snapshot atual criado por cópia segura do SQLite/WAL em `data/migration-source/`, ignorado pelo Git: integridade OK, zero violações de chave estrangeira, 23 tabelas e 5.386 registros. O `Info/` permaneceu privado e imutável.
+- Migrações aplicadas no Supabase real e dados importados em uma única transação. A comparação tolera somente diferenças binárias de ponto flutuante de até `1e-9`; textos, IDs, datas e demais valores continuam exatos. Paridade confirmada em todas as tabelas.
+- Conexões usam o pooler transacional e a CA oficial do Supabase, armazenada fora do repositório. A exigência de SSL foi ativada no banco. O papel de aplicação `puzoto_runtime` foi provisionado com senha aleatória local. Uma verificação remota confirmou 23 tabelas, 5.386 registros e tentativa de DDL negada.
+- A sessão deixa de depender de `Map`: o backend assina os tokens Supabase em cookie `HttpOnly`, `SameSite=Strict` e `Secure` em produção, valida a revogação no Supabase a cada requisição e funciona entre instâncias. `SESSION_SECRET` nunca é exposto ao frontend.
+- Planilhas de laudo passam ao bucket privado `puzoto-private` quando o runtime é PostgreSQL. A chave `sb_secret_` fica somente no backend. SQLite local e testes continuam usando diretórios temporários.
+- O ponto de entrada Express para Vercel exige PostgreSQL, Auth Supabase e `APP_ORIGIN` HTTPS exata em produção. A função inclui apenas os assets públicos necessários; bancos, relatórios de migração, anexos e backups continuam fora do bundle.
+
+Validação concluída antes do PR: `npm run quality` com 58 testes Node, build e orçamento gzip de 204 KB; 20 jornadas Playwright em desktop e iPhone 13; inicialização do entrypoint Vercel em modo produção; bucket privado e runtime PostgreSQL verificados no projeto real. A validação não incluiu senha do proprietário nem enviou e-mail de recuperação.
+
+Pendências para concluir #9: mesclar somente com `quality`, `security` e `e2e` verdes, aguardar o deploy e validar `/api/health`, login e gravação no endereço final. As nove variáveis de produção foram registradas como Secret na Vercel sem `SUPABASE_DB_URL`; Site URL e redirect HTTPS estão configurados no Supabase. A correção de saídas HTML da Issue #7 segue no PR encadeado abaixo; a aprovação jurídica da Issue #10 continua com seu próprio critério humano.
+
+## Sanitização integral dos sinks HTML — branch codex/xss-sanitization
+
+Closes #7; PR encadeado sobre `codex/vercel-runtime`.
+
+- DOMPurify é instalado antes de qualquer renderização e sanitiza toda atribuição a `innerHTML`, `outerHTML` e `insertAdjacentHTML`, incluindo os templates legados de relatórios, cartões e configurações.
+- Textos vindos do banco ou de arquivos recebem escape contextual antes da composição em relatórios, cartões, configurações, dashboard, históricos, laudos, fechamentos, diagnóstico, importação e backup. Cores persistidas só entram em estilos quando correspondem a hexadecimal de seis dígitos.
+- Atributos `onclick`, `onchange`, `oninput`, `onsubmit`, `onkeydown` e `onkeyup` existentes são colocados em quarentena como dados antes da sanitização. O adaptador compila somente chamadas simples da lista permitida, remove o atributo transitório e instala um listener; ações desconhecidas ficam bloqueadas.
+- Scripts, iframes, SVG ativo, atributos de evento, URLs `javascript:` e `formaction` ativo são removidos antes de alcançar o DOM. A CSP continua negando scripts em atributos como uma segunda camada.
+- O contrato de arquitetura exige a instalação da política central e a cobertura dos três sinks. Testes sintéticos verificam que nenhum marcador de execução muda e que nenhum nó ou atributo ativo permanece.
+
+Validação local: `npm run quality` aprovado com 58 testes Node, build e orçamento gzip de 215 KB; `npm audit --omit=dev --audit-level=high` com zero vulnerabilidades; 24 jornadas Playwright aprovadas em desktop e iPhone 13, incluindo payload direto nos sinks e texto ativo retornado pela API de relatório. Depois do merge com `quality`, `security` e `e2e` verdes, os critérios técnicos da Issue #7 ficam concluídos. Qualquer novo sink HTML exige sanitização e teste equivalente. A aprovação jurídica da Issue #10 continua sendo uma decisão humana separada.

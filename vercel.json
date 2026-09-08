@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "express",
+  "buildCommand": "npm run build",
+  "functions": {
+    "app.js": {
+      "maxDuration": 30,
+      "includeFiles": "{dist/**,assets/images/**,supabase/schema-manifest.json}"
+    }
+  }
+}

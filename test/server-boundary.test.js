@@ -1,11 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Router } from 'express';
 process.env.NODE_ENV = 'test';
 process.env.PUZOTO_DATABASE = 'sqlite';
 const { createApp } = await import('../server/index.js');
 
-test('backend legado não inicia em produção nem em interface externa', () => {
-  assert.throws(() => createApp({ NODE_ENV: 'production' }), /Publicação bloqueada/);
+test('produção exige PostgreSQL, HTTPS e Supabase enquanto o runtime local permanece no loopback', () => {
+  const authFactory = (_env, configured = true) => ({ router: Router(), guard: (_req, _res, next) => next(), configured });
+  assert.throws(() => createApp({ NODE_ENV: 'production' }), /PostgreSQL/);
+  assert.throws(() => createApp({ NODE_ENV: 'production', PUZOTO_DATABASE: 'postgres' }), /APP_ORIGIN/);
+  assert.throws(() => createApp({ NODE_ENV: 'production', PUZOTO_DATABASE: 'postgres', APP_ORIGIN: 'http://example.com' }), /HTTPS/);
+  assert.throws(() => createApp({ NODE_ENV: 'production', PUZOTO_DATABASE: 'postgres', APP_ORIGIN: 'https://example.com/path' }), /sem caminho/);
+  assert.throws(() => createApp({ NODE_ENV: 'production', PUZOTO_DATABASE: 'postgres', APP_ORIGIN: 'https://example.com' }, (env) => authFactory(env, false)), /autenticação Supabase/);
+  assert.doesNotThrow(() => createApp({ NODE_ENV: 'production', PUZOTO_DATABASE: 'postgres', APP_ORIGIN: 'https://example.com' }, authFactory));
   assert.throws(() => createApp({ HOST: '0.0.0.0' }), /Publicação bloqueada/);
 });
 test('health não expõe caminho e servidor nunca serve backups ou .env', async (t) => {

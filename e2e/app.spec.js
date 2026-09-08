@@ -54,6 +54,44 @@ test('CSP restrita preserva ações permitidas e descarta ação injetada', asyn
   await page.locator('#injected-action').click();
   expect(dialogs).toBe(0);
 });
+test('sanitização central bloqueia HTML ativo em todos os sinks legados', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    window.__xssMarker = 0;
+    const target = document.createElement('section');
+    target.id = 'xss-audit-target';
+    document.body.append(target);
+    target.innerHTML = '<script>window.__xssMarker=1</script><img src=x onerror="window.__xssMarker=2"><svg onload="window.__xssMarker=3"></svg><a href="javascript:window.__xssMarker=4">link</a><iframe srcdoc="<script>parent.__xssMarker=5<\/script>"></iframe>';
+    target.insertAdjacentHTML('beforeend', '<button formaction="javascript:window.__xssMarker=6">ação</button>');
+  });
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.__xssMarker)).toBe(0);
+  await expect(page.locator('#xss-audit-target script, #xss-audit-target iframe')).toHaveCount(0);
+  await expect(page.locator('#xss-audit-target [onerror], #xss-audit-target [onload], #xss-audit-target [href^="javascript:"], #xss-audit-target [formaction^="javascript:"]')).toHaveCount(0);
+});
+test('texto ativo vindo da API não executa nos relatórios legados', async ({ page }, info) => {
+  await page.addInitScript(() => { window.__apiXssMarker = 0; });
+  await page.route('**/api/relatorios/geral?*', (route) => route.fulfill({ json: { ok: true, data: {
+    resumo: {
+      total_entradas_potenciais: 10, total_saidas_potenciais: 10, trabalho_produzido: 10,
+      entradas_recebidas: 10, entradas_previstas: 0, saidas_pagas: 10, saidas_pendentes: 0,
+      saldo_real: 0, saldo_previsto: 0, trabalho_recebido: 10, trabalho_a_receber: 0,
+    },
+    comparativos: { distribuicao_saidas: [], gastos_por_categoria: [], receitas_por_origem: [] },
+    rankings: {
+      maiores_gastos: [{ descricao: '<button id="api-action-injection" onclick="window.navigateTo(\'backup\')">Despesa</button><img src=x onerror="window.__apiXssMarker=1">', categoria: '<svg onload="window.__apiXssMarker=2"></svg>', data: '2026-09-08', valor: 10 }],
+      maiores_receitas: [], proximos_vencimentos: [],
+    },
+  } } }));
+  await page.goto('/');
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.locator('[data-page="rel_geral"]').click();
+  await expect(page.locator('#list-maiores-gastos')).toContainText('Despesa');
+  await expect(page.locator('#api-action-injection')).toHaveCount(0);
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.__apiXssMarker)).toBe(0);
+  await expect(page.locator('#pageContent [onerror], #pageContent [onload]')).toHaveCount(0);
+});
 test('reduced motion e fechamento do menu por teclado', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');

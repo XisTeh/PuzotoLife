@@ -13,11 +13,6 @@ const __dirname = path.dirname(__filename);
 
 const BACKUP_DIR = path.join(__dirname, '..', '..', 'data', 'backups', 'database');
 
-// Garante que o diretorio de backups exista
-if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
-}
-
 // Tabelas reconhecidas pelo Puzoto Life
 const TABELAS_PERMITIDAS = [
   'empresas',
@@ -153,6 +148,8 @@ export function gerarPreviewImportacao(conteudo) {
 export async function criarBackupAntesImportacao() {
   getLocalDatabase();
   const dbPath = getDatabasePath();
+
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
   if (!fs.existsSync(dbPath)) {
     throw new Error('Banco de dados nao encontrado.');

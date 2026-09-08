@@ -15,11 +15,6 @@ const __dirname = path.dirname(__filename);
 
 const BACKUP_DIR = path.join(path.dirname(getDatabasePath()), 'backups', 'database');
 
-// Garante que o diretório de backups exista
-if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
-}
-
 // ═══════════════════════════════════════
 // SEGURANÇA — Anti Path Traversal
 // ═══════════════════════════════════════
@@ -91,6 +86,8 @@ export function obterInfoBanco() {
 export async function criarBackupManual() {
   getLocalDatabase();
   const dbPath = getDatabasePath();
+
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
   if (!fs.existsSync(dbPath)) {
     throw new Error('Banco de dados não encontrado.');

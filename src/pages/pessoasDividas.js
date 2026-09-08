@@ -411,7 +411,7 @@ window.abrirModalPagarParcelaDivida = function(id) {
   const [pAno, pMes] = (g.prox_competencia || '').split('-');
   document.getElementById('modal-pagar-dp-id').value = id;
   document.getElementById('modal-pagar-dp-info').innerHTML = `
-    <p style="margin-bottom:8px;"><strong>${g.nome_pessoa}</strong> — ${g.motivo}</p>
+    <p style="margin-bottom:8px;"><strong>${escapeHtml(g.nome_pessoa)}</strong> — ${escapeHtml(g.motivo)}</p>
     <p style="margin-bottom:8px;">Parcela <strong>${g.prox_numero}/${g.total_parcelas}</strong></p>
     <p style="margin-bottom:8px;">Competência: <strong>${pMes || ''}/${pAno || ''}</strong></p>
     <p style="font-size:1.2rem;font-weight:700;color:var(--color-teal);">Valor: ${formatarMoedaBR(g.valor_parcela)}</p>`;
@@ -661,9 +661,9 @@ window.abrirHistoricoPessoa = async function(nome) {
               <tr>
                 <td>${formatarDataBR(r.data_combinada)}</td>
                 <td><span style="color: ${r.tipo === 'eu_devo' ? 'var(--color-red)' : 'var(--color-teal)'};">${r.tipo === 'eu_devo' ? 'Eu Devo' : 'Me Deve'}</span></td>
-                <td>${r.motivo}</td>
+                <td>${escapeHtml(r.motivo)}</td>
                 <td style="font-weight: 600;">${formatarMoedaBR(r.valor)}</td>
-                <td><span style="font-size: 0.75rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: var(--border-subtle);">${r.status}</span></td>
+                <td><span style="font-size: 0.75rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: var(--border-subtle);">${escapeHtml(r.status)}</span></td>
               </tr>
             `).join('')}
           </tbody>
@@ -673,7 +673,8 @@ window.abrirHistoricoPessoa = async function(nome) {
 
     conteudo.innerHTML = html;
   } catch (err) {
-    conteudo.innerHTML = `<p style="color: var(--color-red);">Erro ao carregar histórico: ${err.message}</p>`;
+    conteudo.textContent = `Erro ao carregar histórico: ${err.message}`;
+    conteudo.style.color = 'var(--color-red)';
   }
 };
 

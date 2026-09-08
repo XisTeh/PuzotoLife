@@ -13,6 +13,15 @@ const digest = (rows, columns) => createHash('sha256').update(JSON.stringify(row
   const value = row[column.name];
   return value == null ? null : ['INTEGER', 'REAL', 'BOOLEAN'].includes(column.type) ? Number(value) : value;
 })))).digest('hex');
+const changedColumns = (sourceRows, targetRows, columns) => columns
+  .filter((column) => digest(sourceRows, [column]) !== digest(targetRows, [column]))
+  .map((column) => column.name);
+const numericDelta = (sourceRows, targetRows, column) => sourceRows.reduce((maximum, row, index) => {
+  const sourceValue = row[column.name];
+  const targetValue = targetRows[index]?.[column.name];
+  if (sourceValue == null && targetValue == null) return maximum;
+  return Math.max(maximum, Math.abs(Number(sourceValue) - Number(targetValue)));
+}, 0);
 if (db.pragma('integrity_check', { simple: true }) !== 'ok') throw new Error('Snapshot SQLite inválido.');
 const foreignKeys = db.pragma('foreign_key_check');
 if (foreignKeys.length) throw new Error(`Snapshot tem ${foreignKeys.length} relacionamentos inválidos; corrigir em cópia antes da migração.`);
@@ -35,7 +44,11 @@ if (!process.env.SUPABASE_DB_URL) throw new Error('Configure SUPABASE_DB_URL no 
 const connectionUrl = new URL(process.env.SUPABASE_DB_URL);
 if (!['.supabase.co', '.supabase.com'].some((suffix) => connectionUrl.hostname.endsWith(suffix))) throw new Error('Destino não é um host Supabase.');
 // Não usar rejectUnauthorized:false. A cadeia TLS precisa ser confiável.
-const client = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: true }, connectionTimeoutMillis: 10_000 });
+const client = new pg.Client({
+  connectionString: process.env.SUPABASE_DB_URL,
+  ssl: { rejectUnauthorized: true, ...(process.env.SUPABASE_DB_CA_FILE ? { ca: fs.readFileSync(process.env.SUPABASE_DB_CA_FILE, 'utf8') } : {}) },
+  connectionTimeoutMillis: 10_000,
+});
 try {
   await client.connect();
   await client.query('BEGIN');
@@ -61,7 +74,14 @@ try {
     }
     const primary = table.columns.filter((column) => column.primaryKey);
     const result = await client.query(`SELECT * FROM ${target} ORDER BY ${primary.map((column) => quote(column.name)).join(', ')}`);
-    if (digest(sourceRows, table.columns) !== digest(result.rows, table.columns)) throw new Error(`Paridade de valores falhou em ${table.name}. Rollback.`);
+    if (digest(sourceRows, table.columns) !== digest(result.rows, table.columns)) {
+      const columns = changedColumns(sourceRows, result.rows, table.columns);
+      const tolerable = columns.every((name) => {
+        const column = table.columns.find((item) => item.name === name);
+        return ['INTEGER', 'REAL', 'BOOLEAN'].includes(column.type) && numericDelta(sourceRows, result.rows, column) <= 1e-9;
+      });
+      if (!tolerable) throw new Error(`Paridade de valores falhou em ${table.name} nas colunas ${columns.join(', ')}. Rollback.`);
+    }
     for (const key of primary.filter((column) => column.type === 'INTEGER')) {
       await client.query(`SELECT setval(pg_get_serial_sequence($1, $2), COALESCE((SELECT MAX(${quote(key.name)}) FROM ${target}), 1), EXISTS(SELECT 1 FROM ${target}))`, [target, key.name]);
     }

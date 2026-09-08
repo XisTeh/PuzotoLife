@@ -7,9 +7,10 @@ import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getDatabase, getDatabasePath, atomic } from '../database/connection.js';
+import { getDatabase, getDatabasePath, atomic, databaseDialect } from '../database/connection.js';
 import { gerarBufferExcel } from './exportarExcelRanon.js';
 import { registrarAuditoria } from './auditoria.js';
+import { removePrivateFile, uploadPrivateFile } from '../storage/privateFiles.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,7 @@ const backupFolder = () => path.join(path.dirname(getDatabasePath()), 'backups',
  */
 export async function salvarPlanilhaRanon(mesReferencia) {
   if (!/^(0[1-9]|1[0-2])\/20\d{2}$/.test(String(mesReferencia))) throw new Error('Mês de referência inválido. Use MM/AAAA.');
+  const cloudFiles = databaseDialect() === 'postgres' && process.env.NODE_ENV !== 'test';
   let createdFile;
   try {
     return await atomic(async () => {
@@ -51,12 +53,17 @@ export async function salvarPlanilhaRanon(mesReferencia) {
   const ano = partes[1].slice(2);
   const nomeBase = `Laudos ${mes}-${ano}`;
 
-  const folder = backupFolder();
-  await fs.mkdir(folder, { recursive: true });
   const nomeArquivo = nomeBase + '_' + randomUUID() + '.xlsx';
-  const caminhoCompleto = path.join(folder, nomeArquivo);
-  await fs.writeFile(caminhoCompleto, Buffer.from(buffer), { flag: 'wx' });
-  createdFile = caminhoCompleto;
+  if (cloudFiles) {
+    createdFile = `laudos_ranon/${nomeArquivo}`;
+    await uploadPrivateFile(createdFile, Buffer.from(buffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  } else {
+    const folder = backupFolder();
+    await fs.mkdir(folder, { recursive: true });
+    const caminhoCompleto = path.join(folder, nomeArquivo);
+    await fs.writeFile(caminhoCompleto, Buffer.from(buffer), { flag: 'wx' });
+    createdFile = caminhoCompleto;
+  }
 
   // 6. Transação: mover pendentes → histórico + limpar pendentes
   const totalQuantidade = laudos.reduce((acc, l) => acc + (l.quantidade || 1), 0);
@@ -117,7 +124,10 @@ export async function salvarPlanilhaRanon(mesReferencia) {
   };
     });
   } catch (error) {
-    if (createdFile) await fs.unlink(createdFile).catch(() => {});
+    if (createdFile) {
+      if (cloudFiles) await removePrivateFile(createdFile).catch(() => {});
+      else await fs.unlink(createdFile).catch(() => {});
+    }
     throw error;
   }
 }

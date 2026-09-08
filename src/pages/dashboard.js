@@ -2,6 +2,7 @@ import { obterDashboard } from '../services/api.js';
 import { formatarMoedaBR, formatarDataBR, mesAtualReferencia } from '../utils/formatters.js';
 import { navigateTo } from '../state.js';
 import { Chart, registerables } from 'chart.js';
+import { escapeHtml } from '../security/safeDom.js';
 
 Chart.register(...registerables);
 
@@ -91,7 +92,7 @@ function atualizarAlertas(alertas) {
           <i data-lucide="receipt" style="color: var(--color-gold);"></i>
         </div>
         <div class="alert-item__content">
-          <div class="alert-item__title">Conta vencendo: ${c.nome}</div>
+          <div class="alert-item__title">Conta vencendo: ${escapeHtml(c.nome)}</div>
           <div class="alert-item__desc">Valor: ${formatarMoedaBR(c.valor)}</div>
         </div>
         <div class="alert-item__time">${formatarDataBR(c.vencimento)}</div>
@@ -108,7 +109,7 @@ function atualizarAlertas(alertas) {
           <i data-lucide="credit-card" style="color: var(--color-rose);"></i>
         </div>
         <div class="alert-item__content">
-          <div class="alert-item__title">Fatura vencendo: ${f.cartao_nome}</div>
+          <div class="alert-item__title">Fatura vencendo: ${escapeHtml(f.cartao_nome)}</div>
           <div class="alert-item__desc">Valor: ${formatarMoedaBR(f.valor)}</div>
         </div>
         <div class="alert-item__time">${formatarDataBR(f.vencimento)}</div>
@@ -125,7 +126,7 @@ function atualizarAlertas(alertas) {
           <i data-lucide="arrow-up-circle" style="color: var(--color-teal);"></i>
         </div>
         <div class="alert-item__content">
-          <div class="alert-item__title">Receita prevista: ${r.descricao}</div>
+          <div class="alert-item__title">Receita prevista: ${escapeHtml(r.descricao)}</div>
           <div class="alert-item__desc">Valor: ${formatarMoedaBR(r.valor)}</div>
         </div>
         <div class="alert-item__time">${formatarDataBR(r.data)}</div>
@@ -145,7 +146,7 @@ function atualizarAlertas(alertas) {
           <i data-lucide="users" style="color: ${color};"></i>
         </div>
         <div class="alert-item__content">
-          <div class="alert-item__title">Pessoa pendente: ${p.pessoa}</div>
+          <div class="alert-item__title">Pessoa pendente: ${escapeHtml(p.pessoa)}</div>
           <div class="alert-item__desc">${tipo}: ${formatarMoedaBR(p.valor)}</div>
         </div>
         <div class="alert-item__time">${formatarDataBR(p.data_combinada)}</div>

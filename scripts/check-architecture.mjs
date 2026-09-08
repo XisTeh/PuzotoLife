@@ -19,5 +19,9 @@ for (const file of files('public')) {
 }
 const httpSecurity = fs.readFileSync(path.join('server', 'security', 'http.js'), 'utf8');
 if (!/scriptSrcAttr:\s*\["'none'"\]/.test(httpSecurity)) problems.push('server/security/http.js: CSP deve negar scripts em atributos');
+const main = fs.readFileSync(path.join('src', 'main.js'), 'utf8');
+if (!/installSafeHtmlPolicy\(\)/.test(main)) problems.push('src/main.js: política central de sanitização HTML precisa iniciar antes da interface');
+const safeDom = fs.readFileSync(path.join('src', 'security', 'safeDom.js'), 'utf8');
+if (!/createDOMPurify/.test(safeDom) || !/insertAdjacentHTML/.test(safeDom) || !/outerHTML/.test(safeDom)) problems.push('src/security/safeDom.js: todos os sinks HTML legados precisam de sanitização');
 if (problems.length) throw new Error(problems.join('\n'));
 console.log('Contratos de arquitetura: OK');

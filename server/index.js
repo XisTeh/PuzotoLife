@@ -12,16 +12,22 @@ import { validateApiRequest } from './security/requestValidation.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export function createApp(env = process.env, authFactory = createAuth) {
-  if (env.NODE_ENV === 'production' || (env.HOST && !['127.0.0.1', 'localhost', '::1'].includes(env.HOST))) {
-    throw new Error('Publicação bloqueada: concluir PostgreSQL, revisão XSS e gates em docs/ENTREGAS.md.');
+export function createApp(env = process.env, authFactory = createAuth, application = express()) {
+  const production = env.NODE_ENV === 'production';
+  if (!production && env.HOST && !['127.0.0.1', 'localhost', '::1'].includes(env.HOST)) throw new Error('Publicação bloqueada: o runtime local deve permanecer no loopback.');
+  if (production && env.PUZOTO_DATABASE !== 'postgres') throw new Error('Produção exige PostgreSQL como fonte de verdade.');
+  if (production) {
+    let origin;
+    try { origin = new URL(env.APP_ORIGIN); } catch { throw new Error('Produção exige APP_ORIGIN HTTPS válido.'); }
+    if (origin.protocol !== 'https:' || origin.origin !== env.APP_ORIGIN) throw new Error('Produção exige APP_ORIGIN HTTPS sem caminho.');
   }
-  const app = express();
+  const app = application;
   installHttpSecurity(app, env);
   app.use(express.json({ limit: '1mb' }));
   app.use('/api', validateApiRequest);
   const auth = authFactory(env);
   app.use('/api/auth', auth.router);
+  if (production && !auth.configured) throw new Error('Produção exige autenticação Supabase configurada.');
   if (databaseDialect() === 'postgres' && !auth.configured && env.NODE_ENV !== 'test') throw new Error('PostgreSQL exige autenticação Supabase e proprietário configurados.');
   app.get('/api/health', (_req, res) => res.json({ ok: true, status: 'online', storage: databaseDialect(), auth: auth.configured ? 'supabase' : 'local' }));
   app.use('/api', auth.guard, apiRoutes);
