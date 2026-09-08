@@ -1,4 +1,4 @@
-const CACHE = 'puzoto-static-v5';
+const CACHE = 'puzoto-static-v6';
 const LEGACY_CACHE_PREFIXES = ['puzoto-shell-', 'puzoto-static-'];
 const STABLE_ASSETS = [
   '/offline.html',
@@ -7,8 +7,8 @@ const STABLE_ASSETS = [
   '/images/PuzotoLifeBlue.png',
   '/images/puzoto-180.png',
   '/images/puzoto-192.png',
-  '/images/puzoto-transparent-192.png',
-  '/images/puzoto-transparent-512.png',
+  '/images/puzoto-app-192.png',
+  '/images/puzoto-app-512.png',
 ];
 const STABLE_PATHS = new Set(STABLE_ASSETS);
 

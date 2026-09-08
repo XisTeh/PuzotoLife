@@ -251,3 +251,11 @@ Closes #57. O manifesto deixa de oferecer ao Android os ícones com uma superfí
 No Dr. Ranon / RX, a célula de quantidade ganha alinhamento móvel explícito, com rótulo à esquerda e valor à direita. Em Lançamentos, o botão “Gerar Mensagem” recebe distância vertical consistente do título, e a grade de empresas deixa de expandir o último cartão quando as quatro empresas formam duas linhas completas; se futuramente houver uma quantidade ímpar de empresas, somente o último cartão ocupará a largura total.
 
 Validação local: `npm run quality` aprovado com 70 testes Node, arquitetura, lint, build e orçamento de 219 KB gzip; 37 jornadas Playwright aprovadas em desktop e celular, com 5 saltos previstos por projeto; `npm audit --omit=dev --audit-level=high` sem vulnerabilidades. A cobertura confere dimensões e transparência real dos ícones, atualização e limpeza do cache, alinhamento da quantidade, distância do botão e ocupação das linhas da grade em 390 × 844.
+
+## Continuidade da abertura e alinhamento — branch codex/pwa-icon-alignment
+
+Closes #59. O Android preencheu a transparência dos ícones anteriores com branco, ocultando o “P”, a pessoa e as folhas e deixando quase somente a seta azul. O manifesto passa a declarar apenas ícones opacos de 192 e 512 px com a logotipo completa, finalidade `any maskable` e borda `#111827`, exatamente igual ao `background_color` nativo e à base do painel inicial. O cache estático sobe para `puzoto-static-v6`.
+
+A tela nativa é obrigatória no WebAPK e antecede o HTML. Para evitar a sensação de duas aberturas, o primeiro quadro nativo e o carregamento da página compartilham fundo e marca; a marca do HTML deixa de executar uma segunda animação de entrada. Na tabela móvel do Dr. Ranon / RX, a quantidade volta à coluna de início dos demais valores, em vez de ficar encostada à borda direita.
+
+Validação local: `npm run quality` aprovado com 70 testes Node, arquitetura, lint, build e orçamento de 219 KB gzip; 37 jornadas Playwright aprovadas em desktop e celular, com 5 saltos previstos; `npm audit --omit=dev --audit-level=high` sem vulnerabilidades. A cobertura confirma dimensões, fundo opaco, presença das áreas branca e azul da marca, finalidade adaptável, continuidade da cor inicial e alinhamento móvel da quantidade.
