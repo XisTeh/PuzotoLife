@@ -29,7 +29,7 @@ export async function startSession(onAuthenticated) {
     const recovery = mode === 'forgot';
     const password = mode === 'password';
     panel.innerHTML = `<section class="auth-card" aria-labelledby="authTitle">
-      <a class="auth-brand" href="/" aria-label="Puzoto Life"><img src="/images/PuzotoLife.png" alt="" width="44" height="44">Puzoto <span>Life</span></a>
+      <a class="auth-brand" href="/" aria-label="Puzoto Life"><img src="/images/PuzotoLifeBlue.png" alt="" width="44" height="44">Puzoto <span>Life</span></a>
       <p class="eyebrow">SEU ESPAÇO PESSOAL</p>
       <h1 id="authTitle">${password ? 'Uma nova senha.' : recovery ? 'Vamos recuperar seu acesso.' : 'Bom ter você aqui.'}</h1>
       <p class="auth-description">${password ? 'Use uma senha única com pelo menos 12 caracteres.' : recovery ? 'Enviaremos um link para o e-mail da sua conta.' : 'Entre para cuidar do seu trabalho e das suas finanças.'}</p>

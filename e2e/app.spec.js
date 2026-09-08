@@ -67,3 +67,42 @@ test('reduced motion e fechamento do menu por teclado', async ({ page }, info) =
     await expect(toggle).toBeFocused();
   }
 });
+test('lista de meses fechados não corta a última linha no hover ou no celular', async ({ page }, info) => {
+  const months = [
+    { id: 1, referencia: 'Maio/2026', fechado_em: '2026-06-01 08:00:00', total_global: 6096, qtd_global: 2152 },
+    { id: 2, referencia: 'Junho/2026', fechado_em: '2026-07-01 08:00:00', total_global: 6801, qtd_global: 2417 },
+    { id: 3, referencia: 'Julho/2026', fechado_em: '2026-08-01 08:00:00', total_global: 8084, qtd_global: 2856 },
+    { id: 4, referencia: 'Agosto/2026', fechado_em: '2026-09-01 08:00:00', total_global: 7961, qtd_global: 2740 },
+  ];
+  await page.route('**/api/fechamentos/mensais', (route) => route.fulfill({ json: { ok: true, data: months } }));
+  await page.goto('/');
+  if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
+  await page.locator('[data-page="fechamento_mes"]').click();
+  const items = page.locator('.closed-month');
+  await expect(items).toHaveCount(4);
+  const last = items.last();
+  await last.scrollIntoViewIfNeeded();
+  if (info.project.name === 'desktop') await last.hover();
+  const geometry = await page.locator('.closed-months-list').evaluate((container) => {
+    const list = container.getBoundingClientRect();
+    const item = container.lastElementChild.getBoundingClientRect();
+    return { bottom: item.bottom, listBottom: list.bottom, right: item.right, listRight: list.right, scrollWidth: container.scrollWidth, clientWidth: container.clientWidth };
+  });
+  expect(geometry.bottom).toBeLessThanOrEqual(geometry.listBottom + 1);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.listRight + 1);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+});
+test('metadados da PWA permitem instalação sem cachear a API', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#11131f');
+  const manifestResponse = await page.request.get('/manifest.webmanifest');
+  expect(manifestResponse.ok()).toBe(true);
+  const manifest = await manifestResponse.json();
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.icons.some((icon) => icon.purpose.includes('maskable'))).toBe(true);
+  const workerResponse = await page.request.get('/sw.js');
+  expect(workerResponse.ok()).toBe(true);
+  const worker = await workerResponse.text();
+  expect(worker).toContain("url.pathname.startsWith('/api/')");
+});
