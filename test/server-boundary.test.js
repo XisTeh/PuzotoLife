@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Router } from 'express';
 process.env.NODE_ENV = 'test';
 process.env.PUZOTO_DATABASE = 'sqlite';
 const { createApp, setStaticCacheHeaders } = await import('../server/index.js');
+
+test('runtime Vercel permanece na mesma região brasileira do Supabase', () => {
+  const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
+  assert.deepEqual(vercel.regions, ['gru1']);
+});
 
 test('HTML e entrypoints estáveis recebem no-store no servidor Express', () => {
   for (const file of ['index.html', 'offline.html', 'index.js', 'index.css']) {

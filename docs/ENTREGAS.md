@@ -207,3 +207,9 @@ Refs #42. A medição autenticada depois da primeira otimização mostrou que Ga
 O aquecimento global foi removido. Os módulos continuam carregados sob demanda e o foco ou ponteiro na navegação ainda antecipa somente a página pretendida. Cada uma das quatro telas passa a receber um payload consistente por uma rota de painel: categorias e opções necessárias, registros, resumo e movimentos são obtidos no mesmo `snapshot` ou transação. Os serviços de domínio permanecem como fonte das regras, sem duplicação de consultas no frontend.
 
 Os testes de paridade comparam cada painel aos serviços originais em SQLite temporário e PostgreSQL de teste. O Playwright exige apenas uma requisição autenticada para a carga de Gastos e mantém a cobertura de respostas obsoletas em Contas e Cofre. A medição final deve usar uma sessão autenticada persistente no deploy exato deste PR e registrar o resultado antes de encerrar novamente a Issue #42.
+
+## Runtime brasileiro — branch codex/brazil-runtime
+
+Refs #42. Depois do PR #47, Gastos caiu de aproximadamente 6,1 s para 1,4–1,7 s; Receitas, Cofre e Dashboard ficaram em torno de 1,4–1,7 s, e Contas a Pagar em 2,2–2,4 s. A abertura autenticada aquecida ficou em 4,0 s. A inspeção do header `x-vercel-id` mostrou que a requisição chegava por São Paulo, mas a função executava em Washington (`gru1::iad1`), enquanto Auth e PostgreSQL estão no Supabase São Paulo (`sa-east-1`).
+
+O `vercel.json` fixa a função em `gru1`. Um contrato automatizado impede remover silenciosamente essa localização. A mudança não altera banco, autenticação, dados, cookies ou frontend. Depois do deploy, confirmar o commit de produção, `x-vercel-id` sem salto para `iad1`, smoke test público e nova medição autenticada. Rollback: promover o deployment do commit `3b45fd6` se a função não iniciar ou a latência piorar.
