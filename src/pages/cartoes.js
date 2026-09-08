@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/http.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 
 const API_BASE = '/api/financas';
@@ -28,7 +29,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => {
@@ -163,8 +164,8 @@ function renderListaCartoes() {
 }
 
 function renderFormSelects() {
-  const opts = cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
-  const catOpts = categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  const opts = cartoes.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+  const catOpts = categorias.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
   ['form-compra-cartao', 'form-ea-cartao'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = opts; });
   ['form-compra-categoria', 'form-ea-categoria'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = catOpts; });
 }
@@ -915,7 +916,7 @@ window.editarCompraParcelada = async function(id) {
     document.getElementById('modal-edit-valor-total').value = compra.valor_total;
     document.getElementById('modal-edit-obs').value = compra.observacao || '';
     const selCat = document.getElementById('modal-edit-categoria');
-    selCat.innerHTML = categorias.map(c => `<option value="${c.id}" ${c.id === compra.categoria_id ? 'selected' : ''}>${c.nome}</option>`).join('');
+    selCat.innerHTML = categorias.map(c => `<option value="${c.id}" ${c.id === compra.categoria_id ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('');
     const firstParc = compra.parcelas && compra.parcelas.length > 0 ? compra.parcelas[0] : null;
     document.getElementById('modal-edit-valor-parcela').value = firstParc ? firstParc.valor_parcela : '';
     const infoEl = document.getElementById('modal-edit-info');

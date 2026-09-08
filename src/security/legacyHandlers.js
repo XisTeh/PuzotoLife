@@ -1,3 +1,5 @@
+import { escapeHtml } from './safeDom.js';
+
 const EVENTS = ['click', 'change', 'input', 'submit', 'keydown', 'keyup'];
 const ALLOWED_ACTIONS = new Set([
   'abrirCorrecaoCofre', 'abrirEditarGasto', 'abrirHistoricoPessoa', 'abrirModalExcluirCompra',
@@ -34,12 +36,6 @@ const ALLOWED_ACTIONS = new Set([
   'validarInputLimpeza',
 ]);
 let activeObserver;
-
-export function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]);
-}
 
 export function legacyStringArgument(value) {
   const escaped = String(value ?? '')

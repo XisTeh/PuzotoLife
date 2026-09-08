@@ -1,7 +1,8 @@
 import { apiFetch } from '../services/http.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
-import { escapeHtml, legacyStringArgument } from '../security/legacyHandlers.js';
+import { legacyStringArgument } from '../security/legacyHandlers.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 
 Chart.register(...registerables);
 
@@ -32,7 +33,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => {
@@ -66,7 +67,7 @@ async function loadPessoas() {
     pessoas = await fetchAPI('/pessoas-dividas/nomes');
     const datalist = document.getElementById('pessoas-list');
     if (datalist) {
-      datalist.innerHTML = pessoas.map(p => `<option value="${p}">`).join('');
+      datalist.innerHTML = pessoas.map(p => `<option value="${escapeHtml(p)}">`).join('');
     }
   } catch (err) {
     console.error('Erro ao carregar pessoas:', err);
@@ -209,7 +210,7 @@ function renderProximosVencimentos() {
     html += `
       <div style="padding: 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${r.nome_pessoa}</div>
+          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${escapeHtml(r.nome_pessoa)}</div>
           <div style="font-size: 0.8rem; color: ${corDias}; font-weight: 500;">${tipoTexto} - ${diasTexto} (${formatarDataBR(r.data_combinada)})</div>
         </div>
         <div style="font-weight: 600; color: ${corValor};">
@@ -247,16 +248,16 @@ function renderTabela() {
         <td style="${r.atrasado ? 'color: var(--color-red); font-weight: 600;' : ''}">${formatarDataBR(r.data_combinada)}</td>
         <td style="font-weight: 500; cursor: pointer; color: var(--color-purple);" onclick="window.abrirHistoricoPessoa(${legacyStringArgument(r.nome_pessoa)})" title="Ver Histórico">${escapeHtml(r.nome_pessoa)}</td>
         <td>${tipoBadge}</td>
-        <td>${r.motivo}</td>
+        <td>${escapeHtml(r.motivo)}</td>
         <td style="font-weight: 600;">${formatarMoedaBR(r.valor)}</td>
         <td>
           <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; padding: 4px 10px; border-radius: 100px; background: var(--bg-surface); border: 1px solid var(--border-subtle); font-weight: 500; text-transform: uppercase;">
             <span style="width: 6px; height: 6px; border-radius: 50%; background: ${badgeColor};"></span>
-            ${r.status}
+            ${escapeHtml(r.status)}
           </span>
         </td>
         <td>${r.pago_recebido_em ? formatarDataBR(r.pago_recebido_em.split(' ')[0]) : '-'}</td>
-        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${r.observacao || ''}">${r.observacao || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(r.observacao || '')}">${escapeHtml(r.observacao || '-')}</td>
         <td>
           <div style="display: flex; gap: 8px;">
             ${r.status === 'pendente' ? `<button class="btn-icon" style="color: var(--color-teal);" onclick="window.resolverPD(${legacyStringArgument(r.id)})" title="${r.tipo === 'eu_devo' ? 'Marcar como Pago' : 'Marcar como Recebido'}"><i data-lucide="check"></i></button>` : ''}
@@ -288,10 +289,10 @@ function renderDividasParceladas() {
     html += `
       <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:16px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-weight:600;color:var(--text-primary);font-size:1rem;">${g.nome_pessoa}</div>
+          <div style="font-weight:600;color:var(--text-primary);font-size:1rem;">${escapeHtml(g.nome_pessoa)}</div>
           <span style="font-size:0.75rem;padding:3px 8px;border-radius:100px;background:var(--bg-surface);border:1px solid var(--border-subtle);color:${tipoCor};font-weight:500;">${tipoLabel}</span>
         </div>
-        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">${g.motivo}</div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">${escapeHtml(g.motivo)}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
           <div><span style="font-size:0.75rem;color:var(--text-muted);">Parcelas</span><div style="font-weight:600;font-size:0.9rem;">${g.parcelas_pagas}/${g.total_parcelas}</div></div>
           <div><span style="font-size:0.75rem;color:var(--text-muted);">Mensal</span><div style="font-weight:600;font-size:0.9rem;">${formatarMoedaBR(g.valor_parcela)}</div></div>

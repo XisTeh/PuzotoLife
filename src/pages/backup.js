@@ -1,5 +1,6 @@
 import { apiFetch } from '../services/http.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
+import { setIconMessage } from '../security/safeDom.js';
 /**
  * Puzoto Life — Página de Backup
  * Backup, restauração e exportação de dados.
@@ -43,7 +44,7 @@ function showToast(message, type = 'success') {
   }
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}"></i> <span>${message}</span>`;
+  setIconMessage(toast, type === 'success' ? 'check-circle' : 'alert-circle', message);
   container.appendChild(toast);
   if (typeof lucide !== 'undefined') lucide.createIcons();
   setTimeout(() => {
