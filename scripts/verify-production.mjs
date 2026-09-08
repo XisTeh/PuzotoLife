@@ -33,6 +33,8 @@ const foreignOrigin = await fetch(`${origin}/api/auth/login`, {
 });
 const [rootHtml, healthBody, sessionBody, workerBody, offlineBody] = await Promise.all([root.text(), health.json(), session.json(), worker.text(), offline.text()]);
 const csp = root.headers.get('content-security-policy') || '';
+const workerCacheControl = worker.headers.get('cache-control') || '';
+const workerRequiresRevalidation = workerCacheControl.includes('no-store') || (workerCacheControl.includes('max-age=0') && workerCacheControl.includes('must-revalidate'));
 const checks = {
   root: root.status === 200 && root.headers.get('content-type')?.startsWith('text/html') && rootHtml.includes('<title>Puzoto Life'),
   health: health.status === 200 && healthBody.storage === 'postgres' && healthBody.auth === 'supabase',
@@ -42,7 +44,7 @@ const checks = {
   foreignOriginDenied: foreignOrigin.status === 403,
   csp: csp.includes("script-src-attr 'none'") && csp.includes("frame-ancestors 'none'"),
   noSniff: root.headers.get('x-content-type-options') === 'nosniff',
-  workerFresh: worker.status === 200 && worker.headers.get('cache-control')?.includes('no-store'),
+  workerFresh: worker.status === 200 && workerRequiresRevalidation,
   deploymentAssetsNotCached: !workerBody.includes("cache.put('/',") && !workerBody.includes("['script', 'style'") && workerBody.includes("caches.match('/offline.html')"),
   offlineFallback: offline.status === 200 && offlineBody.includes('Você está sem conexão.'),
 };
