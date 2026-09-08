@@ -1,6 +1,7 @@
 import { obterComparativoMensal } from '../services/api.js';
 import { formatarMoedaBR, formatarDataBR, mesAtualReferencia } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
+import { escapeHtml } from '../security/safeDom.js';
 Chart.register(...registerables);
 
 let charts = {};
@@ -113,15 +114,15 @@ function preencherInsights(data) {
   const anterior = meses[meses.length - 2];
 
   if (atual.saidas_total > anterior.saidas_total) {
-    frases.push(`As despesas <span style="color:var(--color-rose);font-weight:bold;">aumentaram</span> em relação a ${anterior.label}.`);
+    frases.push(`As despesas <span style="color:var(--color-rose);font-weight:bold;">aumentaram</span> em relação a ${escapeHtml(anterior.label)}.`);
   } else if (atual.saidas_total < anterior.saidas_total) {
-    frases.push(`As despesas <span style="color:var(--color-teal);font-weight:bold;">diminuíram</span> em relação a ${anterior.label}.`);
+    frases.push(`As despesas <span style="color:var(--color-teal);font-weight:bold;">diminuíram</span> em relação a ${escapeHtml(anterior.label)}.`);
   }
 
   if (atual.saldo_previsto > anterior.saldo_previsto) {
-    frases.push(`O saldo previsto <span style="color:var(--color-teal);font-weight:bold;">melhorou</span> em comparação a ${anterior.label}.`);
+    frases.push(`O saldo previsto <span style="color:var(--color-teal);font-weight:bold;">melhorou</span> em comparação a ${escapeHtml(anterior.label)}.`);
   } else if (atual.saldo_previsto < anterior.saldo_previsto) {
-    frases.push(`O saldo previsto <span style="color:var(--color-rose);font-weight:bold;">piorou</span> em comparação a ${anterior.label}.`);
+    frases.push(`O saldo previsto <span style="color:var(--color-rose);font-weight:bold;">piorou</span> em comparação a ${escapeHtml(anterior.label)}.`);
   }
 
   let html = '<ul style="list-style-type:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;">';
@@ -232,7 +233,7 @@ function renderTabela(meses) {
     const spCor = m.saldo_previsto >= 0 ? 'var(--color-teal)' : 'var(--color-rose)';
 
     h += `<tr>
-      <td style="font-weight:600;">${m.label}</td>
+      <td style="font-weight:600;">${escapeHtml(m.label)}</td>
       <td>${formatarMoedaBR(m.trabalho_produzido)}</td>
       <td>${formatarMoedaBR(m.trabalho_recebido)}</td>
       <td>${formatarMoedaBR(m.trabalho_a_receber)}</td>

@@ -162,9 +162,11 @@ export function compileLegacyHandler(source, element, scope = globalThis.window)
 function bindElement(element) {
   for (const eventName of EVENTS) {
     const attribute = `on${eventName}`;
-    if (!element.hasAttribute?.(attribute)) continue;
-    const handler = compileLegacyHandler(element.getAttribute(attribute), element);
+    const quarantined = `data-puzoto-${attribute}`;
+    if (!element.hasAttribute?.(attribute) && !element.hasAttribute?.(quarantined)) continue;
+    const handler = compileLegacyHandler(element.getAttribute(quarantined) ?? element.getAttribute(attribute), element);
     element.removeAttribute(attribute);
+    element.removeAttribute(quarantined);
     if (handler) element.addEventListener(eventName, handler);
     else element.setAttribute('data-inline-handler-blocked', 'true');
   }
@@ -173,7 +175,8 @@ function bindElement(element) {
 function bindTree(node) {
   if (node.nodeType !== 1) return;
   bindElement(node);
-  for (const element of node.querySelectorAll(EVENTS.map((name) => `[on${name}]`).join(','))) bindElement(element);
+  const selector = EVENTS.flatMap((name) => [`[on${name}]`, `[data-puzoto-on${name}]`]).join(',');
+  for (const element of node.querySelectorAll(selector)) bindElement(element);
 }
 
 export function bindLegacyHandlers(root) {

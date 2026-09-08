@@ -3,6 +3,7 @@ import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 
 const API_BASE = '/api/financas';
+const safeColor = (value, fallback) => /^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? value : fallback;
 
 // Estado
 let cartoes = [];
@@ -95,8 +96,8 @@ function renderMetrics() {
   if (faturasResumo.proximoVencimento && faturasResumo.proximoVencimento.vencimento) {
     const pv = faturasResumo.proximoVencimento;
     const cartaoProx = cartoes.find(c => c.nome === pv.cartao_nome);
-    const corProx = cartaoProx ? cartaoProx.cor : 'var(--text-secondary)';
-    proxEl.innerHTML = `<span style="font-size:0.85rem;font-weight:600;color:${corProx};display:block;margin-bottom:4px;">${pv.cartao_nome}</span><span style="font-size:1.3rem;">${formatarDataBR(pv.vencimento)}</span><span style="font-size:0.85rem;color:var(--color-teal);display:block;margin-top:4px;">${formatarMoedaBR(pv.total)}</span>`;
+    const corProx = safeColor(cartaoProx?.cor, 'var(--text-secondary)');
+    proxEl.innerHTML = `<span style="font-size:0.85rem;font-weight:600;color:${corProx};display:block;margin-bottom:4px;">${escapeHtml(pv.cartao_nome)}</span><span style="font-size:1.3rem;">${formatarDataBR(pv.vencimento)}</span><span style="font-size:0.85rem;color:var(--color-teal);display:block;margin-top:4px;">${formatarMoedaBR(pv.total)}</span>`;
   } else {
     proxEl.innerHTML = '<span style="font-size:0.9rem;color:var(--text-muted);">Nenhuma fatura pendente</span>';
   }
@@ -128,10 +129,10 @@ function renderListaCartoes() {
       <div class="metric-card" style="padding: 16px; opacity: ${opacity}; position: relative;">
         ${!c.ativo ? '<div style="position: absolute; top: -8px; right: -8px; background: var(--color-rose); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase;">Inativo</div>' : ''}
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-          <div style="font-weight: 600; color: ${c.cor || 'var(--text-primary)'}; font-size: 1.1rem;">${c.nome}</div>
-          <div class="header__badge"><div class="header__badge-dot" style="background: ${c.cor || 'var(--color-teal)'};"></div></div>
+          <div style="font-weight: 600; color: ${safeColor(c.cor, 'var(--text-primary)')}; font-size: 1.1rem;">${escapeHtml(c.nome)}</div>
+          <div class="header__badge"><div class="header__badge-dot" style="background: ${safeColor(c.cor, 'var(--color-teal)')};"></div></div>
         </div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">${c.banco || ''}</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">${escapeHtml(c.banco || '')}</div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
           <span style="font-size: 0.8rem; color: var(--text-secondary);">Limite total:</span>
           <span style="font-weight: 600;">${formatarMoedaBR(c.limite)}</span>
@@ -206,7 +207,7 @@ function renderFaturas() {
     
     let proximas = g.faturas.filter(f => f.competencia > faturaAtual.competencia).slice(0,3);
     
-    const cartaoCor = cartoes.find(c => String(c.id) === String(cartaoId))?.cor || 'var(--color-teal)';
+    const cartaoCor = safeColor(cartoes.find(c => String(c.id) === String(cartaoId))?.cor, 'var(--color-teal)');
     const [anoA, mesA] = faturaAtual.competencia.split('-');
     
     let proximasStr = proximas.length > 0 ? proximas.map(p => {
@@ -219,7 +220,7 @@ function renderFaturas() {
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <div style="font-weight:600; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
             <div style="width:10px; height:10px; border-radius:50%; background:${cartaoCor};"></div>
-            <span style="color:${cartaoCor};">${g.cartao_nome}</span>
+            <span style="color:${cartaoCor};">${escapeHtml(g.cartao_nome)}</span>
           </div>
           <button class="btn-secondary" style="padding:4px 12px; font-size:0.8rem;" onclick="window.abrirModalListaFaturasCartao(${cartaoId})">Ver Faturas</button>
         </div>
@@ -257,13 +258,13 @@ function renderComprasParceladas() {
     cartoes.forEach(c => {
       if (!c.ativo) return;
       const isSelected = String(filtroCartaoCompra) === String(c.id);
-      const activeColor = c.cor || 'var(--color-teal)';
+      const activeColor = safeColor(c.cor, 'var(--color-teal)');
       tabsHtml += `
         <button class="btn-tab ${isSelected ? 'active' : ''}" 
                 style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px; border: 1px solid ${isSelected ? activeColor : 'var(--border-subtle)'}; background: ${isSelected ? activeColor : 'transparent'}; color: ${isSelected ? '#fff' : 'var(--text-secondary)'}; cursor: pointer; transition: all 0.2s; font-weight: 500; display: flex; align-items: center; gap: 6px;"
                 onclick="window.setFiltroCartaoCompra(${c.id})">
           <span style="width: 8px; height: 8px; border-radius: 50%; background: ${isSelected ? '#fff' : activeColor};"></span>
-          ${c.nome}
+          ${escapeHtml(c.nome)}
         </button>
       `;
     });
@@ -298,7 +299,7 @@ function renderComprasParceladas() {
 
   let html = '';
   filteredCompras.forEach(c => {
-    const cartaoCor = cartoes.find(x => String(x.id) === String(c.cartao_id))?.cor || 'var(--color-teal)';
+    const cartaoCor = safeColor(cartoes.find(x => String(x.id) === String(c.cartao_id))?.cor, 'var(--color-teal)');
     
     // Parcela (ex: 6/9 a 9/9)
     const pagas = c.parcelas_pagas || 0;
@@ -316,8 +317,8 @@ function renderComprasParceladas() {
     const valorParc = c.prox_valor || (c.valor_total / c.total_parcelas_geradas);
 
     html += `<tr>
-      <td style="font-weight: 500;">${c.descricao}</td>
-      <td><div style="display:flex;align-items:center;gap:6px;"><div style="width:8px;height:8px;border-radius:50%;background:${cartaoCor};"></div>${c.cartao_nome}</div></td>
+      <td style="font-weight: 500;">${escapeHtml(c.descricao)}</td>
+      <td><div style="display:flex;align-items:center;gap:6px;"><div style="width:8px;height:8px;border-radius:50%;background:${cartaoCor};"></div>${escapeHtml(c.cartao_nome)}</div></td>
       <td>${parcelaStr}</td>
       <td style="font-weight: 600;">${formatarMoedaBR(valorParc)}</td>
       <td style="color:var(--text-secondary);">${formatarMoedaBR(c.valor_restante || 0)}</td>
@@ -491,7 +492,7 @@ window.abrirModalPagarFatura = async function(id) {
     const [ano, mes] = fatura.competencia.split('-');
     
     document.getElementById('modal-pagar-info').innerHTML = `
-      <p style="margin-bottom:8px;"><strong>Cartão:</strong> ${fatura.cartao_nome}</p>
+      <p style="margin-bottom:8px;"><strong>Cartão:</strong> ${escapeHtml(fatura.cartao_nome)}</p>
       <p style="margin-bottom:8px;"><strong>Competência:</strong> ${mes}/${ano}</p>
       <p style="margin-bottom:8px;"><strong>Vencimento:</strong> ${formatarDataBR(fatura.vencimento)}</p>
       <p style="margin-bottom:16px; font-size:1.3rem; font-weight:700; color:var(--color-teal);">Valor: ${formatarMoedaBR(fatura.total)}</p>
@@ -575,7 +576,7 @@ window.abrirModalVerParcelasCompra = async function(id) {
         <td>
           <span style="display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;padding:4px 10px;border-radius:100px;background:var(--bg-surface);border:1px solid var(--border-subtle);font-weight:500;text-transform:uppercase;">
             <span style="width:6px;height:6px;border-radius:50%;background:${badgeColor};"></span>
-            ${p.status}
+            ${escapeHtml(p.status)}
           </span>
         </td>
       </tr>`;
@@ -693,11 +694,11 @@ window.verDetalhesFatura = async function(id) {
       html += `
         <tr>
           <td>${formatarDataBR(p.data_compra)}</td>
-          <td>${p.descricao}</td>
-          <td>${p.categoria_nome}</td>
+          <td>${escapeHtml(p.descricao)}</td>
+          <td>${escapeHtml(p.categoria_nome)}</td>
           <td>${p.numero_parcela}/${p.total_parcelas}</td>
           <td style="font-weight: 600;">${formatarMoedaBR(p.valor_parcela)}</td>
-          <td>${p.status}</td>
+          <td>${escapeHtml(p.status)}</td>
         </tr>
       `;
     });
@@ -811,7 +812,7 @@ window.abrirModalListaFaturasCartao = function(cartaoId) {
           <td>
             <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; padding: 4px 10px; border-radius: 100px; background: var(--bg-surface); border: 1px solid var(--border-subtle); font-weight: 500; text-transform: uppercase;">
               <span style="width: 6px; height: 6px; border-radius: 50%; background: ${badgeColor};"></span>
-              ${f.status}
+              ${escapeHtml(f.status)}
             </span>
             ${f.status === 'paga' && f.pago_em ? `<span style="display:block;font-size:0.7rem;color:var(--text-muted);margin-top:4px;">Pago em: ${formatarDataBR(f.pago_em)}</span>` : ''}
           </td>
@@ -922,7 +923,7 @@ window.editarCompraParcelada = async function(id) {
     const infoEl = document.getElementById('modal-edit-info');
     if (infoEl) {
       infoEl.innerHTML = `<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;padding:12px;background:var(--bg-surface);border-radius:8px;border:1px solid var(--border-subtle);">
-        <strong>Cartão:</strong> ${compra.cartao_nome} | <strong>Parcelas geradas:</strong> ${compra.parcelas.length} | <strong>Pagas:</strong> ${compra.temParcelasPagas ? 'Sim ⚠️' : 'Não'}
+        <strong>Cartão:</strong> ${escapeHtml(compra.cartao_nome)} | <strong>Parcelas geradas:</strong> ${compra.parcelas.length} | <strong>Pagas:</strong> ${compra.temParcelasPagas ? 'Sim ⚠️' : 'Não'}
       </div>`;
     }
     modal.style.display = 'flex';
@@ -958,7 +959,7 @@ window.abrirModalExcluirCompra = async function(id) {
     const temPagas = compra.temParcelasPagas;
     const confText = temPagas ? 'EXCLUIR MESMO ASSIM' : 'EXCLUIR';
     document.getElementById('modal-del-confirmacao-esperada').value = confText;
-    infoEl.innerHTML = `<p style="margin-bottom:12px;"><strong>${compra.descricao}</strong> — ${compra.cartao_nome}</p>
+    infoEl.innerHTML = `<p style="margin-bottom:12px;"><strong>${escapeHtml(compra.descricao)}</strong> — ${escapeHtml(compra.cartao_nome)}</p>
       <p style="margin-bottom:12px;font-size:0.9rem;color:var(--text-secondary);">Isso vai remover a compra, todas as ${compra.parcelas.length} parcelas vinculadas e recalcular as faturas afetadas.</p>
       ${temPagas ? '<p style="color:var(--color-rose);font-weight:600;margin-bottom:12px;">⚠️ Esta compra possui parcelas já PAGAS. A exclusão é irreversível.</p>' : ''}
       <p style="font-size:0.85rem;">Digite <strong>${confText}</strong> para confirmar:</p>`;

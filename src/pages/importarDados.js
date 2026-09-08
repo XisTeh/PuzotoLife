@@ -1,5 +1,5 @@
 import { apiFetch } from '../services/http.js';
-import { setIconMessage } from '../security/safeDom.js';
+import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 /**
  * Puzoto Life — Importar Dados
  */
@@ -107,7 +107,7 @@ function renderInfoArquivo() {
         <i data-lucide="file-json" style="color:var(--color-teal);width:24px;height:24px;"></i>
       </div>
       <div style="flex:1;">
-        <div style="font-weight:600;color:var(--text-primary);">${arquivoSelecionado.name}</div>
+        <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(arquivoSelecionado.name)}</div>
         <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">
           ${formatarTamanho(arquivoSelecionado.size)} &bull; Selecionado em ${formatarData(new Date())}
         </div>
@@ -188,7 +188,7 @@ function renderPreview() {
     let badgeColor = t.status === 'reconhecida' ? 'var(--color-teal)' : (t.status === 'ignorada' ? 'var(--color-orange)' : 'var(--color-red)');
     let statusLabel = t.status === 'reconhecida' ? 'Reconhecida' : (t.status === 'ignorada' ? 'Ignorada' : 'Invalida');
     return `<tr>
-      <td style="font-weight:600;">${t.nome}</td>
+      <td style="font-weight:600;">${escapeHtml(t.nome)}</td>
       <td>${t.quantidade}</td>
       <td><span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.8rem;font-weight:600;background:${badgeColor}18;color:${badgeColor};border:1px solid ${badgeColor}30;">${statusLabel}</span></td>
     </tr>`;
@@ -220,7 +220,7 @@ function abrirModalConfirmacao() {
 
   document.getElementById('modal-import-resumo').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary);">Arquivo:</span><strong style="color:var(--text-primary);">${arquivoSelecionado.name}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary);">Arquivo:</span><strong style="color:var(--text-primary);">${escapeHtml(arquivoSelecionado.name)}</strong></div>
       <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary);">Tabelas reconhecidas:</span><strong style="color:var(--text-primary);">${reconhecidas.length}</strong></div>
       <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary);">Total de registros:</span><strong style="color:var(--text-primary);">${previewData.total_registros}</strong></div>
       <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-secondary);">Modo:</span><strong style="color:var(--text-primary);">${modoTexto}</strong></div>
@@ -302,10 +302,10 @@ function renderResultado() {
     detalhesHtml = r.detalhes.map(d => {
       let statusColor = d.status === 'importada' ? 'var(--color-teal)' : (d.status === 'vazia' ? 'var(--text-muted)' : 'var(--color-orange)');
       return `<tr>
-        <td style="font-weight:600;">${d.tabela}</td>
+        <td style="font-weight:600;">${escapeHtml(d.tabela)}</td>
         <td style="color:var(--color-teal);font-weight:600;">${d.importados}</td>
         <td style="color:var(--color-orange);">${d.ignorados}</td>
-        <td><span style="color:${statusColor};font-weight:600;">${d.status}</span></td>
+        <td><span style="color:${statusColor};font-weight:600;">${escapeHtml(d.status)}</span></td>
       </tr>`;
     }).join('');
   }
@@ -317,7 +317,7 @@ function renderResultado() {
 
   document.getElementById('import-resultado-conteudo').innerHTML = `
     <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
-      <div class="metric-card"><div class="metric-card__header"><div class="metric-card__label-top">Backup Criado</div></div><div class="metric-card__body"><div class="metric-card__value" style="font-size:0.9rem;word-break:break-all;">${resultadoImportacao.backup_criado}</div></div></div>
+      <div class="metric-card"><div class="metric-card__header"><div class="metric-card__label-top">Backup Criado</div></div><div class="metric-card__body"><div class="metric-card__value" style="font-size:0.9rem;word-break:break-all;">${escapeHtml(resultadoImportacao.backup_criado)}</div></div></div>
       <div class="metric-card"><div class="metric-card__header"><div class="metric-card__label-top">Tabelas Importadas</div></div><div class="metric-card__body"><div class="metric-card__value" style="color:var(--color-teal);">${r.tabelas_importadas}</div></div></div>
       <div class="metric-card"><div class="metric-card__header"><div class="metric-card__label-top">Registros Importados</div></div><div class="metric-card__body"><div class="metric-card__value" style="color:var(--color-teal);">${r.registros_importados}</div></div></div>
       <div class="metric-card"><div class="metric-card__header"><div class="metric-card__label-top">Registros Ignorados</div></div><div class="metric-card__body"><div class="metric-card__value" style="color:var(--color-orange);">${r.registros_ignorados}</div></div></div>

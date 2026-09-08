@@ -55,7 +55,7 @@ Escritas usam lock transacional por acervo pessoal, inclusive entre processos. L
 
 ## 6. Celular e computador
 
-Localhost funciona apenas neste computador. Para acesso remoto, o frontend e `/api` serão publicados na mesma origem HTTPS da Vercel. A migração da Issue #5 está validada; as variáveis de Production e as URLs HTTPS do Auth já foram configuradas. Ainda faltam mesclar o PR de runtime e validar a URL pública. A revisão completa de HTML interpolado da Issue #7 continua separada e não deve ser declarada concluída.
+Localhost funciona apenas neste computador. Para acesso remoto, o frontend e `/api` serão publicados na mesma origem HTTPS da Vercel. A migração da Issue #5 está validada; as variáveis de Production e as URLs HTTPS do Auth já foram configuradas. A branch encadeada da Issue #7 aplica sanitização central aos sinks HTML e precisa passar pelos mesmos gates. Ainda faltam mesclar os dois PRs na ordem e validar a URL pública.
 
 A interface já está preparada como PWA instalável: manifesto, ícones, tema e service worker armazenam apenas o shell estático e excluem toda rota `/api`. A instalação no celular será oferecida pelo navegador quando a aplicação estiver em HTTPS e os critérios do dispositivo forem atendidos. No iPhone, também é possível usar **Compartilhar → Adicionar à Tela de Início**. Isso só deve ser validado no endereço final depois que o backend PostgreSQL estiver publicado com segurança.
 

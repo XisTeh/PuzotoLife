@@ -1,6 +1,7 @@
 import { obterRelatorioFinancas } from '../services/api.js';
 import { formatarMoedaBR, formatarDataBR, mesAtualReferencia } from '../utils/formatters.js';
 import { Chart, registerables } from 'chart.js';
+import { escapeHtml } from '../security/safeDom.js';
 Chart.register(...registerables);
 
 let charts = {};
@@ -143,7 +144,7 @@ function renderTabelas(g) {
       var h = '<table class="table" style="width:100%"><thead><tr><th>Cartão</th><th>Compet.</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
       g.cartoes_por_fatura.forEach(function(f) {
         var statusColor = f.status === 'paga' ? 'var(--color-teal)' : f.status === 'fechada' ? 'var(--color-gold)' : 'var(--color-rose)';
-        h += '<tr><td>' + f.cartao_nome + '</td><td>' + formatCompetencia(f.competencia) + '</td><td>' + formatarDataBR(f.vencimento) + '</td><td>' + formatarMoedaBR(f.valor) + '</td><td style="color:' + statusColor + ';font-weight:600;text-transform:capitalize;">' + f.status + '</td></tr>';
+        h += '<tr><td>' + escapeHtml(f.cartao_nome) + '</td><td>' + formatCompetencia(f.competencia) + '</td><td>' + formatarDataBR(f.vencimento) + '</td><td>' + formatarMoedaBR(f.valor) + '</td><td style="color:' + statusColor + ';font-weight:600;text-transform:capitalize;">' + escapeHtml(f.status) + '</td></tr>';
       });
       h += '</tbody></table>';
       cartEl.innerHTML = h;
@@ -158,7 +159,7 @@ function renderTabelas(g) {
       var h2 = '<table class="table" style="width:100%"><thead><tr><th>Nome</th><th>Categoria</th><th>Valor</th><th>Vencimento</th><th>Status</th></tr></thead><tbody>';
       g.contas_lista.forEach(function(c) {
         var sc = c.status === 'pago' ? 'var(--color-teal)' : c.status === 'atrasado' ? 'var(--color-rose)' : 'var(--color-gold)';
-        h2 += '<tr><td>' + c.nome + '</td><td>' + (c.categoria||'-') + '</td><td>' + formatarMoedaBR(c.valor) + '</td><td>' + formatarDataBR(c.vencimento) + '</td><td style="color:' + sc + ';font-weight:600;text-transform:capitalize;">' + c.status + '</td></tr>';
+        h2 += '<tr><td>' + escapeHtml(c.nome) + '</td><td>' + escapeHtml(c.categoria||'-') + '</td><td>' + formatarMoedaBR(c.valor) + '</td><td>' + formatarDataBR(c.vencimento) + '</td><td style="color:' + sc + ';font-weight:600;text-transform:capitalize;">' + escapeHtml(c.status) + '</td></tr>';
       });
       h2 += '</tbody></table>';
       contEl.innerHTML = h2;
@@ -174,7 +175,7 @@ function renderTabelas(g) {
       g.pessoas_lista.forEach(function(p) {
         var tipoLabel = p.tipo === 'eu_devo' ? 'Eu Devo' : 'Me Devem';
         var tc = p.tipo === 'eu_devo' ? 'var(--color-rose)' : 'var(--color-teal)';
-        h3 += '<tr><td>' + p.pessoa + '</td><td style="color:' + tc + ';font-weight:600;">' + tipoLabel + '</td><td>' + formatarMoedaBR(p.valor) + '</td><td>' + formatarDataBR(p.data_combinada) + '</td><td style="text-transform:capitalize;">' + p.status + '</td></tr>';
+        h3 += '<tr><td>' + escapeHtml(p.pessoa) + '</td><td style="color:' + tc + ';font-weight:600;">' + tipoLabel + '</td><td>' + formatarMoedaBR(p.valor) + '</td><td>' + formatarDataBR(p.data_combinada) + '</td><td style="text-transform:capitalize;">' + escapeHtml(p.status) + '</td></tr>';
       });
       h3 += '</tbody></table>';
       pesEl.innerHTML = h3;
@@ -196,8 +197,8 @@ function renderListaRanking(elId, items, subField, color) {
   var h = '';
   items.forEach(function(item) {
     h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-subtle);">';
-    h += '<div><div style="font-weight:500;color:var(--text-primary);font-size:0.95rem;">' + item.descricao + '</div>';
-    h += '<div style="font-size:0.8rem;color:var(--text-muted);">' + (item[subField]||'') + ' &bull; ' + formatarDataBR(item.data) + '</div></div>';
+    h += '<div><div style="font-weight:500;color:var(--text-primary);font-size:0.95rem;">' + escapeHtml(item.descricao) + '</div>';
+    h += '<div style="font-size:0.8rem;color:var(--text-muted);">' + escapeHtml(item[subField]||'') + ' &bull; ' + formatarDataBR(item.data) + '</div></div>';
     h += '<div style="font-weight:600;color:' + color + ';">' + formatarMoedaBR(item.valor) + '</div></div>';
   });
   el.innerHTML = h;
@@ -210,7 +211,7 @@ function renderListaSimples(elId, items, color) {
   var h = '';
   items.forEach(function(item) {
     h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-subtle);">';
-    h += '<div><div style="font-weight:500;color:var(--text-primary);font-size:0.95rem;">' + item.descricao + '</div>';
+    h += '<div><div style="font-weight:500;color:var(--text-primary);font-size:0.95rem;">' + escapeHtml(item.descricao) + '</div>';
     if (item.competencia) {
       h += '<div style="font-size:0.8rem;color:var(--text-muted);">' + formatCompetencia(item.competencia) + ' &bull; ' + formatarDataBR(item.vencimento) + '</div></div>';
     } else {
@@ -246,7 +247,7 @@ function renderAlertas(alertas) {
 function alertaItem(icon, color, title, valor, data) {
   var h = '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-subtle);">';
   h += '<div style="width:36px;height:36px;border-radius:10px;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="' + icon + '" style="width:18px;height:18px;color:' + color + ';"></i></div>';
-  h += '<div style="flex:1;"><div style="font-weight:500;color:var(--text-primary);font-size:0.9rem;">' + title + '</div>';
+  h += '<div style="flex:1;"><div style="font-weight:500;color:var(--text-primary);font-size:0.9rem;">' + escapeHtml(title) + '</div>';
   h += '<div style="font-size:0.8rem;color:var(--text-muted);">' + valor + '</div></div>';
   h += '<div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;">' + data + '</div></div>';
   return h;
