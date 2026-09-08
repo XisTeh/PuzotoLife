@@ -20,3 +20,33 @@ export function installFeedback() {
 export function pageSkeleton() {
   return `<div class="page-skeleton" role="status" aria-label="Carregando página"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-subtitle"></div><div class="skeleton-grid"><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div></div><div class="skeleton skeleton-panel"></div><span class="sr-only">Carregando suas informações…</span></div>`;
 }
+
+export function settleLoadingPlaceholders(container, onRetry) {
+  const pending = [...container.querySelectorAll('[data-loading-placeholder]')]
+    .filter((element) => /carregando|processando|aguarde/i.test(element.textContent));
+  if (!pending.length) return false;
+
+  for (const element of pending) {
+    element.removeAttribute('data-loading-placeholder');
+    element.textContent = element.tagName === 'OPTION' ? 'Indisponível' : 'Não foi possível carregar.';
+    if (element.tagName === 'OPTION') element.disabled = true;
+  }
+
+  if (!container.querySelector('.page-load-warning')) {
+    const warning = document.createElement('section');
+    warning.className = 'page-load-warning';
+    warning.setAttribute('role', 'alert');
+    const text = document.createElement('span');
+    text.textContent = 'Parte das informações não respondeu. Verifique a conexão e tente novamente.';
+    const retry = document.createElement('button');
+    retry.className = 'btn btn--primary';
+    retry.type = 'button';
+    retry.textContent = 'Tentar novamente';
+    retry.addEventListener('click', onRetry, { once: true });
+    warning.append(text, retry);
+    const header = container.querySelector('.page-header');
+    if (header) header.after(warning);
+    else container.prepend(warning);
+  }
+  return true;
+}

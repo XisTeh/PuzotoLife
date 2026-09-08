@@ -233,3 +233,13 @@ As barras de ação de Lançamentos, Dr. Ranon e Fechamento usam classes compart
 Os ícones `award` e `arrow-down-right`, usados no Comparativo, foram adicionados ao conjunto Lucide carregado. O cache estático sobe para `puzoto-static-v3`, remove a versão anterior e inclui todos os novos ícones sem interceptar HTML, JavaScript, CSS ou API. A revisão visual usa somente dados sintéticos em 390 × 844.
 
 Validação local: `npm run quality` aprovado com 69 testes Node, arquitetura, lint, build e orçamento de 218 KB gzip; 33 jornadas Playwright aprovadas e 3 saltos previstos entre os projetos desktop e celular; varredura das 20 páginas em 320, 360 e 390 px; `npm audit --omit=dev --audit-level=high` sem vulnerabilidades.
+
+## Carregamentos finitos e splash integrado — branch codex/runtime-loading-splash
+
+Closes #55. O botão circular isolado dos filtros de Dashboard, Relatório Geral e Relatório Financeiro era o ícone de atualização deslocado pelas regras móveis, embora parecesse um carregamento contínuo. Esses controles passam a usar uma barra de período compartilhada, com mês e botão “Atualizar” alinhados na mesma linha em desktop e celular.
+
+O cliente HTTP aplica um limite único a todas as rotas: 15 segundos para leituras e 20 segundos para gravações, com prazo específico permitido somente para operações justificadamente longas. Ao expirar, a interface libera o botão e apresenta uma mensagem de nova tentativa. Placeholders iniciais de Dashboard, Gastos, Cartões, Configurações e Backup são encerrados mesmo quando a página legada captura a falha internamente; nenhum texto ou spinner permanece carregando indefinidamente.
+
+O splash nativo do Android continua sendo gerado pelo sistema operacional a partir do manifesto. O `background_color` agora coincide exatamente com a borda opaca do ícone maskable, removendo o bloco quadrado ao redor da marca durante a abertura. O cache estático sobe para `puzoto-static-v4`. No Dr. Ranon / RX, formulário e tabela usam somente “Registro”.
+
+Validação local: lint aprovado; 70 testes Node aprovados, incluindo timeout real com `AbortController`; build aprovado; E2E cobre falha de API sem spinner preso, alinhamento dos três filtros móveis, rótulo de Registro e correspondência pixel a pixel entre splash e ícone.

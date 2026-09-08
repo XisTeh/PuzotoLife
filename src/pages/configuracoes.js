@@ -699,7 +699,7 @@ export function renderConfiguracoesPage() {
   h += '        <h3 style="font-weight: 600; color: var(--text-primary);">Diagnóstico do Sistema</h3>';
   h += '        <button id="btn-diagnostico" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="window.atualizarDiagnostico()"><i data-lucide="refresh-cw"></i> Verificar novamente</button>';
   h += '      </div>';
-  h += '      <div id="diagnostico-container" style="min-height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);"><i data-lucide="loader" class="spin"></i> Carregando...</div>';
+  h += '      <div id="diagnostico-container" data-loading-placeholder style="min-height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);"><i data-lucide="loader" class="spin"></i> Carregando...</div>';
   h += '    </div>';
   
   h += '  </div>';

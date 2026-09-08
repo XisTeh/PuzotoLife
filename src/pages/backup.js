@@ -81,7 +81,7 @@ export function renderBackupPage() {
           </div>
           <div class="backup-info-card__content">
             <span class="backup-info-card__label">Banco Atual</span>
-            <span class="backup-info-card__value" id="info-caminho">Carregando...</span>
+            <span class="backup-info-card__value" id="info-caminho" data-loading-placeholder>Carregando...</span>
           </div>
         </div>
         <div class="backup-info-card">

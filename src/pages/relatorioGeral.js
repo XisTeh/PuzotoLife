@@ -250,14 +250,13 @@ export function renderRelatorioGeral() {
         <h1 class="page-header__title" style="font-size: 2.2rem; font-weight: 700; margin-bottom: 6px;">Relatório Geral</h1>
         <p class="page-header__subtitle">Analise entradas, saídas, pendências e saldo previsto do mês.</p>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center; background: var(--bg-card); padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm);">
-        <div style="position: relative; display: flex; align-items: center;">
+      <div class="period-filter">
+        <div class="period-filter__field">
           <i data-lucide="calendar" style="position: absolute; left: 12px; width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;"></i>
-          <input type="month" id="rel-geral-mes" class="form-control" style="width: 170px; height: 40px; padding-left: 40px; border: none; background: transparent; cursor: pointer; color: var(--text-primary); font-weight: 600; font-size: 0.95rem; box-shadow: none;" onchange="window.atualizarRelatorioGeral()">
+          <input type="month" id="rel-geral-mes" aria-label="Mês de referência" class="form-control" onchange="window.atualizarRelatorioGeral()">
         </div>
-        <div style="width: 1px; height: 24px; background: var(--border-default);"></div>
-        <button class="btn-icon" onclick="window.atualizarRelatorioGeral()" style="border: none; background: transparent; box-shadow: none; color: var(--text-muted);" title="Atualizar">
-          <i data-lucide="refresh-cw"></i>
+        <button class="btn-secondary period-filter__submit" onclick="window.atualizarRelatorioGeral()" title="Atualizar">
+          <i data-lucide="refresh-cw"></i><span>Atualizar</span>
         </button>
       </div>
     </div>

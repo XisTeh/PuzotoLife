@@ -626,7 +626,7 @@ export function renderRanon() {
 
           <div class="form-grid" style="grid-template-columns: 1fr 1fr 2fr;">
             <div class="form-group">
-              <label class="form-label">Registro do Paciente</label>
+              <label class="form-label">Registro</label>
               <input type="text" class="form-control" id="form-registro" placeholder="Ex: 123456" style="font-family: monospace; font-size: 1.1rem; letter-spacing: 1px;" required>
             </div>
             <div class="form-group">
@@ -696,7 +696,7 @@ export function renderRanon() {
             <tr>
               <th>Data</th>
               <th>Horário</th>
-              <th>Registro do Paciente</th>
+              <th>Registro</th>
               <th style="text-align: center;">Qtd</th>
               <th>Valor Unit.</th>
               <th>Total</th>

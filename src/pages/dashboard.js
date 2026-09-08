@@ -249,14 +249,13 @@ export function renderDashboard() {
         <h1 class="page-header__title" style="font-size: 2.2rem; font-weight: 700; margin-bottom: 6px;">Visão geral</h1>
         <p class="page-header__subtitle">Acompanhe sua produção, finanças, cartões e saldo previsto em um só lugar.</p>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center; background: var(--bg-card); padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm);">
-        <div style="position: relative; display: flex; align-items: center;">
+      <div class="period-filter">
+        <div class="period-filter__field">
           <i data-lucide="calendar" style="position: absolute; left: 12px; width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;"></i>
-          <input type="month" id="dashboard-mes" aria-label="Mês de referência" class="form-control" style="width: 205px; height: 44px; padding-left: 40px; border: none; background: transparent; cursor: pointer; color: var(--text-primary); font-weight: 600; font-size: 0.95rem; box-shadow: none;" onchange="window.atualizarDashboard()">
+          <input type="month" id="dashboard-mes" aria-label="Mês de referência" class="form-control" onchange="window.atualizarDashboard()">
         </div>
-        <div style="width: 1px; height: 24px; background: var(--border-default);"></div>
-        <button class="btn-icon" onclick="window.atualizarDashboard()" style="border: none; background: transparent; box-shadow: none; color: var(--text-muted);" title="Atualizar">
-          <i data-lucide="refresh-cw"></i>
+        <button class="btn-secondary period-filter__submit" onclick="window.atualizarDashboard()" title="Atualizar">
+          <i data-lucide="refresh-cw"></i><span>Atualizar</span>
         </button>
       </div>
     </div>
@@ -448,7 +447,7 @@ export function renderDashboard() {
           <h3 class="dashboard-panel__title">Alertas do Mês</h3>
           <span class="dashboard-panel__badge" id="alertas-badge">...</span>
         </div>
-        <div class="alert-list" id="alertas-container">
+        <div class="alert-list" id="alertas-container" data-loading-placeholder>
           <div style="text-align: center; color: var(--text-muted); padding: 40px 0;">
             <i data-lucide="loader" class="rotating" style="width: 24px; height: 24px; margin-bottom: 12px;"></i>
             <p>Carregando alertas...</p>

@@ -6,20 +6,14 @@ import { apiFetch } from './http.js';
 const API_BASE_URL = '/api';
 
 async function fetchAPI(endpoint, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
   try {
     const response = await apiFetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(options.headers || {})
-      },
-      signal: controller.signal
+      }
     });
-    
-    clearTimeout(timeoutId);
 
     if (response.status === 404) {
       throw new Error('Rota da API não encontrada.');
@@ -40,12 +34,7 @@ async function fetchAPI(endpoint, options = {}) {
     }
     return result.data || result; // se result não tiver data (ex: health), retorna o result inteiro
   } catch (err) {
-    clearTimeout(timeoutId);
     console.error(`Erro API ${endpoint}:`, err);
-    
-    if (err.name === 'AbortError') {
-      throw new Error('A solicitação demorou demais. Tente novamente.');
-    }
     if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
       throw new Error('Servidor local não está respondendo. Verifique se o backend está rodando.');
     }
