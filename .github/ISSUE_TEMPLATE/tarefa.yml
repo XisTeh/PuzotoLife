@@ -1,0 +1,26 @@
+name: Tarefa do projeto
+description: Correção, melhoria ou nova função do Puzoto Life
+body:
+  - type: dropdown
+    id: classificacao
+    attributes:
+      label: Classificação
+      options: [Correção, Melhoria, Nova função]
+    validations:
+      required: true
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Problema e resultado esperado
+    validations:
+      required: true
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceite e validação
+    validations:
+      required: true
+  - type: textarea
+    id: riscos
+    attributes:
+      label: Riscos, limitações e próximos passos

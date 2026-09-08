@@ -1,0 +1,82 @@
+[
+  {
+    "key": "backup",
+    "type": "Correção",
+    "title": "Preservar dados no backup Info e retirar arquivos privados do Git",
+    "body": "Criar snapshot SQLite consistente incluindo WAL, preservar código e anexos, gerar manifesto SHA-256, conferir integridade e contagens. Corrigir backup manual para aguardar conclusão e exportar todas as tabelas. Não publicar bancos, dados, planilhas, Info ou histórico Git que os contenha. Validação: restauração isolada, hashes e regressões. Risco: perda de dados se o WAL for ignorado.",
+    "number": 1,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/1"
+  },
+  {
+    "key": "governance",
+    "type": "Melhoria",
+    "title": "Estabelecer contexto obrigatório, Issues, PRs e proteção da branch principal",
+    "body": "Registrar instruções em AGENTS.md; classificar tarefas como Correção, Melhoria ou Nova função; criar templates; exigir Issue, mudanças, validação, riscos, limitações e próximos passos em cada PR. Proteger main com verificações obrigatórias e revisão. Validar a configuração real no GitHub. Registrar limitações de revisão em repositório com um único mantenedor.",
+    "number": 2,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/2"
+  },
+  {
+    "key": "quality",
+    "type": "Melhoria",
+    "title": "Implantar CI com lint, testes, segurança e orçamento de performance",
+    "body": "Configurar Biome, verificação de arquitetura, testes unitários e de integração, Playwright desktop/mobile, auditoria de dependências e limite de bundles. CI antes do merge. Avaliar Commitlint, Knip, Stryker, Codecov, arch-contract e Endtest sem redundância. Validar os checks no PR; não esconder falhas ou reduzir gates para passar.",
+    "number": 3,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/3"
+  },
+  {
+    "key": "auth",
+    "type": "Nova função",
+    "title": "Adicionar login Supabase e autorização exclusiva do proprietário",
+    "body": "Implementar login, logout, recuperação de senha, sessão em cookie HttpOnly, autorização pelo UUID do proprietário, expiração e rate limit. Evitar acesso ao acervo pessoal por outros usuários cadastrados. Validar login inválido, logout, revogação, origem e recuperação. Depende da criação da conta pessoal no Supabase e teste real sem registrar credenciais.",
+    "number": 4,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/4"
+  },
+  {
+    "key": "database",
+    "type": "Nova função",
+    "title": "Migrar SQLite para PostgreSQL no Supabase sem perder informações",
+    "body": "Portar consultas e transações dos serviços; preservar IDs, relacionamentos, valores e datas; implementar acesso de menor privilégio e isolamento/RLS. Preparar importação transacional e relatório de paridade de contagens e totais; testar rollback e concorrência. Supabase deve ser fonte de verdade antes da publicação. Não considerar apenas login ou uma cópia JSON como migração concluída.",
+    "number": 5,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/5"
+  },
+  {
+    "key": "design",
+    "type": "Melhoria",
+    "title": "Adaptar design do Casaê ao Puzoto Life dark e responsivo",
+    "body": "Adaptar tokens, superfícies, hierarquia, sidebar arredondada e navegação móvel. Reusar componentes e preservar fluxos financeiros. Aplicar Design Motion Principles: movimentos discretos, lazy loading, skeletons, feedback, progresso, estados de erro e reduced motion. Revisar todas as telas em desktop/mobile, teclado, tabelas, modais e transições.",
+    "number": 6,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/6"
+  },
+  {
+    "key": "security",
+    "type": "Correção",
+    "title": "Revisar XSS, CSRF, validação e proteção de segredos antes da internet",
+    "body": "Auditar HTML interpolado e handlers inline; adotar renderização segura e CSP restritiva; validar inputs no backend, origem, limites de payload, rate limits e download autenticado. Proteger .env e artefatos privados; remover URLs locais do frontend. Executar testes de ataque com dados sintéticos. Não publicar enquanto houver lacunas de autorização ou execução de HTML.",
+    "number": 7,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/7"
+  },
+  {
+    "key": "observability",
+    "type": "Melhoria",
+    "title": "Adicionar observabilidade proporcional sem dados pessoais",
+    "body": "Adicionar IDs de correlação, duração, status e logs estruturados sem corpos, query strings, tokens ou dados pessoais. Selecionar Sentry ou OpenTelemetry para produção quando houver destino e retenção definidos. Não acumular Datadog/New Relic sem necessidade. Validar sanitização e diagnóstico de erros sem exposição de dados.",
+    "number": 8,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/8"
+  },
+  {
+    "key": "deploy",
+    "type": "Nova função",
+    "title": "Publicar com HTTPS, ambiente protegido e rollback via PR",
+    "body": "Hospedar frontend e backend compatível com PostgreSQL, configurar domínio HTTPS, segredos no provedor, origens e redirects Auth. Deploy apenas de commit validado e revisado; exigir ambiente protegido. Testar acesso de celular e computador à mesma conta, gravação e leitura cruzada, backup e rollback. Publicação bloqueada até migração e revisão de segurança concluídas.",
+    "number": 9,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/9"
+  },
+  {
+    "key": "legal",
+    "type": "Melhoria",
+    "title": "Preparar termos e privacidade para revisão e aprovação jurídica",
+    "body": "Inventariar dados financeiros e registros de laudos, finalidade, base legal, subprocessadores, retenção, exportação/exclusão e contato do responsável. Preparar minutas sem inventar aprovação. Revisão e aprovação por profissional jurídico antes de disponibilizar o serviço; registrar data e versão aprovadas. Agente não substitui parecer jurídico.",
+    "number": 10,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/10"
+  }
+]
