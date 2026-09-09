@@ -1,5 +1,21 @@
 # Entregas e estado real
 
+## Latência de leitura e contabilização — branch codex/reduce-data-latency
+
+Issue #61, classificação Correção. Implementado localmente; merge, publicação e medição autenticada em produção pendentes de CI e revisão do proprietário.
+
+A configuração de cada transação PostgreSQL passa a viajar em um único comando de protocolo simples, mantendo ordem, `SET LOCAL`, snapshot somente leitura e lock do acervo antes de qualquer leitura que decida uma gravação. Valores de domínio continuam em consultas parametrizadas. Uma leitura simples cai de 6 para 3 viagens; uma gravação simples, de 7 para 3. A validação da estrutura na inicialização passa de 31 para 5 viagens, conferindo as mesmas 23 tabelas, ordem das colunas, papel restrito e RLS. Falhas na configuração também executam rollback antes de liberar a conexão.
+
+Lançamentos passa de 5 requisições na abertura para 1; Dr. Ranon / RX, de 4 para 1. Inclusão e edição nessas duas telas, em Gastos e em Receitas devolvem registros e totais na resposta da própria gravação, dentro da mesma transação. O HTTP só responde após o commit. A interface apresenta “Salvando…” imediatamente, impede submissão repetida por clique/teclado e aplica o painel confirmado sem uma segunda espera pela rede. As exclusões dos lotes também reutilizam a resposta; fechamento, exportação, mesclagem e demais operações preservam seus fluxos. A preferência de empresa atualiza o preço na interface antes de aguardar sua persistência. Receitas deixa de chamar a função inexistente `loadOrigens` depois de salvar e aproveita as origens incluídas no painel. A edição de Lançamentos normaliza horário/observação opcionais como `null`, corrigindo a rejeição do PostgreSQL quando o formulário não envia horário.
+
+Respostas das quatro telas verificam a conexão do elemento de origem antes de atualizar a página. Leituras de filtros em Gastos/Receitas descartam respostas substituídas; uma gravação com alteração de filtros durante a espera recarrega o filtro atual. Falhas de gravação preservam campos e totais anteriores. Não há cache persistente de dados, mudança de autenticação, migração, alteração de região ou escrita sobre a base pessoal.
+
+Validação local: `npm run quality` aprovado com 77 testes Node, lint, arquitetura, build e orçamento de 219 KB gzip; `npm audit --audit-level=high` sem vulnerabilidades. E2E SQLite: 49 jornadas aprovadas e 5 saltos de projeto previstos, incluindo todas as páginas em 320, 360 e 390 px. Testes adicionais verificam carga única, uma única requisição por inclusão/edição, persistência após nova navegação, bloqueio de submissão duplicada, falha de rede e resposta de página removida. E2E PostgreSQL/PGlite: as 12 jornadas novas passaram após corrigir o campo opcional de Lançamentos; a rodada anterior já havia aprovado as demais 37 jornadas, com 5 saltos previstos. A paridade de domínio e o rollback do painel são exercitados em SQLite temporário e PGlite. PostgreSQL com conexões independentes é gate de CI, não validação do Supabase pessoal.
+
+Medição controlada, sem banco real: cinco amostras por operação, cliente sintético com 20 ms por viagem, comparando o adaptador da `main` (`3ebf4eb`) ao novo. Mediana da leitura simples: 148 → 69 ms; gravação simples: 174 → 69 ms. Esses números isolam a redução de viagens e não representam tempo total na Vercel/Supabase. Autenticação, conexão inicial, consulta, rede e renderização continuam tendo duração; zero absoluto não é prometido.
+
+Próximos passos: concluir os checks remotos, obter revisão do proprietário e publicar apenas o commit aprovado. Medir abertura fria/quente e uma gravação real autorizada depois do deploy. Rollback: reverter o PR de código para `3ebf4eb`, preservando PostgreSQL e todos os registros novos; nenhuma reversão ou importação de dados é necessária.
+
 ## Fundação local — branch codex/cloud-foundation-design
 
 Issue #1: backup Info consistente, integridade OK, 23 tabelas e 5.382 registros; 92 arquivos preservados com SHA-256. Backup manual aguarda a conclusão; exportação passa a incluir as tabelas que faltavam. Teste de restauração em banco temporário.

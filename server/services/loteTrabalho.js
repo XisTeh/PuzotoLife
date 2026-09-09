@@ -71,7 +71,7 @@ export async function atualizarItemLoteTrabalho(id, dados) {
     WHERE id = @id
   `);
 
-  return (await stmt.run({ id, empresa_id, empresa_nome, quantidade, valor_unitario, total, data, horario, observacao }));
+  return (await stmt.run({ id, empresa_id, empresa_nome, quantidade, valor_unitario, total, data, horario: horario ?? null, observacao: observacao ?? null }));
   });
 }
 

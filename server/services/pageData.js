@@ -3,6 +3,41 @@ import { listarCategorias, listarGastos, calcularResumoGastos } from './financas
 import { listarContasPagar, calcularResumoContasPagar } from './contasPagar.js';
 import { listarReceitas, calcularResumoReceitas, listarOrigensReceitaUnicas } from './receitas.js';
 import { listarInvestimentos, listarMovimentosInvestimento } from './investimentos.js';
+import { listarEmpresas } from './empresas.js';
+import { obterConfiguracao } from './configuracoes.js';
+import { listarLoteTrabalhoPendente, calcularResumoLoteTrabalho } from './loteTrabalho.js';
+import { listarFechamentosDiarios } from './fechamentoDia.js';
+import { listarLaudosRanonPendentes } from './laudosRanon.js';
+import { listarHistoricoPlanihas } from './salvarPlanilhaRanon.js';
+
+// The mutation and the returned totals share the same transaction and owner lock.
+// Only return to HTTP after COMMIT, including when a panel read fails.
+export function executarComPainel(operacao, carregarPainel) {
+  return atomic(async () => {
+    const resultado = await operacao();
+    return { ...resultado, painel: await carregarPainel() };
+  });
+}
+
+export function obterPainelLancamentos() {
+  return snapshot(async () => {
+    const [empresas, ultimaEmpresa, lote, resumo, historico] = await Promise.all([
+      listarEmpresas(), obterConfiguracao('ultima_empresa_selecionada'),
+      listarLoteTrabalhoPendente(), calcularResumoLoteTrabalho(), listarFechamentosDiarios(),
+    ]);
+    return { empresas, ultimaEmpresa, lote, resumo, historico };
+  });
+}
+
+export function obterPainelRanon() {
+  return snapshot(async () => {
+    const [preco, mesReferencia, lote, historico] = await Promise.all([
+      obterConfiguracao('preco_padrao_ranon'), obterConfiguracao('mes_referencia_ranon_padrao'),
+      listarLaudosRanonPendentes(), listarHistoricoPlanihas(5),
+    ]);
+    return { preco, mesReferencia, lote, historico };
+  });
+}
 
 export function obterPainelGastos(filtros) {
   return snapshot(async () => {

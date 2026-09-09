@@ -83,13 +83,17 @@ import {
 } from '../services/importarDados.js';
 import { executarDiagnostico } from '../services/diagnostico.js';
 import { executarLimpezaDadosTeste } from '../services/limpezaDados.js';
-import { obterPainelGastos, obterPainelContasPagar, obterPainelReceitas, obterPainelInvestimentos } from '../services/pageData.js';
+import { obterPainelGastos, obterPainelContasPagar, obterPainelReceitas, obterPainelInvestimentos, obterPainelLancamentos, obterPainelRanon, executarComPainel } from '../services/pageData.js';
 import {
   listarPagadores, listarTodosPagadores, criarPagador, atualizarPagador, 
   obterResumoPorPagador, ativarPagador, desativarPagador, obterRecebimentosPendentes, processarRecebimentoPagador
 } from '../services/pagadores.js';
 
 const router = Router();
+function comPainel(req, operacao, carregarPainel) {
+  return req.query.painel === 'true'
+    ? executarComPainel(operacao, () => carregarPainel(req.query)) : operacao();
+}
 router.param('id', validateIdParam);
 router.param('filename', validateBackupFilenameParam);
 router.param('nome', validateTextParam('Nome'));
@@ -160,11 +164,12 @@ router.post('/configuracoes', asyncHandler(async (req) => {
 // ═══════════════════════════════════════
 // LOTE DE TRABALHO PENDENTE
 // ═══════════════════════════════════════
+router.get('/lote-trabalho/painel', asyncHandler(() => obterPainelLancamentos()));
 router.get('/lote-trabalho', asyncHandler(async () => (await listarLoteTrabalhoPendente())));
 router.get('/lote-trabalho/resumo', asyncHandler(async () => (await calcularResumoLoteTrabalho())));
-router.post('/lote-trabalho', asyncHandler(async (req) => (await adicionarItemLoteTrabalho(req.body))));
-router.put('/lote-trabalho/:id', asyncHandler(async (req) => (await atualizarItemLoteTrabalho(Number(req.params.id), req.body))));
-router.delete('/lote-trabalho/:id', asyncHandler(async (req) => (await removerItemLoteTrabalho(Number(req.params.id)))));
+router.post('/lote-trabalho', asyncHandler(async (req) => comPainel(req, () => adicionarItemLoteTrabalho(req.body), obterPainelLancamentos)));
+router.put('/lote-trabalho/:id', asyncHandler(async (req) => comPainel(req, () => atualizarItemLoteTrabalho(Number(req.params.id), req.body), obterPainelLancamentos)));
+router.delete('/lote-trabalho/:id', asyncHandler(async (req) => comPainel(req, () => removerItemLoteTrabalho(Number(req.params.id)), obterPainelLancamentos)));
 router.delete('/lote-trabalho', asyncHandler(async () => (await limparLoteTrabalho())));
 
 // ═══════════════════════════════════════
@@ -182,10 +187,11 @@ router.get('/trabalho/historico/resumo', asyncHandler(async (req) => (await obte
 // ═══════════════════════════════════════
 // DR. RANON / RX — PENDENTES
 // ═══════════════════════════════════════
+router.get('/ranon/painel', asyncHandler(() => obterPainelRanon()));
 router.get('/ranon/pendentes', asyncHandler(async () => (await listarLaudosRanonPendentes())));
-router.post('/ranon/pendentes', asyncHandler(async (req) => (await adicionarLaudoRanonPendente(req.body))));
-router.put('/ranon/pendentes/:id', asyncHandler(async (req) => (await atualizarLaudoRanonPendente(Number(req.params.id), req.body))));
-router.delete('/ranon/pendentes/:id', asyncHandler(async (req) => (await removerLaudoRanonPendente(Number(req.params.id)))));
+router.post('/ranon/pendentes', asyncHandler(async (req) => comPainel(req, () => adicionarLaudoRanonPendente(req.body), obterPainelRanon)));
+router.put('/ranon/pendentes/:id', asyncHandler(async (req) => comPainel(req, () => atualizarLaudoRanonPendente(Number(req.params.id), req.body), obterPainelRanon)));
+router.delete('/ranon/pendentes/:id', asyncHandler(async (req) => comPainel(req, () => removerLaudoRanonPendente(Number(req.params.id)), obterPainelRanon)));
 router.delete('/ranon/pendentes', asyncHandler(async () => (await limparLaudosRanonPendentes())));
 
 // ═══════════════════════════════════════
@@ -287,8 +293,8 @@ router.post('/financas/categorias/:id/ativar', asyncHandler(async (req) => { (aw
 // ═══════════════════════════════════════
 router.get('/financas/gastos', asyncHandler(async (req) => (await listarGastos(req.query))));
 router.get('/financas/gastos-painel', asyncHandler(async (req) => obterPainelGastos(req.query)));
-router.post('/financas/gastos', asyncHandler(async (req) => (await criarGasto(req.body))));
-router.put('/financas/gastos/:id', asyncHandler(async (req) => (await atualizarGasto(Number(req.params.id), req.body))));
+router.post('/financas/gastos', asyncHandler(async (req) => comPainel(req, () => criarGasto(req.body), obterPainelGastos)));
+router.put('/financas/gastos/:id', asyncHandler(async (req) => comPainel(req, () => atualizarGasto(Number(req.params.id), req.body), obterPainelGastos)));
 router.delete('/financas/gastos/:id', asyncHandler(async (req) => { (await removerGasto(Number(req.params.id))); return { success: true }; }));
 router.get('/financas/gastos/resumo', asyncHandler(async (req) => (await calcularResumoGastos(req.query))));
 
@@ -377,8 +383,8 @@ router.delete('/financas/dividas-parceladas/:id', asyncHandler(async (req) => (a
 // ═══════════════════════════════════════
 router.get('/financas/receitas', asyncHandler(async (req) => (await listarReceitas(req.query))));
 router.get('/financas/receitas-painel', asyncHandler(async (req) => obterPainelReceitas(req.query)));
-router.post('/financas/receitas', asyncHandler(async (req) => (await criarReceita(req.body))));
-router.put('/financas/receitas/:id', asyncHandler(async (req) => (await atualizarReceita(Number(req.params.id), req.body))));
+router.post('/financas/receitas', asyncHandler(async (req) => comPainel(req, () => criarReceita(req.body), obterPainelReceitas)));
+router.put('/financas/receitas/:id', asyncHandler(async (req) => comPainel(req, () => atualizarReceita(Number(req.params.id), req.body), obterPainelReceitas)));
 router.post('/financas/receitas/:id/receber', asyncHandler(async (req) => (await marcarReceitaComoRecebida(Number(req.params.id)))));
 router.post('/financas/receitas/:id/cancelar', asyncHandler(async (req) => (await cancelarReceita(Number(req.params.id)))));
 router.delete('/financas/receitas/:id', asyncHandler(async (req) => (await removerReceita(Number(req.params.id)))));
