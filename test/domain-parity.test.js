@@ -18,6 +18,7 @@ const savings = await import('../server/services/investimentos.js');
 const finances = await import('../server/services/financas.js');
 const accounts = await import('../server/services/contasPagar.js');
 const income = await import('../server/services/receitas.js');
+const ranon = await import('../server/services/laudosRanon.js');
 const panels = await import('../server/services/pageData.js');
 const { salvarPlanilhaRanon } = await import('../server/services/salvarPlanilhaRanon.js');
 const { obterRecebimentosPendentes } = await import('../server/services/pagadores.js');
@@ -54,6 +55,30 @@ for (const engine of ['sqlite', 'postgres']) {
     assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM auditoria WHERE tipo='CARTAO_FATURA_PAGAR'").get()).n, 1);
 
     const company = await db.prepare("SELECT * FROM empresas WHERE nome='Diagnóstico'").get();
+    const draft = { empresa_id: company.id, empresa_nome: company.nome, quantidade: 1, valor_unitario: 3, data: today };
+    const inserted = await lote.adicionarItemLoteTrabalho(draft);
+    const edited = await panels.executarComPainel(
+      () => lote.atualizarItemLoteTrabalho(inserted.id, { ...draft, quantidade: 4 }),
+      panels.obterPainelLancamentos,
+    );
+    assert.equal(edited.painel.lote.find(row => row.id === inserted.id).total, 12);
+    await lote.removerItemLoteTrabalho(inserted.id);
+    const workPanel = await panels.obterPainelLancamentos();
+    assert.deepEqual(workPanel.lote, await lote.listarLoteTrabalhoPendente());
+    assert.deepEqual(workPanel.resumo, await lote.calcularResumoLoteTrabalho());
+    assert.deepEqual(workPanel.historico, await closing.listarFechamentosDiarios());
+    const saved = await panels.executarComPainel(
+      () => ranon.adicionarLaudoRanonPendente({ registro_paciente: '123456', quantidade: 3, valor_unitario: 2, data: today }),
+      panels.obterPainelRanon,
+    );
+    assert.equal(saved.painel.lote.find(row => row.id === saved.id).total, 6);
+    assert.deepEqual(saved.painel.lote, await ranon.listarLaudosRanonPendentes());
+    await ranon.removerLaudoRanonPendente(saved.id);
+    await assert.rejects(() => panels.executarComPainel(
+      () => ranon.adicionarLaudoRanonPendente({ registro_paciente: '654321', quantidade: 1, valor_unitario: 2, data: today }),
+      async () => { throw new Error('painel indisponível'); },
+    ), /painel indisponível/);
+    assert.equal((await ranon.listarLaudosRanonPendentes()).length, 0);
     await lote.adicionarItemLoteTrabalho({ empresa_id: company.id, empresa_nome: company.nome, quantidade: 2, valor_unitario: 12.5, data: today, horario: '10:00', observacao: '' });
     const closed = await Promise.all([closing.fecharDiaTrabalho(), closing.fecharDiaTrabalho()]);
     assert.equal(closed.filter(result => result.sucesso).length, 1);

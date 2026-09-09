@@ -455,7 +455,7 @@ test('ações, filtros, resumos e competências mantêm geometria móvel', async
 test('quantidade, mensagem e cartões dinâmicos mantêm composição móvel', async ({ page }, info) => {
   test.skip(info.project.name !== 'mobile');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.route('**/api/ranon/pendentes', (route) => route.fulfill({ json: { ok: true, data: [{
+  await page.route('**/api/ranon/painel', (route) => route.fulfill({ json: { ok: true, data: { preco: '2.00', mesReferencia: null, historico: [], lote: [{
     id: 1,
     data: '2026-09-03',
     horario: '14:23',
@@ -464,7 +464,7 @@ test('quantidade, mensagem e cartões dinâmicos mantêm composição móvel', a
     valor_unitario: 2,
     total: 2,
     observacao: 'D.O',
-  }] } }));
+  }] } } }));
   await page.goto('/');
 
   await page.evaluate(() => window.navigateTo('lancamentos'));

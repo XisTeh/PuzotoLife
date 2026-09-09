@@ -1,6 +1,6 @@
 import { apiFetch } from '../services/http.js';
 import { 
-  listarLaudosRanonPendentes, 
+  obterPainelRanon,
   adicionarLaudoRanonPendente, 
   atualizarLaudoRanonPendente, 
   removerLaudoRanonPendente, 
@@ -60,13 +60,14 @@ function getMesReferenciaDefault() {
 // ═══════════════════════════════════════
 
 export async function initRanon() {
+  const root = document.getElementById('form-lancamento');
+  editandoItemId = null;
+  pesquisaRanon = '';
   abaAtiva = 'pendentes';
   try {
-    const [cfgPreco, cfgMes] = await Promise.all([
-      apiFetch(`${API_BASE}/configuracoes/preco_padrao_ranon`).then(r => r.json()).catch(() => null),
-      apiFetch(`${API_BASE}/configuracoes/mes_referencia_ranon_padrao`).then(r => r.json()).catch(() => null)
-    ]);
-    precoAtual = cfgPreco?.ok && cfgPreco.data ? parseFloat(cfgPreco.data) : 2.00;
+    const painel = await obterPainelRanon();
+    if (!root?.isConnected) return;
+    precoAtual = painel.preco ? parseFloat(painel.preco) : 2.00;
     const valorInput = document.getElementById('form-valor');
     if (valorInput) valorInput.value = precoAtual.toFixed(2);
 
@@ -76,7 +77,7 @@ export async function initRanon() {
     // Setar mês de referência padrão
     const mesRefInput = document.getElementById('form-mes-referencia');
     if (mesRefInput) {
-      if (cfgMes?.ok && cfgMes.data === 'atual') {
+      if (painel.mesReferencia === 'atual') {
         const agora = new Date();
         mesRefInput.value = `${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`;
       } else {
@@ -94,9 +95,10 @@ export async function initRanon() {
       });
     }
     
-    await recarregarDados();
+    aplicarPainel(painel, root);
     
   } catch (error) {
+    if (!root?.isConnected) return;
     showToast('Erro ao inicializar: ' + error.message, 'error');
   }
 }
@@ -106,28 +108,33 @@ export async function initRanon() {
 // ═══════════════════════════════════════
 
 async function recarregarDados() {
+  const root = document.getElementById('form-lancamento');
   try {
-    const carregarHistorico = (async () => {
-      const res = await apiFetch(`${API_BASE}/ranon/historico-planilhas?limit=5`);
-      const json = await res.json();
-      return json.ok ? json.data : [];
-    })().catch(() => []);
-    [loteAtual, historicoPlanihas] = await Promise.all([
-      listarLaudosRanonPendentes(),
-      carregarHistorico
-    ]);
-    
-    renderMétricas();
-    renderTabela();
-    renderHistoricoPlanilhas();
+    aplicarPainel(await obterPainelRanon(), root);
   } catch (err) {
+    if (!root?.isConnected) return;
     showToast('Erro ao carregar dados.', 'error');
   }
 }
 
+function aplicarPainel(painel, root) {
+  if (!root?.isConnected) return;
+  loteAtual = painel.lote;
+  historicoPlanihas = painel.historico;
+  renderMétricas();
+  renderTabela();
+  renderHistoricoPlanilhas();
+}
+
 async function handleFormSubmit(e) {
   e.preventDefault();
-  
+  const root = e.currentTarget;
+  if (root.getAttribute('aria-busy') === 'true') return;
+  const button = root.querySelector('button[type="submit"]');
+  const original = button.innerHTML;
+  root.setAttribute('aria-busy', 'true');
+  button.disabled = true;
+  button.textContent = 'Salvando…';
   try {
     const registroRaw = document.getElementById('form-registro').value;
     const registro_paciente = registroRaw.replace(/\D/g, '');
@@ -164,12 +171,16 @@ async function handleFormSubmit(e) {
     };
 
     if (editandoItemId) {
-      await atualizarLaudoRanonPendente(editandoItemId, dados);
+      const resultado = await atualizarLaudoRanonPendente(editandoItemId, dados, true);
+      if (!root.isConnected) return;
+      aplicarPainel(resultado.painel, root);
       showToast('Laudo atualizado!');
       editandoItemId = null;
       document.querySelector('#form-lancamento button[type="submit"]').innerHTML = '<i data-lucide="plus" style="width: 20px; height: 20px;"></i> Adicionar Laudo';
     } else {
-      await adicionarLaudoRanonPendente(dados);
+      const resultado = await adicionarLaudoRanonPendente(dados, true);
+      if (!root.isConnected) return;
+      aplicarPainel(resultado.painel, root);
       showToast('Laudo adicionado!');
     }
 
@@ -180,9 +191,14 @@ async function handleFormSubmit(e) {
     document.getElementById('form-data').value = dataAtualISO();
     document.getElementById('form-registro').focus();
     
-    await recarregarDados();
   } catch (err) {
+    if (!root.isConnected) return;
     showToast('Erro ao salvar laudo.', 'error');
+  } finally {
+    root.removeAttribute('aria-busy');
+    button.disabled = false;
+    if (button.textContent === 'Salvando…') button.innerHTML = original;
+    if (root.isConnected) window.lucide?.createIcons();
   }
 }
 
@@ -205,10 +221,12 @@ window.editarLaudoRanon = async function(id) {
 window.excluirLaudoRanon = async function(id) {
   if (!confirm('Tem certeza que deseja excluir este laudo pendente?')) return;
   
+  const root = document.getElementById('form-lancamento');
   try {
-    await removerLaudoRanonPendente(id);
+    const resultado = await removerLaudoRanonPendente(id, true);
+    if (!root?.isConnected) return;
+    aplicarPainel(resultado.painel, root);
     showToast('Laudo removido.');
-    await recarregarDados();
   } catch (err) {
     showToast('Erro ao remover.', 'error');
   }

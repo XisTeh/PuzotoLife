@@ -10,6 +10,24 @@ let categorias = [];
 let gastosAtuais = [];
 let resumoAtual = null;
 let chartInstancia = null;
+let carregamento = 0;
+
+function filtrosPainel() {
+  return new URLSearchParams({
+    mes: document.getElementById('filtro-mes').value,
+    categoria: document.getElementById('filtro-categoria').value,
+    status: document.getElementById('filtro-status').value,
+    forma_pagamento: document.getElementById('filtro-pagamento').value,
+  }).toString();
+}
+
+function aplicarPainel(painel) {
+  gastosAtuais = painel.gastos;
+  resumoAtual = painel.resumo;
+  renderCards();
+  renderTabela();
+  renderGrafico();
+}
 
 function showToast(message, type) {
   if (!type) type = 'success';
@@ -69,6 +87,8 @@ export async function initGastos() {
 }
 
 async function carregarPainelInicial() {
+  const root = document.getElementById('form-gasto-desc');
+  const ticket = ++carregamento;
   const queryParams = new URLSearchParams({
     mes: document.getElementById('filtro-mes').value,
     categoria: document.getElementById('filtro-categoria').value,
@@ -78,6 +98,7 @@ async function carregarPainelInicial() {
   try {
     const resposta = await apiFetch(`${API_BASE}/gastos-painel?${queryParams}`);
     const json = await resposta.json();
+    if (!root?.isConnected || ticket !== carregamento) return;
     if (!json.ok) throw new Error(json.error || 'Erro ao carregar dados');
     aplicarCategorias(json.data.categorias);
     gastosAtuais = json.data.gastos;
@@ -86,6 +107,7 @@ async function carregarPainelInicial() {
     renderTabela();
     renderGrafico();
   } catch (err) {
+    if (!root?.isConnected || ticket !== carregamento) return;
     showToast('Erro ao atualizar dados: ' + err.message, 'error');
   }
 }
@@ -102,6 +124,8 @@ function aplicarCategorias(novasCategorias) {
 }
 
 async function atualizarPainel() {
+  const root = document.getElementById('form-gasto-desc');
+  const ticket = ++carregamento;
   var mes = document.getElementById('filtro-mes').value;
   var categoria = document.getElementById('filtro-categoria').value;
   var status = document.getElementById('filtro-status').value;
@@ -112,6 +136,7 @@ async function atualizarPainel() {
   try {
     const resposta = await apiFetch(`${API_BASE}/gastos-painel?${queryParams}`);
     const json = await resposta.json();
+    if (!root?.isConnected || ticket !== carregamento) return;
     if (!json.ok) throw new Error(json.error || 'Erro ao carregar dados');
     gastosAtuais = json.data.gastos;
     resumoAtual = json.data.resumo;
@@ -120,6 +145,7 @@ async function atualizarPainel() {
     renderTabela();
     renderGrafico();
   } catch (err) {
+    if (!root?.isConnected || ticket !== carregamento) return;
     showToast('Erro ao atualizar dados: ' + err.message, 'error');
   }
 }
@@ -257,6 +283,7 @@ function renderGrafico() {
 
 window.salvarGasto = async function() {
   var btn = document.getElementById('btn-salvar-gasto');
+  if (!btn || btn.disabled) return;
   var originalHtml = btn.innerHTML;
 
   var data = document.getElementById('form-gasto-data').value;
@@ -286,16 +313,19 @@ window.salvarGasto = async function() {
     forma_pagamento: forma_pagamento, status: status, observacao: observacao
   };
 
-  btn.innerHTML = '<i data-lucide="loader" class="spin"></i>';
+  const filtros = filtrosPainel();
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
 
   try {
-    var res = await apiFetch(API_BASE + '/gastos', {
+    var res = await apiFetch(`${API_BASE}/gastos?painel=true&${filtros}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
     var json = await res.json();
+    if (!btn.isConnected) return;
     if (!json.ok) throw new Error(json.error || 'Erro ao salvar');
 
     showToast('Gasto registrado!', 'success');
@@ -306,10 +336,15 @@ window.salvarGasto = async function() {
     document.getElementById('form-gasto-categoria').value = '';
     document.getElementById('form-gasto-desc').focus();
 
-    await atualizarPainel();
+    if (filtros === filtrosPainel()) {
+      ++carregamento;
+      aplicarPainel(json.data.painel);
+    } else await atualizarPainel();
   } catch (err) {
+    if (!btn.isConnected) return;
     showToast(err.message, 'error');
   } finally {
+    btn.disabled = false;
     btn.innerHTML = originalHtml;
     if (window.lucide) window.lucide.createIcons();
   }
@@ -351,6 +386,7 @@ window.abrirEditarGasto = function(id) {
 
 window.confirmarEditarGasto = async function() {
   var btn = document.getElementById('btn-atualizar-gasto');
+  if (!btn || btn.disabled) return;
   var originalHtml = btn.innerHTML;
 
   var id = document.getElementById('modal-edit-gasto-id').value;
@@ -389,10 +425,12 @@ window.confirmarEditarGasto = async function() {
     observacao: observacao
   };
 
-  btn.innerHTML = '<i data-lucide="loader" class="spin"></i>';
+  const filtros = filtrosPainel();
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
 
   try {
-    var res = await apiFetch(API_BASE + '/gastos/' + id, {
+    var res = await apiFetch(`${API_BASE}/gastos/${id}?painel=true&${filtros}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -400,14 +438,20 @@ window.confirmarEditarGasto = async function() {
 
     var json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Erro ao atualizar');
+    if (!btn.isConnected) return;
 
     showToast('Gasto atualizado!', 'success');
     document.getElementById('modal-editar-gasto-overlay').style.display = 'none';
 
-    await atualizarPainel();
+    if (filtros === filtrosPainel()) {
+      ++carregamento;
+      aplicarPainel(json.data.painel);
+    } else await atualizarPainel();
   } catch (err) {
+    if (!btn.isConnected) return;
     showToast(err.message, 'error');
   } finally {
+    btn.disabled = false;
     btn.innerHTML = originalHtml;
     if (window.lucide) window.lucide.createIcons();
   }

@@ -1,14 +1,10 @@
 import { 
-  listarEmpresas, 
-  obterConfiguracao, 
+  obterPainelLancamentos,
   salvarConfiguracao, 
-  listarLoteTrabalhoPendente, 
-  calcularResumoLoteTrabalho, 
   adicionarItemLoteTrabalho, 
   removerItemLoteTrabalho, 
   atualizarItemLoteTrabalho,
   fecharDiaTrabalho,
-  listarFechamentosDiarios,
   desfazerFechamentoDia
 } from '../services/api.js';
 
@@ -52,22 +48,21 @@ function showToast(message, type = 'success') {
 // ===========================================
 
 export async function initLancamentos() {
+  const root = document.getElementById('form-lancamento');
+  editandoItemId = null;
   try {
-    // Empresas e preferência são leituras independentes.
-    const [todasEmpresas, configuracaoEmpresa] = await Promise.all([
-      listarEmpresas(),
-      obterConfiguracao('ultima_empresa_selecionada')
-    ]);
-    empresasCache = todasEmpresas.filter(e => e.tipo !== 'ranon');
+    const painel = await obterPainelLancamentos();
+    if (!root?.isConnected) return;
+    empresasCache = painel.empresas.filter(e => e.tipo !== 'ranon');
     
     renderOptionsEmpresa();
     renderEmpresaCards();
 
-    let ultimaConfig = configuracaoEmpresa;
-    if (!ultimaConfig) ultimaConfig = 'Diagnostico';
+    const ultimaConfig = empresasCache.find(e => e.nome === painel.ultimaEmpresa)?.nome || empresasCache[0]?.nome;
     
     const select = document.getElementById('form-empresa');
     if (select) select.value = ultimaConfig;
+    atualizarPrecoPadrao(ultimaConfig);
 
     // 3. Setar data padrao para hoje
     const dataInput = document.getElementById('form-data');
@@ -76,8 +71,9 @@ export async function initLancamentos() {
     // Eventos do form
     if (select) {
       select.addEventListener('change', async (e) => {
-        await salvarConfiguracao('ultima_empresa_selecionada', e.target.value);
         atualizarPrecoPadrao(e.target.value);
+        try { await salvarConfiguracao('ultima_empresa_selecionada', e.target.value); }
+        catch { if (root.isConnected) showToast('Não foi possível guardar a preferência de empresa.', 'error'); }
       });
     }
 
@@ -108,10 +104,11 @@ export async function initLancamentos() {
     }
 
     // Carregar os dados
-    await recarregarDados();
+    aplicarPainel(painel, root);
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
   } catch (error) {
+    if (!root?.isConnected) return;
     showToast('Erro ao inicializar: ' + error.message, 'error');
   }
 }
@@ -180,28 +177,35 @@ function calcularTotalForm() {
 // ===========================================
 
 async function recarregarDados() {
+  const root = document.getElementById('form-lancamento');
   try {
-    [loteAtual, resumoAtual, historicoFechamentos] = await Promise.all([
-      listarLoteTrabalhoPendente(),
-      calcularResumoLoteTrabalho(),
-      listarFechamentosDiarios()
-    ]);
-    
-    renderMetricas();
-    renderTabela();
-    renderHistoricoFechamentos();
-    atualizarBotaoFecharDia();
-    
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    aplicarPainel(await obterPainelLancamentos(), root);
   } catch (err) {
-    console.error('Erro ao recarregar dados:', err);
+    if (!root?.isConnected) return;
     showToast('Erro ao carregar dados.', 'error');
   }
 }
 
+function aplicarPainel(painel, root) {
+  if (!root?.isConnected) return;
+  loteAtual = painel.lote;
+  resumoAtual = painel.resumo;
+  historicoFechamentos = painel.historico;
+  renderMetricas();
+  renderTabela();
+  renderHistoricoFechamentos();
+  atualizarBotaoFecharDia();
+}
+
 async function handleFormSubmit(e) {
   if (e) e.preventDefault();
-  
+  const root = e.currentTarget;
+  if (root.getAttribute('aria-busy') === 'true') return;
+  const button = root.querySelector('button[type="submit"]');
+  const original = button.innerHTML;
+  root.setAttribute('aria-busy', 'true');
+  button.disabled = true;
+  button.textContent = 'Salvando…';
   try {
     const empresa_nome = document.getElementById('form-empresa').value;
     const empresa = empresasCache.find(em => em.nome === empresa_nome);
@@ -225,13 +229,17 @@ async function handleFormSubmit(e) {
     };
 
     if (editandoItemId) {
-      await atualizarItemLoteTrabalho(editandoItemId, dados);
+      const resultado = await atualizarItemLoteTrabalho(editandoItemId, dados, true);
+      if (!root.isConnected) return;
+      aplicarPainel(resultado.painel, root);
       showToast('Lancamento atualizado!');
       editandoItemId = null;
       const subBtn = document.querySelector('#form-lancamento button[type="submit"]');
       if (subBtn) subBtn.innerHTML = '<i data-lucide="plus"></i> Adicionar ao Lote';
     } else {
-      await adicionarItemLoteTrabalho(dados);
+      const resultado = await adicionarItemLoteTrabalho(dados, true);
+      if (!root.isConnected) return;
+      aplicarPainel(resultado.painel, root);
       showToast('Lancamento adicionado ao lote temporario!');
     }
 
@@ -241,9 +249,14 @@ async function handleFormSubmit(e) {
     document.getElementById('form-obs').value = '';
     calcularTotalForm();
     
-    await recarregarDados();
   } catch (err) {
+    if (!root.isConnected) return;
     showToast('Erro ao salvar lancamento.', 'error');
+  } finally {
+    root.removeAttribute('aria-busy');
+    button.disabled = false;
+    if (button.textContent === 'Salvando…') button.innerHTML = original;
+    if (root.isConnected) window.lucide?.createIcons();
   }
 }
 
@@ -270,10 +283,12 @@ window.editarLote = async function(id) {
 window.excluirLote = async function(id) {
   if (!confirm('Tem certeza que deseja excluir este lancamento temporario?')) return;
   
+  const root = document.getElementById('form-lancamento');
   try {
-    await removerItemLoteTrabalho(id);
+    const resultado = await removerItemLoteTrabalho(id, true);
+    if (!root?.isConnected) return;
+    aplicarPainel(resultado.painel, root);
     showToast('Lancamento removido.');
-    await recarregarDados();
   } catch (err) {
     showToast('Erro ao remover.', 'error');
   }

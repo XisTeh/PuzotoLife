@@ -21,7 +21,8 @@ export function createAdapter({ dialect, acquire, close, serialize = dialect ===
     return next;
   }
   async function command(client, sql) {
-    return dialect === 'sqlite' ? client.exec(sql) : client.query(sql);
+    // PGlite exposes simple-query batches through exec; pg uses query without parameters.
+    return client.exec ? client.exec(sql) : client.query(sql);
   }
   async function transaction(fn, { nested = false, readOnly = false } = {}) {
     if (context.getStore()?.puzotoReadOnly && !readOnly) throw new Error('Uma consulta de leitura não pode iniciar gravações.');
@@ -30,18 +31,19 @@ export function createAdapter({ dialect, acquire, close, serialize = dialect ===
       const inside = client.puzotoTransaction;
       const wasReadOnly = client.puzotoReadOnly;
       const name = `sp_${++savepoint}`;
-      await command(client, inside ? `SAVEPOINT ${name}` : dialect === 'sqlite' ? (readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE') : (readOnly ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' : 'BEGIN'));
-      client.puzotoTransaction = true;
-      client.puzotoReadOnly = readOnly;
+      const begin = inside ? `SAVEPOINT ${name}` : dialect === 'sqlite'
+        ? (readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE')
+        : `${readOnly ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' : 'BEGIN'};
+          SET LOCAL search_path = puzoto, pg_catalog;
+          SET LOCAL statement_timeout = '15s';
+          SET LOCAL lock_timeout = '5s';
+          ${readOnly ? '' : 'SELECT pg_advisory_xact_lock(782364901);'}`;
       try {
-        if (!inside && dialect === 'postgres') {
-          await client.query("SET LOCAL search_path = puzoto, pg_catalog");
-          await client.query("SET LOCAL statement_timeout = '15s'");
-          await client.query("SET LOCAL lock_timeout = '5s'");
-          // Single-owner ledger: serialize writes across backend instances BEFORE reads.
-          // Reads remain concurrent. Split by owner if multiuser is introduced.
-          if (!readOnly) await client.query('SELECT pg_advisory_xact_lock(782364901)');
-        }
+        // One round trip, still ordered: acquire the owner lock BEFORE domain reads.
+        // No user values enter this batch. Parameterized domain SQL stays separate.
+        await command(client, begin);
+        client.puzotoTransaction = true;
+        client.puzotoReadOnly = readOnly;
         const result = await fn();
         await command(client, inside ? `RELEASE SAVEPOINT ${name}` : 'COMMIT');
         return result;

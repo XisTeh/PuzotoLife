@@ -13,12 +13,27 @@ let resumo = null;
 let origens = [];
 let categorias = [];
 let chartReceitas = null;
+let carregamento = 0;
 
 // Filtros
 let mesAtual = dataAtualISO().substring(0, 7); // YYYY-MM
 let filtroCategoria = 'todas';
 let filtroStatus = 'todos';
 let filtroOrigem = 'todas';
+
+function filtrosPainel() {
+  return new URLSearchParams({ mes: mesAtual, categoria: filtroCategoria, status: filtroStatus, origem: filtroOrigem }).toString();
+}
+
+function aplicarPainel(painel) {
+  registros = painel.receitas;
+  resumo = painel.resumo;
+  aplicarOrigens(painel.origens);
+  renderMetrics();
+  renderChart();
+  renderProximasReceitas();
+  renderTabela();
+}
 
 // Toasts
 function showToast(message, type = 'success') {
@@ -55,9 +70,13 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export async function initReceitas() {
+  const root = document.getElementById('form-rec-desc');
+  const ticket = ++carregamento;
+  editandoId = null;
   document.getElementById('rec-filtro-mes').value = mesAtual;
   try {
     const painel = await fetchAPI(`/financas/receitas-painel?mes=${mesAtual}&categoria=${filtroCategoria}&status=${filtroStatus}&origem=${filtroOrigem}`);
+    if (!root?.isConnected || ticket !== carregamento) return;
     aplicarCategorias(painel.categorias);
     aplicarOrigens(painel.origens);
     registros = painel.receitas;
@@ -67,6 +86,7 @@ export async function initReceitas() {
     renderProximasReceitas();
     renderTabela();
   } catch (err) {
+    if (!root?.isConnected || ticket !== carregamento) return;
     showToast('Erro ao carregar dados: ' + err.message, 'error');
   }
 }
@@ -87,6 +107,7 @@ function aplicarOrigens(novasOrigens) {
   if (datalist) datalist.innerHTML = `${opcoes}<option value="Trabalho"><option value="Reembolso"><option value="Venda"><option value="Renda Extra"><option value="Salário"><option value="Presente"><option value="Devolução"><option value="Outros">`;
   const selectFiltro = document.getElementById('rec-filtro-origem');
   if (selectFiltro) selectFiltro.innerHTML = `<option value="todas">Todas Origens</option>${origens.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}`;
+  if (selectFiltro) selectFiltro.value = filtroOrigem;
 }
 
 window.filtrarReceitas = async function() {
@@ -98,6 +119,8 @@ window.filtrarReceitas = async function() {
 };
 
 async function loadDados() {
+  const root = document.getElementById('form-rec-desc');
+  const ticket = ++carregamento;
   try {
     const query = new URLSearchParams({
       mes: mesAtual,
@@ -107,6 +130,7 @@ async function loadDados() {
     }).toString();
 
     const painel = await fetchAPI(`/financas/receitas-painel?${query}`);
+    if (!root?.isConnected || ticket !== carregamento) return;
     registros = painel.receitas;
     resumo = painel.resumo;
 
@@ -115,6 +139,7 @@ async function loadDados() {
     renderProximasReceitas();
     renderTabela();
   } catch (err) {
+    if (!root?.isConnected || ticket !== carregamento) return;
     showToast('Erro ao carregar dados: ' + err.message, 'error');
   }
 }
@@ -284,6 +309,9 @@ function renderTabela() {
 let editandoId = null;
 
 window.salvarReceita = async function() {
+  const btn = document.getElementById('btn-salvar-rec');
+  if (!btn || btn.disabled) return;
+  const original = btn.innerHTML;
   const data = document.getElementById('form-rec-data').value;
   const descricao = document.getElementById('form-rec-desc').value.trim();
   let valorStr = document.getElementById('form-rec-valor').value.toString().trim();
@@ -304,26 +332,29 @@ window.salvarReceita = async function() {
   }
 
   try {
-    const btn = document.getElementById('btn-salvar-rec');
     btn.disabled = true;
     btn.innerHTML = 'Salvando...';
 
     const payload = { data, descricao, valor, origem, categoria_nome, status, observacao };
+    const filtros = filtrosPainel();
+    let resultado;
 
     if (editandoId) {
-      await fetchAPI(`/financas/receitas/${editandoId}`, {
+      resultado = await fetchAPI(`/financas/receitas/${editandoId}?painel=true&${filtros}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
+      if (!btn.isConnected) return;
       showToast('Receita atualizada!');
       editandoId = null;
       btn.innerHTML = 'Adicionar Receita';
       document.getElementById('form-title-rec').textContent = 'Nova Receita';
     } else {
-      await fetchAPI('/financas/receitas', {
+      resultado = await fetchAPI(`/financas/receitas?painel=true&${filtros}`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
+      if (!btn.isConnected) return;
       showToast('Receita adicionada com sucesso!');
     }
     
@@ -332,15 +363,16 @@ window.salvarReceita = async function() {
     document.getElementById('form-rec-valor').value = '';
     document.getElementById('form-rec-obs').value = '';
 
-    await loadDados();
-    // reload origens for auto complete
-    await loadOrigens(); 
+    if (filtros === filtrosPainel()) {
+      ++carregamento;
+      aplicarPainel(resultado.painel);
+    } else await loadDados();
   } catch (err) {
+    if (!btn.isConnected) return;
     showToast('Erro ao salvar: ' + err.message, 'error');
   } finally {
-    const btn = document.getElementById('btn-salvar-rec');
     btn.disabled = false;
-    if(!editandoId) btn.innerHTML = 'Adicionar Receita';
+    btn.innerHTML = editandoId ? original : 'Adicionar Receita';
   }
 };
 

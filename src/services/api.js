@@ -74,22 +74,22 @@ export async function listarLoteTrabalhoPendente() {
   return await fetchAPI('/lote-trabalho');
 }
 
-export async function adicionarItemLoteTrabalho(dados) {
-  return await fetchAPI('/lote-trabalho', {
+export async function adicionarItemLoteTrabalho(dados, painel = false) {
+  return await fetchAPI(`/lote-trabalho${painel ? "?painel=true" : ""}`, {
     method: 'POST',
     body: JSON.stringify(dados)
   });
 }
 
-export async function atualizarItemLoteTrabalho(id, dados) {
-  return await fetchAPI(`/lote-trabalho/${id}`, {
+export async function atualizarItemLoteTrabalho(id, dados, painel = false) {
+  return await fetchAPI(`/lote-trabalho/${id}${painel ? "?painel=true" : ""}`, {
     method: 'PUT',
     body: JSON.stringify(dados)
   });
 }
 
-export async function removerItemLoteTrabalho(id) {
-  return await fetchAPI(`/lote-trabalho/${id}`, {
+export async function removerItemLoteTrabalho(id, painel = false) {
+  return await fetchAPI(`/lote-trabalho/${id}${painel ? "?painel=true" : ""}`, {
     method: 'DELETE'
   });
 }
@@ -127,22 +127,22 @@ export async function listarLaudosRanonPendentes() {
   return await fetchAPI('/ranon/pendentes');
 }
 
-export async function adicionarLaudoRanonPendente(dados) {
-  return await fetchAPI('/ranon/pendentes', {
+export async function adicionarLaudoRanonPendente(dados, painel = false) {
+  return await fetchAPI(`/ranon/pendentes${painel ? "?painel=true" : ""}`, {
     method: 'POST',
     body: JSON.stringify(dados)
   });
 }
 
-export async function atualizarLaudoRanonPendente(id, dados) {
-  return await fetchAPI(`/ranon/pendentes/${id}`, {
+export async function atualizarLaudoRanonPendente(id, dados, painel = false) {
+  return await fetchAPI(`/ranon/pendentes/${id}${painel ? "?painel=true" : ""}`, {
     method: 'PUT',
     body: JSON.stringify(dados)
   });
 }
 
-export async function removerLaudoRanonPendente(id) {
-  return await fetchAPI(`/ranon/pendentes/${id}`, {
+export async function removerLaudoRanonPendente(id, painel = false) {
+  return await fetchAPI(`/ranon/pendentes/${id}${painel ? "?painel=true" : ""}`, {
     method: 'DELETE'
   });
 }
@@ -258,3 +258,6 @@ export async function atualizarPagador(id, dados) {
   });
 }
 
+
+export const obterPainelLancamentos = () => fetchAPI('/lote-trabalho/painel');
+export const obterPainelRanon = () => fetchAPI('/ranon/painel');
