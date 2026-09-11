@@ -1,49 +1,38 @@
-# Puzoto Life — Guia de Inicialização e Uso Diário
+# Puzoto Life — Guia de Acesso e Uso Diário
 
-Este documento contém todas as instruções necessárias para iniciar, gerenciar e usar o sistema localmente no Windows.
-
----
-
-## 🚀 Como abrir o sistema
-
-**Opção 1 (Uso Diário Automático):**
-Se você instalou a inicialização automática, basta ligar o computador e clicar no **ícone fixado na barra de tarefas** (o PWA do navegador abrirá o `localhost:5174`). Os servidores iniciam invisíveis em segundo plano.
-
-**Opção 2 (Manual):**
-Clique duas vezes no arquivo `start_puzoto_life.bat` na raiz do projeto, ou `local-tools\iniciar_puzoto_life.bat`.
+O Puzoto Life funciona pela internet com Supabase, PostgreSQL e Vercel. O computador não precisa iniciar servidores locais para o uso diário.
 
 ---
 
-## ⚙️ Gerenciamento e Ferramentas (Pasta `local-tools`)
+## 🚀 Como abrir
 
-- **Instalar inicialização automática:** Execute `local-tools\instalar_inicializacao_windows.bat` (configura o Agendador de Tarefas do Windows para ligar os servidores ao fazer login, de forma invisível).
-- **Verificar status:** Execute `local-tools\status_puzoto_life.bat` (mostra se as portas 3210 e 5174 estão ativas).
-- **Parar o sistema:** Execute `local-tools\parar_puzoto_life.bat`.
-- **Remover inicialização automática:** Execute `local-tools\remover_inicializacao_windows.bat`.
+Abra [https://puzoto-life.vercel.app/](https://puzoto-life.vercel.app/) ou clique no ícone do PWA instalado no computador ou celular. Entre com a conta do proprietário.
 
----
-
-## 💾 Backups e Dados
-
-- **Onde fica o banco de dados:** `data/puzoto_life.db`
-- **Onde ficam os backups criados:** `data/backups/database`
-- **Como criar backup:** Acesse o menu **Sistema > Backup** e clique em "Criar Backup Agora".
-- **Como restaurar backup:** Acesse o menu **Sistema > Backup**, escolha o backup na lista e clique no ícone circular de restauração. Digite RESTAURAR para confirmar.
-- **Como limpar dados de teste:** Acesse **Sistema > Configurações**, desça até a "Zona de Segurança", clique em "Limpar Dados de Teste" e digite CONFIRMAR. Isso apagará lançamentos, laudos, auditorias e notas fiscais, preservando configurações e empresas.
+Não é necessário executar arquivo `.bat`, `.vbs`, terminal, backend local ou tarefa agendada ao ligar o Windows.
 
 ---
 
-## ⚠️ NÃO APAGAR
+## 🧰 Desenvolvimento local
 
-As seguintes pastas e arquivos são o "coração" do sistema e **nunca** devem ser deletados:
+Somente para desenvolver e testar código, use Node.js 24, execute `npm ci` e depois `npm run dev:all`. Esse ambiente usa o loopback e não deve iniciar automaticamente com o Windows. Testes usam bancos temporários e nunca a base pessoal.
 
-- `data/` (Contém seu banco de dados, backups e arquivos exportados)
-- `data/puzoto_life.db` (Seu banco principal!)
-- `data/backups/`
-- `local-tools/` (Scripts de inicialização)
-- `package.json`
-- `server/` (Backend)
-- `src/` (Frontend)
+---
+
+## 💾 Backups e dados
+
+- **Fonte de verdade em produção:** PostgreSQL no Supabase.
+- **Arquivos privados:** bucket privado do Supabase.
+- **Como exportar:** acesse **Sistema > Backup** e faça a exportação JSON consistente.
+- **Restauração:** siga o procedimento documentado e valide o rollback antes de substituir qualquer estado. A importação pela interface permanece restrita enquanto não houver validação específica para a nuvem.
+- **Dados locais:** `Info/` e `data/` são privados e servem ao histórico, desenvolvimento ou recuperação controlada. Não os use como substitutos silenciosos da base de produção.
+
+---
+
+## ⚠️ Segurança
+
+Não compartilhe senha, cookies, `.env`, conexão do banco ou exportações. Não altere a base Supabase diretamente e não execute testes contra ela. Preserve os diretórios privados `Info/` e `data/` para recuperação controlada.
+
+Se o aplicativo não abrir, confirme a conexão com a internet e acesse diretamente [https://puzoto-life.vercel.app/](https://puzoto-life.vercel.app/). O problema não deve ser resolvido iniciando servidores locais no Windows.
 
 ---
 
@@ -51,7 +40,7 @@ As seguintes pastas e arquivos são o "coração" do sistema e **nunca** devem s
 
 Para manter as finanças e o trabalho perfeitamente em dia:
 
-1. **Abrir o Puzoto Life** pelo ícone fixado na barra de tarefas.
+1. **Abrir o Puzoto Life** pelo endereço publicado ou pelo ícone do PWA.
 2. **Lançar exames do dia** (Trabalho > Lançamentos Diários).
 3. **Fechar o Dia** ao fim do expediente para consolidar os ganhos.
 4. **Conferir Histórico e Recebimentos** (marcar como recebido o que já caiu na conta).
