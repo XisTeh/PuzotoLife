@@ -8,8 +8,6 @@ dist/
 .inv.*
 Info/
 data/
-Casaê/
-local-tools/
 *.db
 *.db-shm
 *.db-wal

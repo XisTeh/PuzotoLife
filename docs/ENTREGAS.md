@@ -1,8 +1,18 @@
 # Entregas e estado real
 
+## Remoção da inicialização local e da referência de design — branch codex/remove-local-startup-and-casae
+
+Issue #63, classificação Correção. Em 11/09/2026, a tarefa agendada `Puzoto Life Local Server`, que chamava o arquivo inexistente `D:\Puzoto Life\local-tools\iniciar_puzoto_life_silencioso.vbs`, foi removida do Windows. A verificação posterior não encontrou outras tarefas, serviços, comandos de inicialização ou atalhos de Startup ligados ao Puzoto Life.
+
+A pasta de referência visual externa foi conferida antes da exclusão: era um projeto independente com repositório próprio, 25.041 arquivos e 476.103.472 bytes, sem importações ou dependências do runtime do Puzoto Life. Nenhum arquivo precisava ser copiado. A pasta foi removida por completo depois da validação do caminho absoluto e da confirmação de que não era um link nem um ponto de reanálise. Os inicializadores legados `start_puzoto_life.bat` e `start_silent.vbs` também foram removidos do repositório.
+
+O guia de acesso, o README e a Ajuda agora direcionam o uso diário ao endereço publicado ou ao PWA. O loopback continua disponível somente quando um desenvolvedor executa `npm run dev:all` de forma manual, com bancos temporários nos testes. A mudança não altera Supabase, PostgreSQL, autenticação, dados pessoais nem os diretórios privados `Info/` e `data/`.
+
+Validação local: consulta do Windows confirmou zero tarefa agendada, comando de Startup ou serviço relacionado; os diretórios e inicializadores antigos estão ausentes. `npm run quality` foi aprovado com 77 testes Node, lint, contratos de arquitetura, build e orçamento de 220 KB gzip. Playwright aprovou 49 jornadas, com os 5 saltos de projeto previstos, cobrindo desktop e celular em 320, 360 e 390 px. `npm audit --audit-level=high` encontrou zero vulnerabilidades. Rollback de código: reverter o PR; a tarefa obsoleta e a pasta externa excluída não devem ser recriadas.
+
 ## Latência de leitura e contabilização — branch codex/reduce-data-latency
 
-Issue #61, classificação Correção. Implementado localmente; merge, publicação e medição autenticada em produção pendentes de CI e revisão do proprietário.
+Issue #61, classificação Correção. Entrega mesclada pelo PR #62 e publicada pelo commit `b8ef5e7`; a medição autenticada em produção permanece como acompanhamento operacional.
 
 A configuração de cada transação PostgreSQL passa a viajar em um único comando de protocolo simples, mantendo ordem, `SET LOCAL`, snapshot somente leitura e lock do acervo antes de qualquer leitura que decida uma gravação. Valores de domínio continuam em consultas parametrizadas. Uma leitura simples cai de 6 para 3 viagens; uma gravação simples, de 7 para 3. A validação da estrutura na inicialização passa de 31 para 5 viagens, conferindo as mesmas 23 tabelas, ordem das colunas, papel restrito e RLS. Falhas na configuração também executam rollback antes de liberar a conexão.
 
@@ -14,7 +24,7 @@ Validação local: `npm run quality` aprovado com 77 testes Node, lint, arquitet
 
 Medição controlada, sem banco real: cinco amostras por operação, cliente sintético com 20 ms por viagem, comparando o adaptador da `main` (`3ebf4eb`) ao novo. Mediana da leitura simples: 148 → 69 ms; gravação simples: 174 → 69 ms. Esses números isolam a redução de viagens e não representam tempo total na Vercel/Supabase. Autenticação, conexão inicial, consulta, rede e renderização continuam tendo duração; zero absoluto não é prometido.
 
-Próximos passos: concluir os checks remotos, obter revisão do proprietário e publicar apenas o commit aprovado. Medir abertura fria/quente e uma gravação real autorizada depois do deploy. Rollback: reverter o PR de código para `3ebf4eb`, preservando PostgreSQL e todos os registros novos; nenhuma reversão ou importação de dados é necessária.
+Próximo passo: medir abertura fria/quente e uma gravação real autorizada. Rollback: reverter o PR de código para `3ebf4eb`, preservando PostgreSQL e todos os registros novos; nenhuma reversão ou importação de dados é necessária.
 
 ## Fundação local — branch codex/cloud-foundation-design
 
@@ -92,7 +102,7 @@ O e-mail de recuperação continua apontando para a origem canônica configurada
 
 ## Identidade visual, meses fechados e PWA — branch codex/visual-identity-pwa
 
-Refs #6, #16 e #17; depende do PR de origem local. A paleta verde foi substituída por grafite, azul aço e índigo; coral fica restrito a alertas e estados negativos. A marca anterior do Puzoto Life foi preservada com o “P”, pessoa/folhas e seta, trocando apenas a seta verde por azul/índigo. Sidebar e login usam textura pontilhada, luz ambiente, indicador ativo e profundidade inspirados na linguagem do Casaê, sem copiar sua identidade. Entradas usam 220 ms com foco progressivo; ações frequentes permanecem rápidas e todas respeitam `prefers-reduced-motion`.
+Refs #6, #16 e #17; depende do PR de origem local. A paleta verde foi substituída por grafite, azul aço e índigo; coral fica restrito a alertas e estados negativos. A marca anterior do Puzoto Life foi preservada com o “P”, pessoa/folhas e seta, trocando apenas a seta verde por azul/índigo. Sidebar e login usam textura pontilhada, luz ambiente, indicador ativo e profundidade definidos durante a modernização visual. Entradas usam 220 ms com foco progressivo; ações frequentes permanecem rápidas e todas respeitam `prefers-reduced-motion`.
 
 A lista de meses fechados virou uma lista responsiva de botões com rolagem estável, sem translação do item inteiro no hover. O último mês permanece dentro do card em desktop e celular. O sistema inclui manifesto, ícones próprios, metadados para iOS/Android, convite de instalação quando suportado e service worker que nunca intercepta nem armazena `/api`.
 
@@ -127,7 +137,7 @@ A proteção da `main` continua exigindo `quality`, `security` e `e2e`, conversa
 | Sessão | sessões Auth ficam em `Map` na memória do processo | Incompatível com reinícios e múltiplas funções/réplicas |
 | Arquivos | planilhas de laudos ainda são gravadas no disco local | Exige Supabase Storage privado ou volume persistente |
 | Segurança | CSP e parte dos escapes estão validados; templates legados ainda têm saídas sem escape contextual completo | Issue #7 aberta |
-| Dados privados | `.env`, `Info/`, Casaê, bancos, `data/` e `dist/` estão ignorados; nenhum apareceu entre os arquivos rastreados na auditoria | Proteção local confirmada |
+| Dados privados | `.env`, `Info/`, bancos, `data/` e `dist/` estão ignorados; nenhum apareceu entre os arquivos rastreados na auditoria. O gate também rejeita a reintrodução da referência externa e dos inicializadores locais | Proteção local confirmada |
 
 Os PRs #29 e #28 foram validados e mesclados na ordem, sem push direto para `main`. A Vercel promoveu o commit `1f4f4e6` e as verificações públicas não autenticadas passaram. A Issue #9 permanece aberta apenas para o ensaio autenticado entre computador e celular, exportação de backup e confirmação prática do rollback. SMTP próprio e jurídico continuam pendências separadas.
 

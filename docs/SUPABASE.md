@@ -6,6 +6,10 @@ Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](http
 
 Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `14e22fe` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.
 
+## Acesso diário sem servidor local
+
+O uso diário acontece no endereço publicado `https://puzoto-life.vercel.app/` ou no PWA instalado. O Windows não precisa iniciar Vite, Express ou SQLite. Em 11/09/2026, a tarefa agendada do servidor local antigo foi removida e uma varredura confirmou que não há outra inicialização automática do Puzoto Life. O ambiente local continua disponível somente para desenvolvimento manual com `npm run dev:all`, no loopback e com bases isoladas nos testes. Essa remoção não altera o runtime Vercel, a autenticação Supabase nem os dados PostgreSQL.
+
 ## 1. Crie seu acesso
 
 1. Abra **Authentication → Users → Add user → Create new user**.

@@ -39,7 +39,7 @@ export function createApp(env = process.env, authFactory = createAuth, applicati
   app.use('/api', auth.guard, apiRoutes);
   app.use('/api', (_req, res) => res.status(404).json({ ok: false, error: 'Rota não encontrada.' }));
   app.use((req, res, next) => {
-    if (req.path.split('/').some(part => part.startsWith('.')) || ['Info', 'data', 'server', 'Casaê'].includes(req.path.split('/')[1])) return res.sendStatus(404);
+    if (req.path.split('/').some(part => part.startsWith('.')) || ['Info', 'data', 'server'].includes(req.path.split('/')[1])) return res.sendStatus(404);
     next();
   });
   app.get('/sw.js', (_req, res, next) => {

@@ -4,9 +4,9 @@ Leia este arquivo antes de implementar qualquer mudança, independentemente do a
 
 ## Produto e preservação
 
-Aplicação pessoal de trabalho, laudos e finanças em JavaScript, Vite e Express. Preservar as regras existentes e todos os dados. O Casaê é referência visual, não outro produto a ser modificado. Adaptar sua navegação arredondada, espaçamento e hierarquia ao tema escuro do Puzoto Life.
+Aplicação pessoal de trabalho, laudos e finanças em JavaScript, Vite e Express. Preservar as regras existentes e todos os dados. O Puzoto Life mantém identidade própria em tema escuro; referências externas de design já foram removidas do workspace e não devem ser reintroduzidas.
 
-O backup local `Info/`, criado antes da modernização, contém snapshot SQLite consistente, código, anexos e manifesto SHA-256. É privado e imutável. Não publicar dados, bancos, backups, planilhas, credenciais ou o Casaê no GitHub, artifacts de CI ou hospedagem estática. Antes de migrar, conferir contagens, integridade, relações e totais; testar restauração. Nunca rodar testes sobre o banco real.
+O backup local `Info/`, criado antes da modernização, contém snapshot SQLite consistente, código, anexos e manifesto SHA-256. É privado e imutável. Não publicar dados, bancos, backups, planilhas ou credenciais no GitHub, artifacts de CI ou hospedagem estática. Antes de migrar, conferir contagens, integridade, relações e totais; testar restauração. Nunca rodar testes sobre o banco real.
 
 ## GitHub e entregas (instrução permanente do proprietário)
 

@@ -118,21 +118,21 @@ export function renderAjudaPage() {
       icon: 'database',
       color: '#f59e0b',
       title: '8. Backup',
-      description: 'Antes de grandes alterações, sempre crie um backup manual. Rotina recomendada:',
+      description: 'Em produção, os dados ficam no PostgreSQL do Supabase. Rotina recomendada:',
       items: [
-        'Criar backup semanalmente.',
-        'Criar backup antes de importar dados.',
-        'Criar backup antes de restaurar.',
-        'Nunca apagar a pasta <code>data</code>.',
-        'Nunca apagar <code>data/puzoto_life.db</code>.',
-        'Nunca apagar <code>data/backups</code>.'
-      ]
+        'Fazer a exportação JSON consistente em <strong>Sistema &gt; Backup</strong>.',
+        'Conferir periodicamente a retenção de backup do Supabase.',
+        'Validar o procedimento de restauração antes de uma emergência.',
+        'Preservar os diretórios privados <code>Info/</code> e <code>data/</code> como histórico local.'
+      ],
+      alert: '<strong>Atenção:</strong> restauração e importação na nuvem exigem procedimento controlado; não substitua a base Supabase por um arquivo SQLite.',
+      alertColor: '#f59e0b'
     },
     {
       icon: 'download-cloud',
       color: '#06b6d4',
       title: '9. Importar dados',
-      description: 'Use <strong>Sistema &gt; Importar Dados</strong> para importar arquivos JSON exportados pelo próprio Puzoto Life. O sistema:',
+      description: 'A importação pela interface é restrita ao modo local enquanto a restauração na nuvem não estiver validada. No modo local, o sistema:',
       listType: 'ul',
       items: [
         'valida o arquivo;',
@@ -168,15 +168,15 @@ export function renderAjudaPage() {
     {
       icon: 'power',
       color: '#22c55e',
-      title: '12. Inicialização automática',
-      description: 'O Puzoto Life foi configurado para iniciar com o Windows. Fluxo normal:',
+      title: '12. Acesso ao aplicativo',
+      description: 'O Puzoto Life funciona pela internet e não precisa iniciar servidores com o Windows:',
       items: [
-        'Ligue o computador.',
-        'Aguarde alguns segundos.',
-        'Clique no ícone fixado do Puzoto Life na barra de tarefas.',
-        'O sistema deve abrir funcionando.'
+        'Abra <strong>https://puzoto-life.vercel.app/</strong> no navegador.',
+        'Ou clique no ícone do PWA instalado no computador ou celular.',
+        'Entre com a conta do proprietário.',
+        'Mantenha conexão com a internet para carregar e salvar informações.'
       ],
-      alert: '<strong>Se não abrir:</strong><br>1. Execute <code>local-tools/status_puzoto_life.bat</code><br>2. Verifique se backend e frontend estão online.<br>3. Se necessário, execute <code>local-tools/iniciar_puzoto_life.bat</code>.',
+      alert: '<strong>Se não abrir:</strong><br>1. Confirme a conexão com a internet.<br>2. Abra o endereço publicado diretamente no navegador.<br>3. Não execute servidores locais ou scripts de inicialização do Windows.',
       alertColor: '#22c55e'
     }
   ];
@@ -239,23 +239,20 @@ export function renderAjudaPage() {
     ">
       ${cardsHtml}
 
-      <!-- 13. O que nunca apagar -->
+      <!-- 13. Segurança e dados -->
       <div class="form-card animate-in" style="padding: 24px; animation-delay: 0.5s; border-color: var(--color-danger);">
         <div style="display: flex; gap: 16px; align-items: flex-start;">
           <div style="width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; background: #ef444415; display: flex; align-items: center; justify-content: center;">
             <i data-lucide="alert-triangle" style="width: 22px; height: 22px; color: var(--color-danger);"></i>
           </div>
           <div style="flex: 1; min-width: 0;">
-            <h3 style="font-weight: 600; color: var(--color-danger); margin-bottom: 8px; font-size: 1.05rem;">13. O que NUNCA apagar</h3>
-            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">A pasta data contém o banco e backups. Se apagar sem backup, você pode perder seus dados.</p>
+            <h3 style="font-weight: 600; color: var(--color-danger); margin-bottom: 8px; font-size: 1.05rem;">13. Segurança e dados</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">A base de produção fica no Supabase. Proteja a conta e os materiais privados usados para recuperação.</p>
             <ul style="list-style: disc; padding-left: 16px; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--text-secondary);">
-              <li><code>data/</code></li>
-              <li><code>data/puzoto_life.db</code></li>
-              <li><code>data/backups/</code></li>
-              <li><code>server/</code></li>
-              <li><code>src/</code></li>
-              <li><code>local-tools/</code></li>
-              <li><code>package.json</code> e <code>package-lock.json</code></li>
+              <li>Não compartilhe senha, cookies, chaves ou conexão do banco.</li>
+              <li>Não execute testes contra a base pessoal do Supabase.</li>
+              <li>Não publique <code>.env</code>, <code>Info/</code>, <code>data/</code> ou exportações.</li>
+              <li>Não restaure dados sem conferir integridade, relações e totais.</li>
             </ul>
           </div>
         </div>
