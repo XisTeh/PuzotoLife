@@ -303,7 +303,7 @@ export async function obterRecebimentosPendentes(mes) {
         SELECT 
           arquivo_excel_backup,
           MAX(data) as max_data,
-          COUNT(*) as qtd,
+          SUM(COALESCE(quantidade, 1)) as qtd,
           SUM(total) as valor,
           SUM(CASE WHEN status = 'recebido' THEN 1 ELSE 0 END) as qtd_recebidos,
           COUNT(*) as total_itens
@@ -319,6 +319,7 @@ export async function obterRecebimentosPendentes(mes) {
           pagador: 'Dr. Ranon / RX',
           tipo: 'planilha',
           referencia: p.arquivo_excel_backup,
+          referencia_exibicao: converterMesParaReferencia(mesFilter),
           qtd: p.qtd,
           valor: p.valor,
           status: p.qtd_recebidos === p.total_itens ? 'recebido' : 'fechado'

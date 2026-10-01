@@ -1,12 +1,14 @@
 # Entregas e estado real
 
-## Salvamento do Dr. Ranon e erros de navegação — PR #66 publicado; Issue #67 em correção
+## Salvamento e histórico do Dr. Ranon — PRs #66 e #68 publicados; Issue #69 em correção
 
 Issue #65, classificação Correção. O PR #66 foi mesclado no commit `f9acc75` em 01/10/2026 após `quality`, `security` e `e2e` aprovados e publicado pela Vercel. O smoke check público passou, mas o proprietário informou que o salvamento ainda falhava.
 
 O fluxo anterior mantinha a transação PostgreSQL e o lock global enquanto montava o Excel, aguardava o Storage privado e inseria cada linha separadamente. Em lote de 493 laudos, essa sequência podia exceder o limite de 30 segundos da função e manter outras gravações bloqueadas. A correção captura um snapshot consistente, gera e envia o arquivo fora da transação e, sob o lock curto, confere que o lote não mudou e insere os registros em grupos de até 500 em uma só consulta por grupo. Se houver alteração concorrente, a API responde conflito recuperável e tenta remover o arquivo preparado; a limpeza dos pendentes só ocorre após conferir todos os inserts dentro da mesma transação.
 
-O erro residual foi localizado: o nome `Laudos 09-26_<uuid>.xlsx` continha espaço, enquanto `validPath()` do Storage privado só aceita caracteres alfanuméricos, `_`, `-`, `/` e extensão. O upload falhava antes de qualquer gravação do histórico e o endpoint devolvia a mensagem genérica. A Issue #67 remove espaços do nome gerado, usando o mesmo nome seguro no Storage e nas referências do histórico. A confirmação do modal ignora resposta/toast quando a página é removida durante a gravação; sete cargas de página descartam respostas antigas. Os updates de `dompurify`, `ip-address` e `brace-expansion` do PR #66 eliminaram os avisos encontrados durante a entrega. Nenhuma alteração foi feita à base Supabase nem aos dados existentes. Rollback: reverter o PR da Issue #67; não altera schema nem dados já gravados.
+O erro residual foi localizado: o nome `Laudos 09-26_<uuid>.xlsx` continha espaço, enquanto `validPath()` do Storage privado só aceita caracteres alfanuméricos, `_`, `-`, `/` e extensão. O upload falhava antes de qualquer gravação do histórico e o endpoint devolvia a mensagem genérica. A Issue #67 remove espaços do nome gerado no PR #68 (`c33ec5d`), mantendo o nome compatível entre Storage e histórico. A confirmação do modal ignora resposta/toast quando a página é removida durante a gravação; sete cargas de página descartam respostas antigas. Os updates de `dompurify`, `ip-address` e `brace-expansion` do PR #66 eliminaram avisos de segurança. Nenhuma alteração foi feita à base Supabase nem aos dados existentes.
+
+A Issue #69 corrige a linha salva no Histórico por Pagador: a quantidade passa a somar `laudos_ranon.quantidade` (493 exames em 337 registros no caso reportado), enquanto `COUNT(*)` continua sendo usado apenas para verificar o status de recebimento; a referência mostrada passa a ser o mês/ano em vez do nome técnico com UUID. A chave original fica preservada nas ações de recebimento. Não há backfill ou alteração de dados pessoais.
 
 ## Remoção da inicialização local e da referência de design — branch codex/remove-local-startup-and-casae
 

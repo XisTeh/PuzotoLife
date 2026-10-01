@@ -473,7 +473,7 @@ async function renderPagadorTab() {
         </div>
       </td>
       <td style="color: var(--text-secondary); font-size: 0.85rem; text-transform: capitalize;">${p.tipo === 'pendente' ? 'Em Aberto' : p.tipo}</td>
-      <td style="font-weight: 500; ${p.tipo === 'pendente' ? 'color: #f97316; font-style: italic;' : ''}">${p.tipo === 'remessa' ? formatarDataBR(p.data_referencia || p.referencia) : (p.tipo === 'mensal' ? p.referencia : p.referencia.replace('.xlsx',''))}</td>
+      <td style="font-weight: 500; ${p.tipo === 'pendente' ? 'color: #f97316; font-style: italic;' : ''}">${p.tipo === 'remessa' ? formatarDataBR(p.data_referencia || p.referencia) : (p.referencia_exibicao || (p.tipo === 'mensal' ? p.referencia : p.referencia.replace('.xlsx','')))}</td>
       <td>${p.qtd}</td>
       <td style="font-weight: 600; color: ${p.tipo === 'pendente' ? '#f97316' : 'var(--color-blue)'}">${formatarMoedaBR(p.valor)}</td>
       <td>${badgeStatus(p.status)}</td>
