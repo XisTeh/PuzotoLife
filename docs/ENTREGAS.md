@@ -1,12 +1,12 @@
 # Entregas e estado real
 
-## Confiabilidade ao salvar planilha do Dr. Ranon — branch codex/fix-ranon-spreadsheet-errors
+## Salvamento do Dr. Ranon e erros de navegação — PR #66 publicado; Issue #67 em correção
 
-Issue #65, classificação Correção. Implementação local em andamento; CI, revisão e publicação pendentes.
+Issue #65, classificação Correção. O PR #66 foi mesclado no commit `f9acc75` em 01/10/2026 após `quality`, `security` e `e2e` aprovados e publicado pela Vercel. O smoke check público passou, mas o proprietário informou que o salvamento ainda falhava.
 
 O fluxo anterior mantinha a transação PostgreSQL e o lock global enquanto montava o Excel, aguardava o Storage privado e inseria cada linha separadamente. Em lote de 493 laudos, essa sequência podia exceder o limite de 30 segundos da função e manter outras gravações bloqueadas. A correção captura um snapshot consistente, gera e envia o arquivo fora da transação e, sob o lock curto, confere que o lote não mudou e insere os registros em grupos de até 500 em uma só consulta por grupo. Se houver alteração concorrente, a API responde conflito recuperável e tenta remover o arquivo preparado; a limpeza dos pendentes só ocorre após conferir todos os inserts dentro da mesma transação.
 
-A confirmação do modal também ignora a resposta/toast quando a página do Dr. Ranon foi removida durante a gravação e verifica se o botão ainda existe ao concluir. As cargas iniciais de sete páginas descartam respostas e notificações de erro da navegação anterior. O lockfile atualiza `dompurify`, `ip-address` e `brace-expansion` para versões corrigidas por avisos publicados durante esta entrega; `npm audit --audit-level=high` local encontrou zero vulnerabilidades depois da atualização. Supabase, PostgreSQL e dados existentes não são alterados por esta correção. Rollback: reverter o PR; a operação anterior e o banco permanecem compatíveis.
+O erro residual foi localizado: o nome `Laudos 09-26_<uuid>.xlsx` continha espaço, enquanto `validPath()` do Storage privado só aceita caracteres alfanuméricos, `_`, `-`, `/` e extensão. O upload falhava antes de qualquer gravação do histórico e o endpoint devolvia a mensagem genérica. A Issue #67 remove espaços do nome gerado, usando o mesmo nome seguro no Storage e nas referências do histórico. A confirmação do modal ignora resposta/toast quando a página é removida durante a gravação; sete cargas de página descartam respostas antigas. Os updates de `dompurify`, `ip-address` e `brace-expansion` do PR #66 eliminaram os avisos encontrados durante a entrega. Nenhuma alteração foi feita à base Supabase nem aos dados existentes. Rollback: reverter o PR da Issue #67; não altera schema nem dados já gravados.
 
 ## Remoção da inicialização local e da referência de design — branch codex/remove-local-startup-and-casae
 

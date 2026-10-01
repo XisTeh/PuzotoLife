@@ -2,9 +2,9 @@
 
 Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](https://supabase.com/dashboard/project/pbumqabetyzvuathyspn).
 
-## Correção de gravação do Dr. Ranon em preparação
+## Falha no nome do backup do Dr. Ranon em correção
 
-Em 01/10/2026 foi identificada uma gravação que mantinha a transação do PostgreSQL aberta durante a geração e o envio do backup ao Storage, além de inserir lotes grandes linha a linha. A branch `codex/fix-ranon-spreadsheet-errors` prepara o arquivo fora da transação e grava o histórico em lote depois de confirmar que os pendentes não mudaram. Nenhum arquivo, tabela, credencial ou configuração do projeto Supabase foi alterado localmente; os gates do PR validam com dados sintéticos, nunca na base pessoal.
+O PR #66 reduziu a duração da transação e foi publicado, mas o proprietário confirmou que a planilha ainda não salvava. A causa residual é um espaço no nome do arquivo, rejeitado pelo validador de caminhos do Storage privado. A Issue #67 troca por um nome compatível. Essa correção não exige migração, alteração de bucket ou mudança de credenciais; nenhuma alteração foi feita à base pessoal. A validação automatizada usa dados sintéticos, nunca a base Supabase pessoal.
 
 ## Estado atual
 

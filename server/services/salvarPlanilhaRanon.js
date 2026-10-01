@@ -58,7 +58,10 @@ export async function salvarPlanilhaRanon(mesReferencia) {
 
     const buffer = await gerarBufferExcel(laudos, chavePix);
     const [mes, ano] = mesReferencia.split('/');
-    const nomeArquivo = `Laudos ${mes}-${ano.slice(2)}_${randomUUID()}.xlsx`;
+    // Storage private paths permit only alphanumeric characters, underscores,
+    // hyphens and slashes. Keep the persisted filename identical and valid in
+    // both local backups and the cloud bucket.
+    const nomeArquivo = `Laudos_${mes}-${ano.slice(2)}_${randomUUID()}.xlsx`;
     if (cloudFiles) {
       createdFile = `laudos_ranon/${nomeArquivo}`;
       await uploadPrivateFile(createdFile, Buffer.from(buffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
