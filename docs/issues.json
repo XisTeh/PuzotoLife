@@ -150,5 +150,13 @@
     "body": "## Problema\nO salvamento da planilha Dr. Ranon gera um nome com espaço, mas o validador do caminho de Storage privado rejeita espaços. Isso faz toda tentativa de salvar falhar em produção antes de gravar o histórico.\n\n## Correção proposta\nGerar o arquivo de backup com nome compatível com o Storage (sem espaços), mantendo o vínculo consistente entre Storage e histórico. Validar o fluxo com banco local de teste e manter CI obrigatório.\n\n## Classificação principal\nCorreção",
     "number": 67,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/67"
+  },
+  {
+    "key": "ranon-history-display",
+    "type": "Correção",
+    "title": "Exibir referência mensal e quantidade real das planilhas Ranon",
+    "body": "## Problema\nNo Histórico por Pagador, planilhas do Dr. Ranon exibem o nome técnico do arquivo com UUID e `COUNT(*)` como quantidade. Para a planilha de 09/2026 isso mostra 337 linhas, embora os exames lançados somem 493 unidades.\n\n## Correção\nExibir mês/ano como referência legível e calcular Qtd Exames pela soma de `laudos_ranon.quantidade`, preservando o nome interno para identificar a planilha no recebimento. Não alterar registros do acervo sem necessidade.\n\n## Classificação principal\nCorreção",
+    "number": 69,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/69"
   }
 ]

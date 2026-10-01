@@ -2,9 +2,9 @@
 
 Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](https://supabase.com/dashboard/project/pbumqabetyzvuathyspn).
 
-## Falha no nome do backup do Dr. Ranon em correção
+## Histórico do Dr. Ranon
 
-O PR #66 reduziu a duração da transação e foi publicado, mas o proprietário confirmou que a planilha ainda não salvava. A causa residual é um espaço no nome do arquivo, rejeitado pelo validador de caminhos do Storage privado. A Issue #67 troca por um nome compatível. Essa correção não exige migração, alteração de bucket ou mudança de credenciais; nenhuma alteração foi feita à base pessoal. A validação automatizada usa dados sintéticos, nunca a base Supabase pessoal.
+O PR #66 reduziu a duração da transação e o PR #68 corrigiu o espaço no nome do backup rejeitado pelo Storage privado. A Issue #69 ajusta apenas a referência e o total de exames exibidos: deriva a quantidade somando os itens gravados, sem backfill ou escrita na base. Nenhuma dessas correções exige migração, alteração de bucket ou mudança de credenciais. Validações automatizadas usam dados sintéticos, nunca a base Supabase pessoal.
 
 ## Estado atual
 
