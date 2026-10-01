@@ -7,7 +7,7 @@ import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getDatabase, getDatabasePath, atomic, databaseDialect } from '../database/connection.js';
+import { getDatabase, getDatabasePath, atomic, snapshot, databaseDialect } from '../database/connection.js';
 import { gerarBufferExcel } from './exportarExcelRanon.js';
 import { registrarAuditoria } from './auditoria.js';
 import { removePrivateFile, uploadPrivateFile } from '../storage/privateFiles.js';
@@ -17,6 +17,20 @@ const __dirname = path.dirname(__filename);
 
 // Pasta de backups
 const backupFolder = () => path.join(path.dirname(getDatabasePath()), 'backups', 'laudos_ranon');
+const CAMPOS_PENDENTES = ['id', 'registro_paciente', 'quantidade', 'valor_unitario', 'total', 'data', 'horario', 'observacao', 'criado_em', 'atualizado_em'];
+const TAMANHO_LOTE_INSERCAO = 500;
+
+function compararLote(atual, original) {
+  return atual.length === original.length && atual.every((laudo, index) =>
+    CAMPOS_PENDENTES.every(campo => (laudo[campo] ?? null) === (original[index][campo] ?? null))
+  );
+}
+
+function conflitoDeLote() {
+  const error = new Error('Os laudos pendentes mudaram enquanto a planilha era preparada. Atualize a lista e tente novamente.');
+  error.code = 'RANON_PENDING_BATCH_CHANGED';
+  return error;
+}
 
 /**
  * Salvar Planilha: fecha o lote pendente do Dr. Ranon / RX.
@@ -27,102 +41,84 @@ export async function salvarPlanilhaRanon(mesReferencia) {
   const cloudFiles = databaseDialect() === 'postgres' && process.env.NODE_ENV !== 'test';
   let createdFile;
   try {
-    return await atomic(async () => {
-  const db = getDatabase();
-
-  // 1. Buscar laudos pendentes
-  const laudos = (await db.prepare(`
-    SELECT * FROM laudos_ranon_pendentes
-    ORDER BY data ASC, criado_em ASC
-  `).all());
-
-  if (laudos.length === 0) {
-    return { success: false, message: 'Não há laudos pendentes para salvar.' };
-  }
-
-  // 2. Buscar chave PIX
-  const pixRow = (await db.prepare("SELECT valor FROM configuracoes WHERE chave = 'chave_pix'").get());
-  const chavePix = pixRow ? pixRow.valor : 'ronnanpc@gmail.com';
-
-  // 3. Gerar arquivo Excel de backup
-  const buffer = await gerarBufferExcel(laudos, chavePix);
-
-  // 4. Determinar nome do arquivo
-  const partes = mesReferencia.split('/');
-  const mes = partes[0];
-  const ano = partes[1].slice(2);
-  const nomeBase = `Laudos ${mes}-${ano}`;
-
-  const nomeArquivo = nomeBase + '_' + randomUUID() + '.xlsx';
-  if (cloudFiles) {
-    createdFile = `laudos_ranon/${nomeArquivo}`;
-    await uploadPrivateFile(createdFile, Buffer.from(buffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  } else {
-    const folder = backupFolder();
-    await fs.mkdir(folder, { recursive: true });
-    const caminhoCompleto = path.join(folder, nomeArquivo);
-    await fs.writeFile(caminhoCompleto, Buffer.from(buffer), { flag: 'wx' });
-    createdFile = caminhoCompleto;
-  }
-
-  // 6. Transação: mover pendentes → histórico + limpar pendentes
-  const totalQuantidade = laudos.reduce((acc, l) => acc + (l.quantidade || 1), 0);
-  const totalValor = laudos.reduce((acc, l) => acc + l.total, 0);
-
-  const inserirHistorico = db.prepare(`
-    INSERT INTO laudos_ranon 
-      (registro_paciente, quantidade, valor_unitario, total, data, horario, status, arquivo_excel_backup, observacao)
-    VALUES 
-      (@registro_paciente, @quantidade, @valor_unitario, @total, @data, @horario, @status, @arquivo_excel_backup, @observacao)
-  `);
-
-  const transacao = db.transaction(async () => {
-    // Copiar cada laudo para histórico
-    for (const laudo of laudos) {
-      (await inserirHistorico.run({
-        registro_paciente: laudo.registro_paciente,
-        quantidade: laudo.quantidade || 1,
-        valor_unitario: laudo.valor_unitario,
-        total: laudo.total,
-        data: laudo.data,
-        horario: laudo.horario || null,
-        status: 'fechado',
-        arquivo_excel_backup: nomeArquivo,
-        observacao: laudo.observacao || null
-      }));
-    }
-
-    // Limpar pendentes
-    (await db.prepare('DELETE FROM laudos_ranon_pendentes').run());
-
-    // Registrar auditoria
-    (await registrarAuditoria(
-      'salvar_planilha_ranon',
-      'Planilha do Dr. Ranon / RX salva com sucesso',
-      laudos,
-      {
-        quantidade: totalQuantidade,
-        total: totalValor,
-        arquivo_excel_backup: nomeArquivo,
-        mes_referencia: mesReferencia,
-        salvo_em: new Date().toISOString()
-      }
-    ));
-  });
-
-  (await transacao());
-
-  return {
-    success: true,
-    message: 'Planilha salva com sucesso.',
-    arquivo: nomeArquivo,
-    resumo: {
-      quantidade: totalQuantidade,
-      total: totalValor,
-      mes_referencia: mesReferencia
-    }
-  };
+    // Capture a consistent input, then generate and upload the workbook without
+    // holding PostgreSQL's owner lock or an open transaction during network IO.
+    const lote = await snapshot(async () => {
+      const db = getDatabase();
+      const laudos = await db.prepare(`
+        SELECT * FROM laudos_ranon_pendentes
+        ORDER BY data ASC, criado_em ASC, id ASC
+      `).all();
+      const pixRow = await db.prepare("SELECT valor FROM configuracoes WHERE chave = 'chave_pix'").get();
+      return { laudos, chavePix: pixRow ? pixRow.valor : 'ronnanpc@gmail.com' };
     });
+    const { laudos, chavePix } = lote;
+
+    if (laudos.length === 0) return { success: false, message: 'Não há laudos pendentes para salvar.' };
+
+    const buffer = await gerarBufferExcel(laudos, chavePix);
+    const [mes, ano] = mesReferencia.split('/');
+    const nomeArquivo = `Laudos ${mes}-${ano.slice(2)}_${randomUUID()}.xlsx`;
+    if (cloudFiles) {
+      createdFile = `laudos_ranon/${nomeArquivo}`;
+      await uploadPrivateFile(createdFile, Buffer.from(buffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    } else {
+      const folder = backupFolder();
+      await fs.mkdir(folder, { recursive: true });
+      createdFile = path.join(folder, nomeArquivo);
+      await fs.writeFile(createdFile, Buffer.from(buffer), { flag: 'wx' });
+    }
+
+    const totalQuantidade = laudos.reduce((acc, laudo) => acc + (laudo.quantidade || 1), 0);
+    const totalValor = laudos.reduce((acc, laudo) => acc + laudo.total, 0);
+    const resultado = await atomic(async () => {
+      const db = getDatabase();
+      const atuais = await db.prepare(`
+        SELECT * FROM laudos_ranon_pendentes
+        ORDER BY data ASC, criado_em ASC, id ASC
+      `).all();
+      if (!compararLote(atuais, laudos)) throw conflitoDeLote();
+
+      for (let inicio = 0; inicio < laudos.length; inicio += TAMANHO_LOTE_INSERCAO) {
+        const parte = laudos.slice(inicio, inicio + TAMANHO_LOTE_INSERCAO);
+        const values = parte.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+        const params = parte.flatMap(laudo => [
+          laudo.registro_paciente, laudo.quantidade || 1, laudo.valor_unitario, laudo.total,
+          laudo.data, laudo.horario || null, 'fechado', nomeArquivo, laudo.observacao || null,
+        ]);
+        const inseridos = await db.prepare(`
+          INSERT INTO laudos_ranon
+            (registro_paciente, quantidade, valor_unitario, total, data, horario, status, arquivo_excel_backup, observacao)
+          VALUES ${values}
+        `).run(...params);
+        if (inseridos.changes !== parte.length) throw new Error('Não foi possível transferir todos os laudos para o histórico.');
+      }
+
+      const removidos = await db.prepare('DELETE FROM laudos_ranon_pendentes').run();
+      if (removidos.changes !== laudos.length) throw conflitoDeLote();
+
+      await registrarAuditoria(
+        'salvar_planilha_ranon',
+        'Planilha do Dr. Ranon / RX salva com sucesso',
+        laudos,
+        {
+          quantidade: totalQuantidade,
+          total: totalValor,
+          arquivo_excel_backup: nomeArquivo,
+          mes_referencia: mesReferencia,
+          salvo_em: new Date().toISOString(),
+        },
+      );
+
+      return {
+        success: true,
+        message: 'Planilha salva com sucesso.',
+        arquivo: nomeArquivo,
+        resumo: { quantidade: totalQuantidade, total: totalValor, mes_referencia: mesReferencia },
+      };
+    });
+    createdFile = undefined;
+    return resultado;
   } catch (error) {
     if (createdFile) {
       if (cloudFiles) await removePrivateFile(createdFile).catch(() => {});

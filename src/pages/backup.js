@@ -1,6 +1,7 @@
 import { apiFetch } from '../services/http.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 /**
  * Puzoto Life — Página de Backup
  * Backup, restauração e exportação de dados.
@@ -197,20 +198,23 @@ export function renderBackupPage() {
 // ═══════════════════════════════════════
 
 export async function initBackup() {
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
   try {
     const [info, backups] = await Promise.all([
       fetchAPI('/backup/info'),
       fetchAPI('/backup/listar')
     ]);
+    if (!isActivePageRoot(root)) return;
     infoAtual = info;
     backupsLista = backups;
     renderInfo();
     renderBackupList();
   } catch (err) {
-    console.error('[BACKUP] Erro ao carregar:', err);
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar dados de backup.', 'error');
   }
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  if (isActivePageRoot(root) && typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function renderInfo() {

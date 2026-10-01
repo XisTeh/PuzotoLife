@@ -2,6 +2,10 @@
 
 Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](https://supabase.com/dashboard/project/pbumqabetyzvuathyspn).
 
+## Correção de gravação do Dr. Ranon em preparação
+
+Em 01/10/2026 foi identificada uma gravação que mantinha a transação do PostgreSQL aberta durante a geração e o envio do backup ao Storage, além de inserir lotes grandes linha a linha. A branch `codex/fix-ranon-spreadsheet-errors` prepara o arquivo fora da transação e grava o histórico em lote depois de confirmar que os pendentes não mudaram. Nenhum arquivo, tabela, credencial ou configuração do projeto Supabase foi alterado localmente; a validação será feita com dados sintéticos nos gates do PR, nunca na base pessoal.
+
 ## Estado atual
 
 Login e serviços assíncronos PostgreSQL estão implementados. Em 08/09/2026, as migrações foram aplicadas no projeto real e um snapshot corrente foi importado com paridade: 23 tabelas e 5.386 registros, integridade OK e zero violações de chave estrangeira. A conexão restrita `puzoto_runtime` foi testada no pooler com TLS verificado e não consegue executar DDL; o projeto também passou a rejeitar conexões sem SSL. O bucket privado `puzoto-private` foi criado e validado. O commit revisado `14e22fe` está publicado na Vercel e as rotas públicas passaram no smoke test automatizado.

@@ -371,10 +371,13 @@ window.confirmarSalvarPlanilha = async function() {
   if (isSalvando) return;
   isSalvando = true;
 
+  const root = document.getElementById('form-lancamento');
   const btn = document.getElementById('btn-confirmar-salvar');
-  const originalHtml = btn.innerHTML;
-  btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Salvando...';
-  lucide.createIcons();
+  const originalHtml = btn?.innerHTML || '';
+  if (btn) {
+    btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Salvando...';
+    lucide.createIcons();
+  }
 
   try {
     const mesRef = document.getElementById('form-mes-referencia').value;
@@ -386,6 +389,7 @@ window.confirmarSalvarPlanilha = async function() {
     });
 
     const json = await response.json();
+    if (!root?.isConnected) return;
 
     if (!json.ok) {
       throw new Error(json.data?.message || json.error || 'Erro ao salvar planilha.');
@@ -396,11 +400,14 @@ window.confirmarSalvarPlanilha = async function() {
     showToast(`Planilha salva com sucesso! Arquivo: ${resultado.arquivo}`, 'success');
     await recarregarDados();
   } catch (err) {
+    if (!root?.isConnected) return;
     showToast(err.message || 'Não foi possível salvar a planilha.', 'error');
   } finally {
     isSalvando = false;
-    btn.innerHTML = originalHtml;
-    lucide.createIcons();
+    if (btn?.isConnected) {
+      btn.innerHTML = originalHtml;
+      lucide.createIcons();
+    }
   }
 }
 

@@ -1,6 +1,7 @@
 import { apiFetch } from '../services/http.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 
 const API_BASE = '/api/financas';
 const safeColor = (value, fallback) => /^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? value : fallback;
@@ -54,6 +55,8 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export async function initCartoes() {
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
   try {
     const [cData, frData, fData, pData, catData, cpData] = await Promise.all([
       fetchAPI('/cartoes'),
@@ -63,6 +66,7 @@ export async function initCartoes() {
       fetchAPI('/categorias'),
       fetchAPI('/cartoes/compras-parceladas')
     ]);
+    if (!isActivePageRoot(root)) return;
     
     cartoes = cData;
     faturasResumo = frData;
@@ -77,6 +81,7 @@ export async function initCartoes() {
     renderFaturas();
     renderComprasParceladas();
   } catch (error) {
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar dados: ' + error.message, 'error');
   }
 }

@@ -229,8 +229,10 @@ router.post('/ranon/salvar-planilha', async (req, res) => {
     const resultado = await salvarPlanilhaRanon(mes_referencia);
     res.json({ ok: resultado.success, data: resultado });
   } catch (err) {
-    logApiError(req, res, err, 500);
-    res.status(500).json({ ok: false, error: process.env.NODE_ENV === 'production' ? 'Não foi possível concluir a operação.' : err.message });
+    const conflito = err.code === 'RANON_PENDING_BATCH_CHANGED';
+    const status = conflito ? 409 : 500;
+    logApiError(req, res, err, status);
+    res.status(status).json({ ok: false, error: process.env.NODE_ENV === 'production' && !conflito ? 'Não foi possível concluir a operação.' : err.message });
   }
 });
 

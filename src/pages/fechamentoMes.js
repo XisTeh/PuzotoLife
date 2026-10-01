@@ -1,6 +1,7 @@
 import { apiFetch } from '../services/http.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { formatarMoedaBR, formatarDataBR } from '../utils/formatters.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 
 const API_BASE = '/api';
 
@@ -47,21 +48,26 @@ function parseReferenciaVisivel(mesYYYYMM) {
 // ═══════════════════════════════════════
 
 export async function initFechamentoMes() {
-  const mesInput = document.getElementById('filtro-mes');
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
+  const mesInput = root.querySelector('#filtro-mes');
   if (mesInput) mesInput.value = getMesAtualInput();
 
-  await carregarHistorico();
+  await carregarHistorico(root);
 }
 
-async function carregarHistorico() {
+async function carregarHistorico(root = getActivePageRoot()) {
+  if (!isActivePageRoot(root)) return;
   try {
     const res = await apiFetch(`${API_BASE}/fechamentos/mensais`);
     const json = await res.json();
+    if (!isActivePageRoot(root)) return;
     if (json.ok) {
       historicoFechamentos = json.data;
       renderListaHistorico();
     }
   } catch (err) {
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar histórico: ' + err.message, 'error');
   }
 }

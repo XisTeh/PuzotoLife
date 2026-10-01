@@ -3,6 +3,7 @@ import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatte
 import { Chart, registerables } from 'chart.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 
 Chart.register(...registerables);
 
@@ -57,14 +58,21 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export async function initPessoasDividas() {
-  document.getElementById('pd-filtro-mes').value = mesAtual;
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
+  const monthFilter = root.querySelector('#pd-filtro-mes');
+  if (!monthFilter) return;
+  monthFilter.value = mesAtual;
   await Promise.all([loadPessoas(), loadDados()]);
 }
 
 async function loadPessoas() {
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
   try {
     pessoas = await fetchAPI('/pessoas-dividas/nomes');
-    const datalist = document.getElementById('pessoas-list');
+    if (!isActivePageRoot(root)) return;
+    const datalist = root.querySelector('#pessoas-list');
     if (datalist) {
       datalist.innerHTML = pessoas.map(p => `<option value="${escapeHtml(p)}">`).join('');
     }
@@ -82,6 +90,8 @@ window.filtrarPessoasDividas = async function() {
 };
 
 async function loadDados() {
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
   try {
     const query = new URLSearchParams({
       mes: mesAtual,
@@ -95,6 +105,7 @@ async function loadDados() {
       fetchAPI(`/pessoas-dividas/resumo?mes=${mesAtual}`),
       fetchAPI('/dividas-parceladas')
     ]);
+    if (!isActivePageRoot(root)) return;
     
     registros = cData;
     resumo = rData;
@@ -106,6 +117,7 @@ async function loadDados() {
     renderTabela();
     renderDividasParceladas();
   } catch (err) {
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar dados: ' + err.message, 'error');
   }
 }
