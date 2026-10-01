@@ -2,6 +2,7 @@ import { apiFetch } from '../services/http.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { Chart, registerables } from 'chart.js';
 import { formatarMoedaBR } from '../utils/formatters.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 
 Chart.register(...registerables);
 
@@ -55,13 +56,16 @@ export async function initRelatorioTrabalho() {
 }
 
 async function carregarDados() {
-  const mes = document.getElementById('filtro-mes')?.value || getMesAtual();
-  const empresa = document.getElementById('filtro-empresa')?.value || 'todas';
-  const status = document.getElementById('filtro-status')?.value || 'todos';
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
+  const mes = root.querySelector('#filtro-mes')?.value || getMesAtual();
+  const empresa = root.querySelector('#filtro-empresa')?.value || 'todas';
+  const status = root.querySelector('#filtro-status')?.value || 'todos';
 
   try {
     const res = await apiFetch(`${API_BASE}/trabalho/analytics?mes=${mes}&empresa=${empresa}&status=${status}`);
     const json = await res.json();
+    if (!isActivePageRoot(root)) return;
 
     if (!json.ok) throw new Error(json.error);
 
@@ -73,6 +77,7 @@ async function carregarDados() {
     renderTabelaResumo(d.por_empresa);
     renderEstadoVazio(d.cards.qtd_total === 0);
   } catch (err) {
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar analytics: ' + err.message, 'error');
   }
 }

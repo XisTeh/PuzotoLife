@@ -74,6 +74,7 @@ function setPageContent(container, content) {
 export async function renderPage(pageId) {
   const ticket = ++navigation;
   const container = document.getElementById('pageContent');
+  container.dataset.navigationTicket = String(ticket);
   container.setAttribute('aria-busy', 'true');
   const skeletonTimer = setTimeout(() => {
     if (ticket === navigation) container.innerHTML = pageSkeleton();

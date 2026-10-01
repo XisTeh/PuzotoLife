@@ -1,5 +1,13 @@
 # Entregas e estado real
 
+## Confiabilidade ao salvar planilha do Dr. Ranon — branch codex/fix-ranon-spreadsheet-errors
+
+Issue #65, classificação Correção. Implementação local em andamento; CI, revisão e publicação pendentes.
+
+O fluxo anterior mantinha a transação PostgreSQL e o lock global enquanto montava o Excel, aguardava o Storage privado e inseria cada linha separadamente. Em lote de 493 laudos, essa sequência podia exceder o limite de 30 segundos da função e manter outras gravações bloqueadas. A correção captura um snapshot consistente, gera e envia o arquivo fora da transação e, sob o lock curto, confere que o lote não mudou e insere os registros em grupos de até 500 em uma só consulta por grupo. Se houver alteração concorrente, a API responde conflito recuperável e tenta remover o arquivo preparado; a limpeza dos pendentes só ocorre após conferir todos os inserts dentro da mesma transação.
+
+A confirmação do modal também ignora a resposta/toast quando a página do Dr. Ranon foi removida durante a gravação e verifica se o botão ainda existe ao concluir. As cargas iniciais de sete páginas descartam respostas e notificações de erro da navegação anterior. O lockfile atualiza `dompurify`, `ip-address` e `brace-expansion` para versões corrigidas por avisos publicados durante esta entrega; `npm audit --audit-level=high` local encontrou zero vulnerabilidades depois da atualização. Supabase, PostgreSQL e dados existentes não são alterados por esta correção. Rollback: reverter o PR; a operação anterior e o banco permanecem compatíveis.
+
 ## Remoção da inicialização local e da referência de design — branch codex/remove-local-startup-and-casae
 
 Issue #63, classificação Correção. Em 11/09/2026, a tarefa agendada `Puzoto Life Local Server`, que chamava o arquivo inexistente `D:\Puzoto Life\local-tools\iniciar_puzoto_life_silencioso.vbs`, foi removida do Windows. A verificação posterior não encontrou outras tarefas, serviços, comandos de inicialização ou atalhos de Startup ligados ao Puzoto Life.

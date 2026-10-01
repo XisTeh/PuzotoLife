@@ -3,6 +3,7 @@ import { escapeHtml, setIconMessage } from '../security/safeDom.js';
 import { appState } from '../state.js';
 import { formatarMoedaBR } from '../utils/formatters.js';
 import { checkHealth } from '../services/api.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 
 const API_BASE = '/api';
 const safeColor = (value, fallback = 'var(--text-muted)') => /^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? value : fallback;
@@ -66,6 +67,8 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export async function initConfiguracoes() {
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
   try {
     const [cfg, emp, cat, pag] = await Promise.all([
       fetchAPI('/configuracoes'),
@@ -73,6 +76,7 @@ export async function initConfiguracoes() {
       fetchAPI('/financas/categorias?todas=true'),
       fetchAPI('/pagadores/todos')
     ]);
+    if (!isActivePageRoot(root)) return;
     
     // Converter array de configuracoes para objeto { chave: valor }
     configAtual = cfg || {};
@@ -87,11 +91,14 @@ export async function initConfiguracoes() {
     renderEmpresas();
     await window.atualizarDiagnostico();
   } catch (error) {
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar configurações: ' + error.message, 'error');
   }
 }
 
 window.atualizarDiagnostico = async function() {
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
   const btn = document.getElementById('btn-diagnostico');
   if (btn) {
     btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Verificando...';
@@ -100,8 +107,10 @@ window.atualizarDiagnostico = async function() {
   
   try {
     const health = await checkHealth();
+    if (!isActivePageRoot(root)) return;
     renderDiagnostico(health);
   } catch (err) {
+    if (!isActivePageRoot(root)) return;
     renderDiagnostico({ status: 'offline' });
   }
   

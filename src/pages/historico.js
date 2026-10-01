@@ -2,6 +2,7 @@ import { apiFetch } from '../services/http.js';
 import { formatarMoedaBR, formatarDataBR, dataAtualISO } from '../utils/formatters.js';
 import { legacyStringArgument } from '../security/legacyHandlers.js';
 import { escapeHtml, setIconMessage } from '../security/safeDom.js';
+import { getActivePageRoot, isActivePageRoot } from '../utils/pageLifecycle.js';
 
 const API_BASE = '/api';
 
@@ -48,31 +49,39 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 export async function initHistorico() {
-  document.getElementById('hist-filtro-mes').value = mesFiltro;
-  await loadEmpresas();
-  await loadDados();
+  const root = getActivePageRoot();
+  if (!isActivePageRoot(root)) return;
+  const monthFilter = root.querySelector('#hist-filtro-mes');
+  if (!monthFilter) return;
+  monthFilter.value = mesFiltro;
+  await loadEmpresas(root);
+  if (isActivePageRoot(root)) await loadDados(root);
 }
 
-async function loadEmpresas() {
+async function loadEmpresas(root = getActivePageRoot()) {
+  if (!isActivePageRoot(root)) return;
   try {
     empresas = await fetchAPI('/empresas');
-    const select = document.getElementById('hist-filtro-empresa');
+    if (!isActivePageRoot(root)) return;
+    const select = root.querySelector('#hist-filtro-empresa');
     if (select) {
       select.innerHTML = '<option value="todas">Todas Empresas</option>' +
         empresas.map(e => `<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('');
     }
-  } catch (e) {
-    console.error('Erro ao carregar empresas:', e);
+  } catch {
+    if (isActivePageRoot(root)) showToast('Não foi possível carregar a lista de empresas.', 'error');
   }
 }
 
-async function loadDados() {
+async function loadDados(root = getActivePageRoot()) {
+  if (!isActivePageRoot(root)) return;
   try {
     const queryResumo = new URLSearchParams({ mes: mesFiltro });
     if (empresaFiltro !== 'todas') queryResumo.append('empresa_id', empresaFiltro);
     if (statusFiltro !== 'todos') queryResumo.append('status', statusFiltro);
     
     historicoResumo = await fetchAPI(`/trabalho/historico/resumo?${queryResumo.toString()}`);
+    if (!isActivePageRoot(root)) return;
 
     if (abaAtiva === 'lancamentos') {
       const query = new URLSearchParams({
@@ -82,6 +91,7 @@ async function loadDados() {
       if (statusFiltro !== 'todos') query.append('status', statusFiltro);
       
       lancamentos = await fetchAPI(`/lancamentos?${query.toString()}`);
+      if (!isActivePageRoot(root)) return;
       renderLancamentosTab();
     } else {
       const query = new URLSearchParams();
@@ -89,16 +99,19 @@ async function loadDados() {
       if (statusFiltro !== 'todos') query.append('status', statusFiltro);
       
       ranonHistorico = await fetchAPI(`/ranon/historico?${query.toString()}`);
+      if (!isActivePageRoot(root)) return;
       renderRanonTab();
     }
 
     if (abaAtiva === 'pagador') {
       recebimentosPendentes = await fetchAPI(`/pagadores/recebimentos-pendentes?mes=${mesFiltro}`);
+      if (!isActivePageRoot(root)) return;
       renderPagadorTab();
     }
     
     renderMetrics();
   } catch (e) {
+    if (!isActivePageRoot(root)) return;
     showToast('Erro ao carregar dados: ' + e.message, 'error');
   }
 }

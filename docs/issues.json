@@ -134,5 +134,13 @@
     "body": "Revisar repositório, CI, segurança, persistência, desempenho, responsividade, PWA e configuração de hospedagem para identificar bloqueios concretos antes do uso remoto. Registrar evidências, prioridade, dependências e próximos passos em docs/ENTREGAS.md. Não publicar a aplicação enquanto SQLite estiver na fonte de verdade ou enquanto os gates de migração e segurança estiverem abertos.",
     "number": 24,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/24"
+  },
+  {
+    "key": "save-ranon-reliability",
+    "type": "Correção",
+    "title": "Corrigir falhas ao salvar planilha do Dr. Ranon e erros intermitentes de navegação",
+    "body": "Corrigir a falha exibida ao confirmar “Salvar planilha” no Dr. Ranon / RX, inclusive com lotes grandes. Investigar a transação, o backup Excel no armazenamento privado e possíveis limites/concorrência do runtime PostgreSQL serverless, sem perder dados pendentes nem deixar backups órfãos. Diagnosticar também os erros intermitentes ao navegar entre abas e evitar notificações causadas por respostas antigas; falhas reais devem manter mensagem útil sem expor dados pessoais. Validar com armazenamento temporário/PGlite e jornadas E2E sintéticas; nunca testar na base Supabase pessoal. Registrar riscos, limites e rollback antes da publicação.",
+    "number": 65,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/65"
   }
 ]
