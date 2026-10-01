@@ -142,5 +142,13 @@
     "body": "Corrigir a falha exibida ao confirmar “Salvar planilha” no Dr. Ranon / RX, inclusive com lotes grandes. Investigar a transação, o backup Excel no armazenamento privado e possíveis limites/concorrência do runtime PostgreSQL serverless, sem perder dados pendentes nem deixar backups órfãos. Diagnosticar também os erros intermitentes ao navegar entre abas e evitar notificações causadas por respostas antigas; falhas reais devem manter mensagem útil sem expor dados pessoais. Validar com armazenamento temporário/PGlite e jornadas E2E sintéticas; nunca testar na base Supabase pessoal. Registrar riscos, limites e rollback antes da publicação.",
     "number": 65,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/65"
+  },
+  {
+    "key": "ranon-storage-filename",
+    "type": "Correção",
+    "title": "Corrigir nome de backup Ranon incompatível com Storage privado",
+    "body": "## Problema\nO salvamento da planilha Dr. Ranon gera um nome com espaço, mas o validador do caminho de Storage privado rejeita espaços. Isso faz toda tentativa de salvar falhar em produção antes de gravar o histórico.\n\n## Correção proposta\nGerar o arquivo de backup com nome compatível com o Storage (sem espaços), mantendo o vínculo consistente entre Storage e histórico. Validar o fluxo com banco local de teste e manter CI obrigatório.\n\n## Classificação principal\nCorreção",
+    "number": 67,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/67"
   }
 ]
