@@ -77,6 +77,7 @@ export async function salvarPlanilhaRanon(mesReferencia) {
         SELECT * FROM laudos_ranon_pendentes
         ORDER BY data ASC, criado_em ASC, id ASC
       `).all();
+      if (atuais.length === 0) return { success: false, message: 'Não há laudos pendentes para salvar.' };
       if (!compararLote(atuais, laudos)) throw conflitoDeLote();
 
       for (let inicio = 0; inicio < laudos.length; inicio += TAMANHO_LOTE_INSERCAO) {
@@ -117,6 +118,10 @@ export async function salvarPlanilhaRanon(mesReferencia) {
         resumo: { quantidade: totalQuantidade, total: totalValor, mes_referencia: mesReferencia },
       };
     });
+    if (!resultado.success && createdFile) {
+      if (cloudFiles) await removePrivateFile(createdFile).catch(() => {});
+      else await fs.unlink(createdFile).catch(() => {});
+    }
     createdFile = undefined;
     return resultado;
   } catch (error) {

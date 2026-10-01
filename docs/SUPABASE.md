@@ -4,7 +4,7 @@ Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](http
 
 ## Correção de gravação do Dr. Ranon em preparação
 
-Em 01/10/2026 foi identificada uma gravação que mantinha a transação do PostgreSQL aberta durante a geração e o envio do backup ao Storage, além de inserir lotes grandes linha a linha. A branch `codex/fix-ranon-spreadsheet-errors` prepara o arquivo fora da transação e grava o histórico em lote depois de confirmar que os pendentes não mudaram. Nenhum arquivo, tabela, credencial ou configuração do projeto Supabase foi alterado localmente; a validação será feita com dados sintéticos nos gates do PR, nunca na base pessoal.
+Em 01/10/2026 foi identificada uma gravação que mantinha a transação do PostgreSQL aberta durante a geração e o envio do backup ao Storage, além de inserir lotes grandes linha a linha. A branch `codex/fix-ranon-spreadsheet-errors` prepara o arquivo fora da transação e grava o histórico em lote depois de confirmar que os pendentes não mudaram. Nenhum arquivo, tabela, credencial ou configuração do projeto Supabase foi alterado localmente; os gates do PR validam com dados sintéticos, nunca na base pessoal.
 
 ## Estado atual
 
