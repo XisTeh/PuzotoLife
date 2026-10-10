@@ -4,7 +4,7 @@ Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](http
 
 ## Conciliação de cartões
 
-A Issue #71 trata uma correção de dados financeiros solicitada pelo proprietário. A aplicação passa a ocultar parcelas canceladas no detalhe da fatura, mantendo essas linhas preservadas no PostgreSQL. A conciliação foi aplicada em uma transação com lock do acervo e verificada após o commit, sem alterar schema, autenticação, RLS, bucket ou credenciais. Os valores e a cópia privada da operação permanecem fora do repositório.
+A Issue #71 trata uma correção de dados financeiros solicitada pelo proprietário. O PR #72 foi publicado e oculta parcelas canceladas no detalhe da fatura, mantendo essas linhas preservadas no PostgreSQL. A conciliação foi aplicada em uma transação com lock do acervo e verificada após o commit, sem alterar schema, autenticação, RLS, bucket ou credenciais. A Vercel e o smoke check público confirmaram o deploy; os valores e a cópia privada da operação permanecem fora do repositório.
 
 ## Histórico do Dr. Ranon
 
