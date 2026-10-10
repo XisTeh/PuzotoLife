@@ -337,7 +337,7 @@ export async function obterFaturaComParcelas(faturaId) {
   if (!fatura) throw new Error('Fatura nao encontrada');
 
   var parcelasCompletas = (await db.prepare(
-    'SELECT p.*, c.data_compra FROM parcelas_cartao p JOIN compras_cartao c ON p.compra_id = c.id WHERE p.cartao_id = ? AND p.competencia = ? ORDER BY c.data_compra DESC, p.id DESC'
+    "SELECT p.*, c.data_compra FROM parcelas_cartao p JOIN compras_cartao c ON p.compra_id = c.id WHERE p.cartao_id = ? AND p.competencia = ? AND p.status != 'cancelada' ORDER BY c.data_compra DESC, p.id DESC"
   ).all(fatura.cartao_id, fatura.competencia));
 
   fatura.parcelas = parcelasCompletas;

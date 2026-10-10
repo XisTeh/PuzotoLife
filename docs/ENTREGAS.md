@@ -1,5 +1,11 @@
 # Entregas e estado real
 
+## Conciliação das faturas de cartões — Issue #71
+
+Em 10/10/2026, o proprietário pediu a conciliação das faturas atuais e parcelas futuras de três cartões. Os valores financeiros e o plano detalhado ficam apenas no acervo privado, nunca no GitHub. A alteração de código desta entrega faz o detalhe da fatura mostrar somente parcelas ativas; as duas parcelas antigas canceladas continuam preservadas no banco para auditoria.
+
+A conciliação foi aplicada no PostgreSQL em uma única transação após conferir o estado anterior com uma cópia local privada e seu SHA-256. Foram cadastradas sete compras de ajuste/parcelas em andamento, sem alterar faturas já pagas. A verificação após o commit confirmou os itens solicitados nas competências atuais e futuras, os vencimentos e a igualdade entre o total de cada fatura e a soma das parcelas ativas; não restou divergência em nenhuma fatura aberta. A cópia e o registro dos IDs criados ficam somente em `.git/`, fora de commits e artifacts. `npm run quality` e E2E local passaram (49 jornadas, 5 saltos previstos). O lockfile também recebeu versões corrigidas de quatro dependências após o CI identificar novos avisos; `npm audit --audit-level=high` passou com zero vulnerabilidades. CI, merge e deploy desta alteração de código ainda pendem. Não há migração de schema. Rollback de código: reverter o PR; rollback dos dados: restaurar as linhas afetadas usando a cópia local privada e uma nova transação verificada.
+
 ## Salvamento e histórico do Dr. Ranon — PRs #66 e #68 publicados; Issue #69 em correção
 
 Issue #65, classificação Correção. O PR #66 foi mesclado no commit `f9acc75` em 01/10/2026 após `quality`, `security` e `e2e` aprovados e publicado pela Vercel. O smoke check público passou, mas o proprietário informou que o salvamento ainda falhava.

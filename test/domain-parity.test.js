@@ -49,7 +49,15 @@ for (const engine of ['sqlite', 'postgres']) {
     const installments = await db.prepare('SELECT * FROM parcelas_cartao ORDER BY id').all();
     assert.equal(installments.length, 3);
     assert.equal(installments.reduce((sum, row) => sum + row.valor_parcela, 0), 300);
-    const invoice = (await cards.listarFaturasCartao({ cartao_id: card.id }))[0];
+    const cardInvoices = (await cards.listarFaturasCartao({ cartao_id: card.id }))
+      .sort((a, b) => a.competencia.localeCompare(b.competencia));
+    const invoice = cardInvoices[0];
+    const futureInvoice = cardInvoices[1];
+    const futureInstallment = installments.find(row => row.competencia === futureInvoice.competencia);
+    await db.prepare("UPDATE parcelas_cartao SET status='cancelada' WHERE id=?").run(futureInstallment.id);
+    await db.prepare('UPDATE faturas_cartao SET total=0 WHERE id=?').run(futureInvoice.id);
+    assert.equal((await cards.obterFaturaComParcelas(futureInvoice.id)).parcelas.length, 0);
+    assert.equal((await db.prepare('SELECT status FROM parcelas_cartao WHERE id=?').get(futureInstallment.id)).status, 'cancelada');
     const payments = await Promise.allSettled([cards.marcarFaturaComoPaga(invoice.id), cards.marcarFaturaComoPaga(invoice.id)]);
     assert.equal(payments.filter(result => result.status === 'fulfilled').length, 1);
     assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM auditoria WHERE tipo='CARTAO_FATURA_PAGAR'").get()).n, 1);
@@ -130,7 +138,9 @@ for (const engine of ['sqlite', 'postgres']) {
     const exported = await exportarJSON();
     assert.equal(exported._meta.totalTabelas, 23);
     const totals = {
-      invoices: exported.faturas_cartao.map(row => [row.competencia, row.total, row.status]),
+      invoices: exported.faturas_cartao
+        .map(row => [row.competencia, row.total, row.status])
+        .sort((a, b) => a[0].localeCompare(b[0])),
       work: exported.lancamentos_trabalho.map(row => [row.total, row.status]),
       income: exported.receitas.reduce((sum, row) => sum + row.valor, 0),
       debt: exported.pessoas_dividas.reduce((sum, row) => sum + row.valor, 0),

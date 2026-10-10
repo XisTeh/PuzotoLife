@@ -2,6 +2,10 @@
 
 Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](https://supabase.com/dashboard/project/pbumqabetyzvuathyspn).
 
+## Conciliação de cartões
+
+A Issue #71 trata uma correção de dados financeiros solicitada pelo proprietário. A aplicação passa a ocultar parcelas canceladas no detalhe da fatura, mantendo essas linhas preservadas no PostgreSQL. A conciliação foi aplicada em uma transação com lock do acervo e verificada após o commit, sem alterar schema, autenticação, RLS, bucket ou credenciais. Os valores e a cópia privada da operação permanecem fora do repositório.
+
 ## Histórico do Dr. Ranon
 
 O PR #66 reduziu a duração da transação e o PR #68 corrigiu o espaço no nome do backup rejeitado pelo Storage privado. A Issue #69 ajusta apenas a referência e o total de exames exibidos: deriva a quantidade somando os itens gravados, sem backfill ou escrita na base. Nenhuma dessas correções exige migração, alteração de bucket ou mudança de credenciais. Validações automatizadas usam dados sintéticos, nunca a base Supabase pessoal.
