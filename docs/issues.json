@@ -158,5 +158,13 @@
     "body": "## Problema\nNo Histórico por Pagador, planilhas do Dr. Ranon exibem o nome técnico do arquivo com UUID e `COUNT(*)` como quantidade. Para a planilha de 09/2026 isso mostra 337 linhas, embora os exames lançados somem 493 unidades.\n\n## Correção\nExibir mês/ano como referência legível e calcular Qtd Exames pela soma de `laudos_ranon.quantidade`, preservando o nome interno para identificar a planilha no recebimento. Não alterar registros do acervo sem necessidade.\n\n## Classificação principal\nCorreção",
     "number": 69,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/69"
+  },
+  {
+    "key": "card-invoice-reconciliation",
+    "type": "Correção",
+    "title": "Conciliar faturas e parcelas dos cartões",
+    "body": "Revisar as faturas e parcelas dos cartões informados pelo proprietário, ajustar os lançamentos e conferir os totais e meses futuros. Os valores e dados pessoais permanecem fora do GitHub. Classificação principal: Correção.",
+    "number": 71,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/71"
   }
 ]
