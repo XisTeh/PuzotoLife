@@ -48,6 +48,7 @@ export async function initializeTestDatabase(engine = 'sqlite') {
   if (!process.env.TEST_POSTGRES_URL) await pg.exec('CREATE ROLE anon; CREATE ROLE authenticated;');
   await pg.exec(fs.readFileSync('supabase/migrations/202609040001_legacy_structure.sql', 'utf8'));
   await pg.exec(fs.readFileSync('supabase/migrations/202609040002_runtime_role.sql', 'utf8'));
+  await pg.exec(fs.readFileSync('supabase/migrations/202610130001_loan_date.sql', 'utf8'));
   await pg.exec('BEGIN; SET search_path = puzoto, pg_catalog; SET CONSTRAINTS ALL DEFERRED;');
   for (const [name, rows] of data) {
     for (const row of rows) {

@@ -124,6 +124,39 @@ test('tabelas preservam colunas no desktop e viram cartões legíveis no celular
   await expect(cells.first()).toHaveAttribute('data-label', /.+/);
 });
 
+test('empréstimo continua listado após o vencimento e recebido entra no mês da quitação', async ({ page }, info) => {
+  const atual = new Date();
+  const mesAtual = `${atual.getFullYear()}-${String(atual.getMonth() + 1).padStart(2, '0')}`;
+  const mesAnteriorData = new Date(atual.getFullYear(), atual.getMonth() - 1, 1);
+  const mesAnterior = `${mesAnteriorData.getFullYear()}-${String(mesAnteriorData.getMonth() + 1).padStart(2, '0')}`;
+  await page.goto('/');
+  await page.evaluate(() => window.navigateTo('pessoas_dividas'));
+  await expect(page.locator('#pageContent')).not.toHaveAttribute('aria-busy', 'true');
+  const nome = `Pessoa de teste ${info.project.name}`;
+  const recebidoAntes = Number((await page.locator('#metrica-pd-recebi').textContent()).replace(/[^\d,]/g, '').replace(',', '.'));
+  await page.locator('#form-pd-nome').fill(nome);
+  await page.locator('#form-pd-tipo').selectOption('me_deve');
+  await page.locator('#form-pd-valor').fill('47');
+  await page.locator('#form-pd-data-emprestimo').fill(`${mesAnterior}-02`);
+  await page.locator('#form-pd-data').fill(`${mesAnterior}-10`);
+  await page.locator('#form-pd-motivo').fill('Empréstimo de teste');
+  await page.locator('#btn-salvar-pd').click();
+  const linha = page.locator('#tbody-pessoas-dividas tr').filter({ hasText: nome });
+  await expect(linha).toHaveCount(1);
+  await expect(linha).toContainText('47,00');
+  await expect(page.locator('#metrica-pd-recebi')).toContainText(recebidoAntes.toFixed(2).replace('.', ','));
+  page.once('dialog', dialog => dialog.accept());
+  await linha.getByRole('button', { name: 'Marcar como Recebido' }).click();
+  await expect(page.locator('#metrica-pd-recebi')).toContainText((recebidoAntes + 47).toFixed(2).replace('.', ','));
+  await expect(page.locator('#metrica-pd-medeve')).toContainText('0,00');
+  await page.locator('#pd-filtro-mes').fill(mesAnterior);
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
+  await expect(page.locator('#metrica-pd-recebi')).toContainText('0,00');
+  await page.locator('#pd-filtro-mes').fill(mesAtual);
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
+  await expect(page.locator('#metrica-pd-recebi')).toContainText((recebidoAntes + 47).toFixed(2).replace('.', ','));
+});
+
 test('sanitização contextual preserva fragmentos de tabela e bloqueia ações injetadas', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.navigateTo('configuracoes'));

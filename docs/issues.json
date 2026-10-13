@@ -166,5 +166,13 @@
     "body": "Revisar as faturas e parcelas dos cartões informados pelo proprietário, ajustar os lançamentos e conferir os totais e meses futuros. Os valores e dados pessoais permanecem fora do GitHub. Classificação principal: Correção.",
     "number": 71,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/71"
+  },
+  {
+    "key": "pending-loans-receipts",
+    "type": "Correção",
+    "title": "Manter empréstimos pendentes visíveis até o recebimento e registrar a data emprestada",
+    "body": "Na tela Pessoas / Dívidas, valores de Me Devem deixam de aparecer quando passa o mês do vencimento. Exibir pendências em todos os meses seguintes até a quitação, mostrar data do empréstimo separada do vencimento e considerar recebimentos nos totais somente no mês efetivo da quitação, sem duplicidade. Preservar registros existentes e validar com dados sintéticos.",
+    "number": 74,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/74"
   }
 ]
