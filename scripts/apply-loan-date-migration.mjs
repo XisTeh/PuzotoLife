@@ -66,8 +66,15 @@ try {
 
   await client.query('BEGIN');
   await client.query("SET LOCAL statement_timeout = '60s'");
+  await client.query("SET LOCAL lock_timeout = '5s'");
+  // The runtime uses this lock for every write. Abort if anything changed since the copy.
+  await client.query('SELECT pg_advisory_xact_lock(782364901)');
+  for (let index = 0; index < tables.length; index++) {
+    const table = tables[index];
+    const { rows } = await client.query(`SELECT * FROM puzoto.${quoted(table.name)} ORDER BY ${quoted(orderColumn(table))}`);
+    if (rows.length !== snapshot[index].rows.length || fingerprint(rows, table.columns) !== fingerprint(snapshot[index].rows, table.columns)) throw new Error('Acervo mudou após a cópia privada; reinicie a migração.');
+  }
   await client.query(fs.readFileSync('supabase/migrations/202610130001_loan_date.sql', 'utf8'));
-  await client.query('COMMIT');
   for (let index = 0; index < tables.length; index++) {
     const table = tables[index];
     const { rows } = await client.query(`SELECT * FROM puzoto.${quoted(table.name)} ORDER BY ${quoted(orderColumn(table))}`);
@@ -75,6 +82,7 @@ try {
   }
   const columns = await client.query("SELECT table_name FROM information_schema.columns WHERE table_schema = 'puzoto' AND column_name = 'data_emprestimo'");
   if (columns.rows.length !== 2) throw new Error('Colunas novas ausentes.');
+  await client.query('COMMIT');
   console.log(JSON.stringify({ migrated: true, tables: tables.length, rows: snapshot.reduce((sum, table) => sum + table.rows.length, 0), restored: true, unchanged: true, backupSha256: backupHash }));
 } catch (error) {
   await client.query('ROLLBACK').catch(() => {});
