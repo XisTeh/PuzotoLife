@@ -4,6 +4,8 @@
 
 A migração aditiva `supabase/migrations/202610130001_loan_date.sql` acrescenta `data_emprestimo` às tabelas privadas `pessoas_dividas` e `dividas_parceladas_grupos`; valores antigos ficam `NULL`, sem inferir data financeira a partir do cadastro. Em 13/10/2026, depois de `quality`, `security` e `e2e` aprovados no PR #75, `node scripts/apply-loan-date-migration.mjs --apply` salvou a cópia integral em `.git/` (fora do Git), restaurou os dados em PostgreSQL isolado, validou relações, contagens e valores, e aplicou a alteração em transação. A comparação final confirmou 6.969 registros em 23 tabelas sem mudanças de conteúdo. `node scripts/verify-supabase-runtime.mjs` confirmou as 23 tabelas e negação de DDL ao papel restrito. O rollback do código é o revert do PR; não remover colunas em rollback para preservar datas informadas após a publicação.
 
+A versão do PR #75 foi mesclada em `96f30c3` e publicada na Vercel. O smoke check público validou a aplicação, a saúde PostgreSQL, o acesso anônimo negado aos dados privados e as políticas de cache e segurança; o bundle novo de Pessoas / Dívidas está disponível. A validação funcional autenticada com o acervo pessoal permanece para o proprietário.
+
 Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](https://supabase.com/dashboard/project/pbumqabetyzvuathyspn).
 
 ## Conciliação de cartões
