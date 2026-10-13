@@ -238,7 +238,7 @@ function renderTabela() {
   if (!tbody) return;
 
   if (registros.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Nenhum registro encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted);">Nenhum registro encontrado.</td></tr>';
     return;
   }
 
@@ -256,6 +256,7 @@ function renderTabela() {
 
     html += `
       <tr>
+        <td>${r.tipo === 'me_deve' ? (r.data_emprestimo ? formatarDataBR(r.data_emprestimo) : 'Não informada') : '—'}</td>
         <td style="${r.atrasado ? 'color: var(--color-red); font-weight: 600;' : ''}">${formatarDataBR(r.data_combinada)}</td>
         <td style="font-weight: 500; cursor: pointer; color: var(--color-purple);" onclick="window.abrirHistoricoPessoa(${legacyStringArgument(r.nome_pessoa)})" title="Ver Histórico">${escapeHtml(r.nome_pessoa)}</td>
         <td>${tipoBadge}</td>
@@ -272,6 +273,7 @@ function renderTabela() {
         <td>
           <div style="display: flex; gap: 8px;">
             ${r.status === 'pendente' ? `<button class="btn-icon" style="color: var(--color-teal);" onclick="window.resolverPD(${legacyStringArgument(r.id)})" title="${r.tipo === 'eu_devo' ? 'Marcar como Pago' : 'Marcar como Recebido'}"><i data-lucide="check"></i></button>` : ''}
+            ${r.tipo === 'me_deve' ? `<button class="btn-icon" style="color: var(--color-blue);" onclick="window.editarDataEmprestimoPD(${legacyStringArgument(r.id)}, ${legacyStringArgument(r.data_emprestimo || '')})" title="Informar data do empréstimo" aria-label="Informar data do empréstimo"><i data-lucide="calendar"></i></button>` : ''}
             ${r.status !== 'cancelado' ? `<button class="btn-icon" style="color: var(--color-orange);" onclick="window.cancelarPD(${legacyStringArgument(r.id)}, ${legacyStringArgument(r.grupo_parcelas_id || '')})" title="Cancelar Pendência"><i data-lucide="x"></i></button>` : ''}
             <button class="btn-icon" style="color: var(--color-blue);" onclick="window.editarValorPD(${legacyStringArgument(r.id)}, ${r.valor})" title="Editar Valor"><i data-lucide="edit-2"></i></button>
             <button class="btn-icon" style="color: var(--color-red);" onclick="window.excluirPD(${legacyStringArgument(r.id)}, ${legacyStringArgument(r.grupo_parcelas_id || '')})" title="Excluir"><i data-lucide="trash-2"></i></button>
@@ -375,9 +377,10 @@ window.salvarDividaParcelada = async function() {
   const valor_parcela = parseFloat(document.getElementById('form-dp-valor-parcela').value);
   const total_parcelas = parseInt(document.getElementById('form-dp-total-parcelas').value);
   const parcelas_pagas = parseInt(document.getElementById('form-dp-parcelas-pagas').value) || 0;
+  const data_emprestimo = document.getElementById('form-dp-data-emprestimo').value;
   const ref = document.getElementById('form-dp-comp-ref').value;
   
-  if (!nome_pessoa || !motivo || isNaN(valor_parcela) || isNaN(total_parcelas) || !ref) {
+  if (!nome_pessoa || !motivo || isNaN(valor_parcela) || isNaN(total_parcelas) || !ref || (document.getElementById('form-dp-tipo').value === 'me_deve' && !data_emprestimo)) {
     showToast('Preencha os campos obrigatórios corretamente!', 'error'); return;
   }
 
@@ -399,6 +402,7 @@ window.salvarDividaParcelada = async function() {
     parcelas_pagas,
     dia_vencimento: parseInt(document.getElementById('form-dp-dia-venc').value) || 5,
     competencia_inicio,
+    data_emprestimo,
     observacao: document.getElementById('form-dp-obs').value.trim()
   };
   
@@ -476,11 +480,12 @@ window.salvarPessoaDivida = async function() {
   const valor = parseFloat(document.getElementById('form-pd-valor').value);
   const motivo = document.getElementById('form-pd-motivo').value.trim();
   const data_combinada = document.getElementById('form-pd-data').value;
+  const data_emprestimo = document.getElementById('form-pd-data-emprestimo').value;
   const observacao = document.getElementById('form-pd-obs').value.trim();
   const parcelas = parseInt(document.getElementById('form-pd-parcelas').value) || 1;
   const frequencia = document.getElementById('form-pd-frequencia').value;
 
-  if (!nome_pessoa || !tipo || isNaN(valor) || valor <= 0 || !motivo || !data_combinada) {
+  if (!nome_pessoa || !tipo || isNaN(valor) || valor <= 0 || !motivo || !data_combinada || (tipo === 'me_deve' && !data_emprestimo)) {
     showToast('Preencha os campos obrigatórios corretamente!', 'error');
     return;
   }
@@ -492,7 +497,7 @@ window.salvarPessoaDivida = async function() {
 
     await fetchAPI('/pessoas-dividas', {
       method: 'POST',
-      body: JSON.stringify({ nome_pessoa, tipo, valor, motivo, data_combinada, observacao, parcelas, frequencia })
+      body: JSON.stringify({ nome_pessoa, tipo, valor, motivo, data_combinada, data_emprestimo, observacao, parcelas, frequencia })
     });
     
     showToast('Pendência adicionada com sucesso!');
@@ -511,6 +516,36 @@ window.salvarPessoaDivida = async function() {
     const btn = document.getElementById('btn-salvar-pd');
     btn.disabled = false;
     btn.innerHTML = 'Adicionar Pendência';
+  }
+};
+
+window.editarDataEmprestimoPD = function(id, data) {
+  const modal = document.getElementById('modal-data-emprestimo-pd');
+  modal.dataset.id = id;
+  modal.querySelector('input').value = data;
+  modal.style.display = 'flex';
+  modal.querySelector('input').focus();
+};
+
+window.fecharModalDataEmprestimoPD = function() {
+  document.getElementById('modal-data-emprestimo-pd').style.display = 'none';
+};
+
+window.confirmarDataEmprestimoPD = async function() {
+  const modal = document.getElementById('modal-data-emprestimo-pd');
+  const data_emprestimo = modal.querySelector('input').value;
+  if (!data_emprestimo) return showToast('Informe a data do empréstimo.', 'error');
+  const botao = modal.querySelector('[data-save]');
+  botao.disabled = true;
+  try {
+    await fetchAPI(`/pessoas-dividas/${modal.dataset.id}/data-emprestimo`, { method: 'PUT', body: JSON.stringify({ data_emprestimo }) });
+    modal.style.display = 'none';
+    showToast('Data do empréstimo salva.');
+    await loadDados();
+  } catch (err) {
+    showToast('Erro ao salvar: ' + err.message, 'error');
+  } finally {
+    botao.disabled = false;
   }
 };
 
@@ -722,6 +757,15 @@ export function renderPessoasDividasPage() {
   `;
 
   // MODAL EDITAR VALOR
+  h += `<div id="modal-data-emprestimo-pd" role="dialog" aria-modal="true" aria-labelledby="titulo-data-emprestimo-pd" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;justify-content:center;align-items:center;">
+    <div style="background:var(--bg-panel);padding:24px;border-radius:12px;width:90%;max-width:420px;border:1px solid var(--border-subtle);">
+      <h3 id="titulo-data-emprestimo-pd" style="margin-bottom:16px;">Data do empréstimo</h3>
+      <label class="form-label" for="modal-data-emprestimo-input">Quando o dinheiro foi emprestado?</label>
+      <input id="modal-data-emprestimo-input" type="date" class="form-control" max="${dataAtualISO()}" style="width:100%;margin:8px 0 20px;">
+      <div style="display:flex;gap:12px;"><button class="btn-secondary" style="flex:1;min-height:44px;" onclick="window.fecharModalDataEmprestimoPD()">Cancelar</button><button data-save class="btn-primary" style="flex:1;min-height:44px;" onclick="window.confirmarDataEmprestimoPD()">Salvar</button></div>
+    </div></div>`;
+
+  // MODAL EDITAR VALOR
   h += `
     <div id="modal-editar-valor-pd" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
       <div style="background: var(--bg-panel); padding: 24px; border-radius: 12px; width: 90%; max-width: 420px; border: 1px solid var(--border-subtle); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
@@ -793,8 +837,9 @@ export function renderPessoasDividasPage() {
   h += '        <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Tipo*</label><select id="form-pd-tipo" class="form-control"><option value="eu_devo">Eu Devo</option><option value="me_deve">Me Deve</option></select></div>';
   h += '        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">';
   h += '          <div class="form-group"><label class="form-label">Valor*</label><input type="number" id="form-pd-valor" class="form-control" step="0.01" placeholder="0,00"></div>';
-  h += '          <div class="form-group"><label class="form-label">Data*</label><input type="date" id="form-pd-data" class="form-control" value="'+dataAtualISO()+'"></div>';
+  h += '          <div class="form-group"><label class="form-label">Vencimento*</label><input type="date" id="form-pd-data" class="form-control" value="'+dataAtualISO()+'"></div>';
   h += '        </div>';
+  h += '        <div class="form-group" style="margin-bottom:12px;"><label class="form-label" for="form-pd-data-emprestimo">Data do empréstimo (obrigatória para Me Deve)</label><input type="date" id="form-pd-data-emprestimo" class="form-control" max="'+dataAtualISO()+'" value="'+dataAtualISO()+'"></div>';
   h += '        <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Motivo*</label><input type="text" id="form-pd-motivo" class="form-control" placeholder="Empréstimo, Pix..."></div>';
   h += '        <input type="hidden" id="form-pd-parcelas" value="1"><input type="hidden" id="form-pd-frequencia" value="mensal">';
   h += '        <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Observação</label><input type="text" id="form-pd-obs" class="form-control" placeholder="Opcional..."></div>';
@@ -820,6 +865,7 @@ export function renderPessoasDividasPage() {
   h += '          <div class="form-group"><label class="form-label" title="Se já pagou alguma, informe o mês da última paga. Se não pagou nenhuma, informe o mês da primeira.">Competência de Referência* ℹ️</label><input type="month" id="form-dp-comp-ref" class="form-control" value="'+compAtual+'" onchange="window.calcResumoParcelada()"></div>';
   h += '          <div class="form-group"><label class="form-label">Dia Vencimento</label><input type="number" id="form-dp-dia-venc" class="form-control" min="1" max="31" value="5"></div>';
   h += '        </div>';
+  h += '        <div class="form-group" style="margin-bottom:12px;"><label class="form-label" for="form-dp-data-emprestimo">Data do empréstimo (obrigatória para Me Deve)</label><input type="date" id="form-dp-data-emprestimo" class="form-control" max="'+dataAtualISO()+'" value="'+dataAtualISO()+'"></div>';
   h += '        <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Observação</label><input type="text" id="form-dp-obs" class="form-control" placeholder="Opcional..."></div>';
   h += '        <div id="dp-resumo-preview" style="margin-bottom:16px;"></div>';
   h += '        <button class="btn-primary" style="width:100%;justify-content:center;" onclick="window.salvarDividaParcelada()">Cadastrar Dívida Parcelada</button>';
@@ -880,10 +926,10 @@ export function renderPessoasDividasPage() {
 
   // Card Tabela
   h += '    <div class="form-card" style="padding: 24px; flex: 1;">';
-  h += '      <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">Pendências do Período</h3>';
+  h += '      <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">Pendências em aberto e recebimentos do período</h3>';
   h += '      <div class="table-container">';
   h += '        <table class="table">';
-  h += '          <thead><tr><th>Data C.</th><th>Pessoa</th><th>Tipo</th><th>Motivo</th><th>Valor</th><th>Status</th><th>Resolvido Em</th><th>Obs</th><th>Ações</th></tr></thead>';
+  h += '          <thead><tr><th>Emprestado em</th><th>Vencimento</th><th>Pessoa</th><th>Tipo</th><th>Motivo</th><th>Valor</th><th>Status</th><th>Resolvido Em</th><th>Obs</th><th>Ações</th></tr></thead>';
   h += '          <tbody id="tbody-pessoas-dividas"></tbody>';
   h += '        </table>';
   h += '      </div>';

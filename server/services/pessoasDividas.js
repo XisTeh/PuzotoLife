@@ -14,6 +14,12 @@ function dataIsoHoje() {
   return formatarDataIso(new Date());
 }
 
+function dataIsoValida(valor) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(valor || ''))) return false;
+  const data = new Date(`${valor}T00:00:00Z`);
+  return !Number.isNaN(data.getTime()) && data.toISOString().slice(0, 10) === valor;
+}
+
 export async function listarPessoasDividas(filtros) {
   return snapshot(async () => {
   const db = getDatabase();
@@ -22,8 +28,12 @@ export async function listarPessoasDividas(filtros) {
 
   if (filtros) {
     if (filtros.mes) {
-      sql += " AND data_combinada LIKE ?";
-      params.push(filtros.mes + '-%');
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(filtros.mes)) throw new Error('Competência inválida');
+      const inicio = `${filtros.mes}-01`;
+      const [ano, mes] = filtros.mes.split('-').map(Number);
+      const proximoMes = formatarDataIso(new Date(ano, mes, 1));
+      sql += " AND ((status = 'pendente' AND COALESCE(data_emprestimo, data_combinada) < ?) OR (status IN ('pago', 'recebido') AND COALESCE(pago_recebido_em, data_combinada) >= ? AND COALESCE(pago_recebido_em, data_combinada) < ?) OR (status = 'cancelado' AND data_combinada >= ? AND data_combinada < ?))";
+      params.push(proximoMes, inicio, proximoMes, inicio, proximoMes);
     }
     if (filtros.tipo && filtros.tipo !== 'todos') {
       sql += ' AND tipo = ?';
@@ -47,6 +57,8 @@ export async function listarPessoasDividas(filtros) {
   if (filtros && filtros.mes) {
     let queryDP = "SELECT * FROM dividas_parceladas_grupos WHERE status != 'cancelada'";
     const paramsDP = [];
+    const parcelasFisicas = await db.prepare("SELECT grupo_parcelas_id, parcela_atual FROM pessoas_dividas WHERE grupo_parcelas_id LIKE 'dp_grupo_%'").all();
+    const parcelasRegistradas = new Set(parcelasFisicas.map(r => `${r.grupo_parcelas_id}:${r.parcela_atual}`));
     
     if (filtros.pessoa) {
       queryDP += " AND nome_pessoa LIKE ?";
@@ -65,20 +77,16 @@ export async function listarPessoasDividas(filtros) {
       const [anoF, mesF] = filtros.mes.split('-');
       
       const diffMeses = (Number(anoF) - Number(anoI)) * 12 + (Number(mesF) - Number(mesI));
-      const numParcela = diffMeses + 1;
+      const emprestadoAteEsteMes = grupo.data_emprestimo && grupo.data_emprestimo.slice(0, 7) <= filtros.mes;
+      const ultimaParcelaVencida = Math.min(Math.max(diffMeses + 1, emprestadoAteEsteMes ? 1 : 0), grupo.total_parcelas);
 
-      if (numParcela >= 1 && numParcela <= grupo.total_parcelas) {
+      for (let numParcela = 1; numParcela <= ultimaParcelaVencida; numParcela++) {
+        // Parcelas antigas quitadas ficam no mês do recebimento físico, não repetidas nos seguintes.
+        if (numParcela <= grupo.parcelas_pagas && numParcela !== diffMeses + 1) continue;
         // Verificar se já existe um registro físico em pessoas_dividas correspondente a esta parcela do grupo
-        const existeFisico = registros.some(r => 
-          !r.is_parcela_virtual && 
-          r.nome_pessoa === grupo.nome_pessoa && 
-          r.grupo_parcelas_id === `dp_grupo_${grupo.id}` && 
-          r.parcela_atual === numParcela
-        );
+        const existeFisico = parcelasRegistradas.has(`dp_grupo_${grupo.id}:${numParcela}`);
         
-        if (existeFisico) {
-          return; // ignora a virtual para não duplicar!
-        }
+        if (existeFisico) continue;
 
         // Esta dívida parcelada tem uma parcela neste mês!
         // Determinar status da parcela
@@ -88,17 +96,17 @@ export async function listarPessoasDividas(filtros) {
 
         // Se o filtro de status for específico e não bater, ignora
         if (filtros.status && filtros.status !== 'todos' && filtros.status !== statusParcela) {
-          return;
+          continue;
         }
 
         // Calcular data combinada real para exibição (vencimento)
-        const d = new Date(Number(anoF), Number(mesF) - 1, 1);
+        const d = new Date(Number(anoI), Number(mesI) - 1 + numParcela - 1, 1);
         const ultimoDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         const diaReal = grupo.dia_vencimento > ultimoDia ? ultimoDia : grupo.dia_vencimento;
-        const dataCombinada = `${filtros.mes}-${String(diaReal).padStart(2, '0')}`;
+        const dataCombinada = `${formatarDataIso(d).slice(0, 7)}-${String(diaReal).padStart(2, '0')}`;
 
         let valorParcela = grupo.valor_parcela;
-        if (grupo.id === 4 && numParcela === 1 && filtros.mes === '2026-06') {
+        if (grupo.id === 4 && numParcela === 1 && dataCombinada.startsWith('2026-06')) {
           valorParcela = 194.57; // Exceção Meu Peixe no mês 6
         }
 
@@ -109,6 +117,7 @@ export async function listarPessoasDividas(filtros) {
           valor: valorParcela,
           motivo: `${grupo.motivo} (${numParcela}/${grupo.total_parcelas})`,
           data_combinada: dataCombinada,
+          data_emprestimo: grupo.data_emprestimo,
           status: statusParcela,
           pago_recebido_em: statusParcela !== 'pendente' ? dataCombinada : null,
           parcela_atual: numParcela,
@@ -141,6 +150,8 @@ export async function criarPessoaDivida(dados) {
   if (!dados.nome_pessoa || !dados.tipo || !dados.valor || !dados.motivo || !dados.data_combinada) {
     throw new Error('Campos obrigatórios faltando');
   }
+  if (dados.tipo === 'me_deve' && !dataIsoValida(dados.data_emprestimo)) throw new Error('Informe a data do empréstimo');
+  if (dados.data_emprestimo && (!dataIsoValida(dados.data_emprestimo) || dados.data_emprestimo > dataIsoHoje())) throw new Error('Data do empréstimo inválida');
 
   const parcelas = parseInt(dados.parcelas) || 1;
   const frequencia = dados.frequencia || 'mensal';
@@ -149,8 +160,8 @@ export async function criarPessoaDivida(dados) {
 
   const transaction = db.transaction(async () => {
     const stmt = db.prepare(`
-      INSERT INTO pessoas_dividas (nome_pessoa, tipo, valor, motivo, data_combinada, parcela_atual, total_parcelas, grupo_parcelas_id, observacao)
-      VALUES (@nome_pessoa, @tipo, @valor, @motivo, @data_combinada, @parcela_atual, @total_parcelas, @grupo_parcelas_id, @observacao)
+      INSERT INTO pessoas_dividas (nome_pessoa, tipo, valor, motivo, data_combinada, data_emprestimo, parcela_atual, total_parcelas, grupo_parcelas_id, observacao)
+      VALUES (@nome_pessoa, @tipo, @valor, @motivo, @data_combinada, @data_emprestimo, @parcela_atual, @total_parcelas, @grupo_parcelas_id, @observacao)
     `);
 
     const grupoId = parcelas > 1 ? crypto.randomUUID() : null;
@@ -175,6 +186,7 @@ export async function criarPessoaDivida(dados) {
         valor: valorParcela,
         motivo: parcelas > 1 ? `${dados.motivo} (${i + 1}/${parcelas})` : dados.motivo,
         data_combinada: formatarDataIso(novaData),
+        data_emprestimo: dados.data_emprestimo || null,
         parcela_atual: i + 1,
         total_parcelas: parcelas,
         grupo_parcelas_id: grupoId,
@@ -207,6 +219,27 @@ export async function marcarPessoaDividaResolvida(id) {
 
   (await registrarAuditoria('PESSOAS_DIVIDAS_RESOLVIDA', `Registro ${id} marcado como ${novoStatus}`));
   return { sucesso: true };
+  });
+}
+
+export async function atualizarDataEmprestimo(id, dataEmprestimo) {
+  if (!dataIsoValida(dataEmprestimo) || dataEmprestimo > dataIsoHoje()) throw new Error('Data do empréstimo inválida');
+  return atomic(async () => {
+    const db = getDatabase();
+    if (String(id).startsWith('dp_')) {
+      const grupoId = Number(String(id).slice(3));
+      const grupo = await db.prepare("SELECT id FROM dividas_parceladas_grupos WHERE id = ? AND tipo = 'me_deve'").get(grupoId);
+      if (!grupo) throw new Error('Empréstimo não encontrado');
+      await db.prepare("UPDATE dividas_parceladas_grupos SET data_emprestimo = ?, atualizado_em = datetime('now', 'localtime') WHERE id = ?").run(dataEmprestimo, grupoId);
+      await db.prepare("UPDATE pessoas_dividas SET data_emprestimo = ?, atualizado_em = datetime('now', 'localtime') WHERE grupo_parcelas_id = ?").run(dataEmprestimo, `dp_grupo_${grupoId}`);
+      await registrarAuditoria('PESSOAS_DIVIDAS_DATA_EMPRESTIMO', `Data do grupo ${grupoId} atualizada`);
+      return { sucesso: true };
+    }
+    const registro = await db.prepare("SELECT id FROM pessoas_dividas WHERE id = ? AND tipo = 'me_deve'").get(id);
+    if (!registro) throw new Error('Empréstimo não encontrado');
+    await db.prepare("UPDATE pessoas_dividas SET data_emprestimo = ?, atualizado_em = datetime('now', 'localtime') WHERE id = ?").run(dataEmprestimo, id);
+    await registrarAuditoria('PESSOAS_DIVIDAS_DATA_EMPRESTIMO', `Data do empréstimo do registro ${id} atualizada`);
+    return { sucesso: true };
   });
 }
 
@@ -257,6 +290,7 @@ export async function calcularResumoPessoasDividas(mes) {
   return snapshot(async () => {
   const db = getDatabase();
   const hoje = dataIsoHoje();
+  if (mes && !/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Competência inválida');
   const mesParams = mes ? [mes + '-%'] : ['%'];
 
   const resumo = {
@@ -277,6 +311,10 @@ export async function calcularResumoPessoasDividas(mes) {
     if (p.tipo === 'eu_devo') resumo.euDevoPendenteTotalGeral = p.total || 0;
     if (p.tipo === 'me_deve') resumo.meDevemPendenteTotalGeral = p.total || 0;
   });
+  const parcelasFisicas = await db.prepare("SELECT grupo_parcelas_id, parcela_atual FROM pessoas_dividas WHERE grupo_parcelas_id LIKE 'dp_grupo_%'").all();
+  const parcelasRegistradas = new Set(parcelasFisicas.map(r => `${r.grupo_parcelas_id}:${r.parcela_atual}`));
+  let atrasadasVirtuaisQtd = 0;
+  let atrasadasVirtuaisValor = 0;
 
   // Somar apenas a parcela correspondente do mês das dívidas parceladas ativas se pendentes
   if (mes) {
@@ -285,21 +323,20 @@ export async function calcularResumoPessoasDividas(mes) {
       const [anoI, mesI] = grupo.competencia_inicio.split('-');
       const [anoF, mesF] = mes.split('-');
       const diffMeses = (Number(anoF) - Number(anoI)) * 12 + (Number(mesF) - Number(mesI));
-      const numParcela = diffMeses + 1;
-      
-      if (numParcela >= 1 && numParcela <= grupo.total_parcelas) {
-        if (numParcela > grupo.parcelas_pagas) {
-          // Parcela está pendente!
-          let valorParcela = grupo.valor_parcela;
-          if (grupo.id === 4 && numParcela === 1 && mes === '2026-06') {
-            valorParcela = 194.57; // Exceção para Meu Peixe no mês 6
-          }
-          
-          if (grupo.tipo === 'eu_devo') {
-            resumo.euDevoPendenteTotalGeral += valorParcela;
-          } else if (grupo.tipo === 'me_deve') {
-            resumo.meDevemPendenteTotalGeral += valorParcela;
-          }
+      const emprestadoAteEsteMes = grupo.data_emprestimo && grupo.data_emprestimo.slice(0, 7) <= mes;
+      const ultimaParcelaVisivel = Math.min(Math.max(diffMeses + 1, emprestadoAteEsteMes ? 1 : 0), grupo.total_parcelas);
+      for (let numParcela = grupo.parcelas_pagas + 1; numParcela <= ultimaParcelaVisivel; numParcela++) {
+        if (parcelasRegistradas.has(`dp_grupo_${grupo.id}:${numParcela}`)) continue;
+        const dataParcela = new Date(Number(anoI), Number(mesI) - 1 + numParcela - 1, 1);
+        const competenciaParcela = formatarDataIso(dataParcela).slice(0, 7);
+        const valorParcela = grupo.id === 4 && numParcela === 1 && competenciaParcela === '2026-06' ? 194.57 : grupo.valor_parcela;
+        if (grupo.tipo === 'eu_devo') resumo.euDevoPendenteTotalGeral += valorParcela;
+        else if (grupo.tipo === 'me_deve') resumo.meDevemPendenteTotalGeral += valorParcela;
+        const ultimoDia = new Date(dataParcela.getFullYear(), dataParcela.getMonth() + 1, 0).getDate();
+        const vencimento = `${competenciaParcela}-${String(Math.min(grupo.dia_vencimento, ultimoDia)).padStart(2, '0')}`;
+        if (vencimento < hoje) {
+          atrasadasVirtuaisQtd++;
+          atrasadasVirtuaisValor += valorParcela;
         }
       }
     });
@@ -310,7 +347,7 @@ export async function calcularResumoPessoasDividas(mes) {
   resumo.saldoLiquido = resumo.meDevemPendente - resumo.euDevoPendente;
 
   // Pagos / Recebidos no Mês (simples)
-  const pagos = (await db.prepare("SELECT tipo, SUM(valor) as total FROM pessoas_dividas WHERE (status = 'pago' OR status = 'recebido') AND (pago_recebido_em LIKE ? OR data_combinada LIKE ?) GROUP BY tipo").all(mesParams[0], mesParams[0]));
+  const pagos = (await db.prepare("SELECT tipo, SUM(valor) as total FROM pessoas_dividas WHERE (status = 'pago' OR status = 'recebido') AND COALESCE(pago_recebido_em, data_combinada) LIKE ? GROUP BY tipo").all(mesParams[0]));
   pagos.forEach(p => {
     if (p.tipo === 'eu_devo') resumo.jaPagueiMes = p.total || 0;
     if (p.tipo === 'me_deve') resumo.jaRecebiMes = p.total || 0;
@@ -327,6 +364,7 @@ export async function calcularResumoPessoasDividas(mes) {
       
       if (numParcela >= 1 && numParcela <= grupo.total_parcelas) {
         if (numParcela <= grupo.parcelas_pagas) {
+          if (parcelasRegistradas.has(`dp_grupo_${grupo.id}:${numParcela}`)) return;
           // Parcela está paga!
           let valorParcela = grupo.valor_parcela;
           if (grupo.id === 4 && numParcela === 1 && mes === '2026-06') {
@@ -345,8 +383,8 @@ export async function calcularResumoPessoasDividas(mes) {
 
   // Atrasadas
   const atrasadas = (await db.prepare("SELECT COUNT(*) as qtd, SUM(valor) as total FROM pessoas_dividas WHERE status = 'pendente' AND data_combinada < ?").get(hoje));
-  resumo.pendenciasAtrasadasQtd = atrasadas.qtd || 0;
-  resumo.pendenciasAtrasadasValor = atrasadas.total || 0;
+  resumo.pendenciasAtrasadasQtd = (atrasadas.qtd || 0) + atrasadasVirtuaisQtd;
+  resumo.pendenciasAtrasadasValor = (atrasadas.total || 0) + atrasadasVirtuaisValor;
 
   return resumo;
   });
@@ -435,6 +473,8 @@ export async function criarDividaParcelada(dados) {
   if (!dados.nome_pessoa || !dados.tipo || !dados.motivo || !dados.valor_parcela || !dados.total_parcelas) {
     throw new Error('Campos obrigatórios faltando');
   }
+  if (dados.tipo === 'me_deve' && !dataIsoValida(dados.data_emprestimo)) throw new Error('Informe a data do empréstimo');
+  if (dados.data_emprestimo && (!dataIsoValida(dados.data_emprestimo) || dados.data_emprestimo > dataIsoHoje())) throw new Error('Data do empréstimo inválida');
   
   const parcelas_pagas = parseInt(dados.parcelas_pagas) || 0;
   const total_parcelas = parseInt(dados.total_parcelas);
@@ -453,8 +493,8 @@ export async function criarDividaParcelada(dados) {
   
   const info = (await db.prepare(`
     INSERT INTO dividas_parceladas_grupos 
-    (nome_pessoa, tipo, motivo, valor_parcela, valor_total_original, total_parcelas, parcelas_pagas, parcelas_restantes, dia_vencimento, competencia_inicio, observacao)
-    VALUES (@nome_pessoa, @tipo, @motivo, @valor_parcela, @valor_total_original, @total_parcelas, @parcelas_pagas, @parcelas_restantes, @dia_vencimento, @competencia_inicio, @observacao)
+    (nome_pessoa, tipo, motivo, valor_parcela, valor_total_original, total_parcelas, parcelas_pagas, parcelas_restantes, dia_vencimento, competencia_inicio, data_emprestimo, observacao)
+    VALUES (@nome_pessoa, @tipo, @motivo, @valor_parcela, @valor_total_original, @total_parcelas, @parcelas_pagas, @parcelas_restantes, @dia_vencimento, @competencia_inicio, @data_emprestimo, @observacao)
   `).run({
     nome_pessoa: dados.nome_pessoa,
     tipo: dados.tipo,
@@ -466,6 +506,7 @@ export async function criarDividaParcelada(dados) {
     parcelas_restantes,
     dia_vencimento,
     competencia_inicio,
+    data_emprestimo: dados.data_emprestimo || null,
     observacao: dados.observacao || ''
   }));
   
@@ -510,8 +551,8 @@ export async function pagarProximaParcelaDivida(grupoId) {
     }
 
     (await db.prepare(`
-      INSERT INTO pessoas_dividas (nome_pessoa, tipo, motivo, valor, status, data_combinada, pago_recebido_em, parcela_atual, total_parcelas, grupo_parcelas_id)
-      VALUES (?, ?, ?, ?, ?, ?, date('now', 'localtime'), ?, ?, ?)
+      INSERT INTO pessoas_dividas (nome_pessoa, tipo, motivo, valor, status, data_combinada, data_emprestimo, pago_recebido_em, parcela_atual, total_parcelas, grupo_parcelas_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, date('now', 'localtime'), ?, ?, ?)
     `).run(
       grupo.nome_pessoa,
       grupo.tipo,
@@ -519,6 +560,7 @@ export async function pagarProximaParcelaDivida(grupoId) {
       valorParcela,
       statusPagamento,
       `${parcelaComp}-01`,
+      grupo.data_emprestimo,
       numParcela,
       grupo.total_parcelas,
       `dp_grupo_${grupo.id}`

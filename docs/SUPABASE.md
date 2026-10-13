@@ -1,5 +1,9 @@
 # Supabase e publicação — passo a passo
 
+## Data do empréstimo (Issue #74)
+
+A migração aditiva `supabase/migrations/202610130001_loan_date.sql` acrescenta `data_emprestimo` às tabelas privadas `pessoas_dividas` e `dividas_parceladas_grupos`; valores antigos ficam `NULL`, sem inferir data financeira a partir do cadastro. Após CI e revisão, executar `node scripts/apply-loan-date-migration.mjs --apply` com a conexão administrativa privada, antes de publicar a versão que lê as colunas. O script salva a cópia integral em `.git/` (fora do Git), restaura em PostgreSQL isolado, confere contagens, relações e valores, aplica a alteração em transação e compara os registros novamente. Depois, conferir acesso do papel restrito. O runtime continua sem DDL. O rollback do código é o revert do PR; não remover colunas em rollback para preservar datas informadas após a publicação.
+
 Projeto confirmado: **PuzotoLife**, região São Paulo. [Painel do projeto](https://supabase.com/dashboard/project/pbumqabetyzvuathyspn).
 
 ## Conciliação de cartões

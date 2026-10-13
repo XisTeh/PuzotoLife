@@ -448,6 +448,11 @@
           "name": "atualizado_em",
           "type": "TEXT",
           "primaryKey": false
+        },
+        {
+          "name": "data_emprestimo",
+          "type": "TEXT",
+          "primaryKey": false
         }
       ]
     },
@@ -1326,6 +1331,11 @@
         },
         {
           "name": "grupo_parcelas_id",
+          "type": "TEXT",
+          "primaryKey": false
+        },
+        {
+          "name": "data_emprestimo",
           "type": "TEXT",
           "primaryKey": false
         }

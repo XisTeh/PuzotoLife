@@ -312,6 +312,7 @@ CREATE TABLE IF NOT EXISTS pessoas_dividas (
   valor REAL NOT NULL,
   motivo TEXT NOT NULL,
   data_combinada TEXT NOT NULL,
+  data_emprestimo TEXT,
   status TEXT NOT NULL DEFAULT 'pendente' CHECK(status IN ('pendente', 'pago', 'recebido', 'cancelado')),
   pago_recebido_em TEXT,
   parcela_atual INTEGER DEFAULT 1,
@@ -341,6 +342,7 @@ CREATE TABLE IF NOT EXISTS dividas_parceladas_grupos (
   parcelas_restantes INTEGER NOT NULL DEFAULT 0,
   dia_vencimento INTEGER NOT NULL DEFAULT 5,
   competencia_inicio TEXT NOT NULL,
+  data_emprestimo TEXT,
   status TEXT NOT NULL DEFAULT 'ativa' CHECK(status IN ('ativa','encerrada','cancelada')),
   observacao TEXT,
   criado_em TEXT DEFAULT (datetime('now', 'localtime')),
@@ -480,6 +482,8 @@ export function initializeDatabase() {
   try { db.exec("ALTER TABLE pessoas_dividas ADD COLUMN parcela_atual INTEGER DEFAULT 1;"); } catch (e) { /* ignora se já existir */ }
   try { db.exec("ALTER TABLE pessoas_dividas ADD COLUMN total_parcelas INTEGER DEFAULT 1;"); } catch (e) { /* ignora se já existir */ }
   try { db.exec("ALTER TABLE pessoas_dividas ADD COLUMN grupo_parcelas_id TEXT;"); } catch (e) { /* ignora se já existir */ }
+  try { db.exec("ALTER TABLE pessoas_dividas ADD COLUMN data_emprestimo TEXT;"); } catch (e) { /* ignora se já existir */ }
+  try { db.exec("ALTER TABLE dividas_parceladas_grupos ADD COLUMN data_emprestimo TEXT;"); } catch (e) { /* ignora se já existir */ }
 
   // --- MIGRAÇÃO: Adiciona colunas da Etapa 16
   try { db.exec("ALTER TABLE laudos_ranon ADD COLUMN recebido_em TEXT;"); } catch (e) { /* ignora se já existir */ }

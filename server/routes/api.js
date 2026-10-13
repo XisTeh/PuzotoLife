@@ -54,7 +54,7 @@ import {
   cancelarContaPagar, calcularResumoContasPagar, atualizarValorContaPagar
 } from '../services/contasPagar.js';
 import {
-  listarPessoasDividas, criarPessoaDivida, marcarPessoaDividaResolvida,
+  listarPessoasDividas, criarPessoaDivida, marcarPessoaDividaResolvida, atualizarDataEmprestimo,
   cancelarPessoaDivida, removerPessoaDivida, calcularResumoPessoasDividas,
   obterHistoricoPessoa, listarPessoasUnicas,
   listarDividasParceladas, criarDividaParcelada, pagarProximaParcelaDivida,
@@ -342,6 +342,7 @@ router.get('/financas/contas-pagar/resumo', asyncHandler(async (req) => (await c
 router.get('/financas/pessoas-dividas', asyncHandler(async (req) => (await listarPessoasDividas(req.query))));
 router.post('/financas/pessoas-dividas', asyncHandler(async (req) => (await criarPessoaDivida(req.body))));
 router.put('/financas/pessoas-dividas/:id/valor', asyncHandler(async (req) => (await atualizarValorPessoaDivida(req.params.id, parseFloat(req.body.valor)))));
+router.put('/financas/pessoas-dividas/:id/data-emprestimo', asyncHandler(async (req) => (await atualizarDataEmprestimo(req.params.id, req.body.data_emprestimo))));
 router.post('/financas/pessoas-dividas/:id/resolver', asyncHandler(async (req) => {
   const idStr = req.params.id;
   if (idStr.startsWith('dp_')) {
