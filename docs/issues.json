@@ -182,5 +182,13 @@
     "body": "Na tela Fechamento, a lista de referências mensais como Setembro/2026 e Outubro/2026 aparece em ordem textual, deixando Setembro acima de Outubro e Maio acima de Junho. Ordenar pelo ano e número do mês em ordem decrescente, com desempate estável, aceitando referências em português e nos formatos numéricos/ISO existentes. Preservar os snapshots e validar meses de anos diferentes e datas de fechamento que não acompanham a competência.",
     "number": 77,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/77"
+  },
+  {
+    "key": "security-audit-2026-11",
+    "type": "Correção",
+    "title": "Corrigir vulnerabilidades altas/críticas apontadas pelo npm audit",
+    "body": "O check security do PR #78 encontrou 13 vulnerabilidades no lockfile, incluindo 1 crítica e 2 altas. Atualizar dependências dentro das faixas compatíveis e regenerar o lockfile, sem --force nem redução do gate. Validar com npm audit --audit-level=high, npm run quality e E2E. A correção automática deixa oito vulnerabilidades moderadas transitivas de minimatch, cuja correção proposta pelo npm exige downgrade incompatível do ExcelJS; não forçar essa mudança neste escopo.",
+    "number": 79,
+    "url": "https://github.com/XisTeh/PuzotoLife/issues/79"
   }
 ]
