@@ -174,5 +174,12 @@
     "body": "Na tela Pessoas / Dívidas, valores de Me Devem deixam de aparecer quando passa o mês do vencimento. Exibir pendências em todos os meses seguintes até a quitação, mostrar data do empréstimo separada do vencimento e considerar recebimentos nos totais somente no mês efetivo da quitação, sem duplicidade. Preservar registros existentes e validar com dados sintéticos.",
     "number": 74,
     "url": "https://github.com/XisTeh/PuzotoLife/issues/74"
+  },
+  {
+    "key": "closed-months-recent-first",
+    "type": "Correção",
+    "title": "Ordenar meses fechados pela competência mais recente",
+    "body": "Na tela Fechamento, a lista de referências mensais como Setembro/2026 e Outubro/2026 aparece em ordem textual, deixando Setembro acima de Outubro e Maio acima de Junho. Ordenar pelo ano e número do mês em ordem decrescente, com desempate estável, aceitando referências em português e nos formatos numéricos/ISO existentes. Preservar os snapshots e validar meses de anos diferentes e datas de fechamento que não acompanham a competência. O acesso GitHub não estava disponível nesta sessão; Issue registrada localmente para publicação manual.",
+    "status": "pending_remote_issue"
   }
 ]
