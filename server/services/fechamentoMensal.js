@@ -7,6 +7,22 @@ import { snapshot, atomic } from '../database/connection.js';
 import { getDatabase } from '../database/connection.js';
 import { registrarAuditoria } from './auditoria.js';
 
+const NUMERO_MES = new Map([
+  ['janeiro', 1], ['fevereiro', 2], ['marco', 3], ['abril', 4],
+  ['maio', 5], ['junho', 6], ['julho', 7], ['agosto', 8],
+  ['setembro', 9], ['outubro', 10], ['novembro', 11], ['dezembro', 12],
+]);
+
+function chaveReferenciaMensal(referencia) {
+  const valor = String(referencia || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const iso = valor.match(/^(\d{4})-(\d{1,2})$/);
+  const numerica = valor.match(/^(\d{1,2})\/(\d{4})$/);
+  const nominal = valor.match(/^([a-z]+)\/(\d{4})$/);
+  const ano = Number(iso?.[1] || numerica?.[2] || nominal?.[2]);
+  const mes = Number(iso?.[2] || numerica?.[1] || (nominal && NUMERO_MES.get(nominal[1])));
+  return ano > 0 && mes >= 1 && mes <= 12 ? ano * 12 + mes : Number.NEGATIVE_INFINITY;
+}
+
 /**
  * Prepara o snapshot mensal somando lançamentos por empresa.
  * @param {string} referencia - Formato 'YYYY-MM' (ex: '2026-05')
@@ -124,7 +140,8 @@ export async function fecharMesTrabalho(mes, referencia) {
 export async function listarFechamentosMensais() {
   return snapshot(async () => {
   const db = getDatabase();
-  return (await db.prepare('SELECT * FROM fechamentos_mensais ORDER BY referencia DESC').all());
+  const fechamentos = await db.prepare('SELECT * FROM fechamentos_mensais').all();
+  return fechamentos.sort((a, b) => chaveReferenciaMensal(b.referencia) - chaveReferenciaMensal(a.referencia) || Number(b.id) - Number(a.id));
   });
 }
 

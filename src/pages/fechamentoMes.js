@@ -10,6 +10,25 @@ let historicoFechamentos = [];
 let mesSelecionadoHistorico = null;
 let isFechando = false;
 
+const MESES_POR_NOME = new Map([
+  ['janeiro', 1], ['fevereiro', 2], ['marco', 3], ['abril', 4],
+  ['maio', 5], ['junho', 6], ['julho', 7], ['agosto', 8],
+  ['setembro', 9], ['outubro', 10], ['novembro', 11], ['dezembro', 12],
+]);
+
+function chaveReferenciaMensal(referencia) {
+  const valor = String(referencia || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const iso = valor.match(/^(\d{4})-(\d{1,2})$/);
+  const numerica = valor.match(/^(\d{1,2})\/(\d{4})$/);
+  const nominal = valor.match(/^([a-z]+)\/(\d{4})$/);
+  const ano = Number(iso?.[1] || numerica?.[2] || nominal?.[2]);
+  const mes = Number(iso?.[2] || numerica?.[1] || (nominal && MESES_POR_NOME.get(nominal[1])));
+  return ano > 0 && mes >= 1 && mes <= 12 ? ano * 12 + mes : Number.NEGATIVE_INFINITY;
+}
+
+function ordenarFechamentosPorReferencia(fechamentos) {
+  return [...fechamentos].sort((a, b) => chaveReferenciaMensal(b.referencia) - chaveReferenciaMensal(a.referencia) || Number(b.id) - Number(a.id));
+}
 function showToast(message, type = 'success') {
   let container = document.getElementById('toast-container');
   if (!container) {
@@ -63,7 +82,7 @@ async function carregarHistorico(root = getActivePageRoot()) {
     const json = await res.json();
     if (!isActivePageRoot(root)) return;
     if (json.ok) {
-      historicoFechamentos = json.data;
+      historicoFechamentos = ordenarFechamentosPorReferencia(json.data);
       renderListaHistorico();
     }
   } catch (err) {

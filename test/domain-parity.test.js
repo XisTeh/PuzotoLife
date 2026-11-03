@@ -98,6 +98,14 @@ for (const engine of ['sqlite', 'postgres']) {
     assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM receitas WHERE vinculado_trabalho=1').get()).n, 1);
     const months = await Promise.all([monthly.fecharMesTrabalho(month, month), monthly.fecharMesTrabalho(month, month)]);
     assert.equal(months.filter(result => result.sucesso).length, 1);
+    await db.prepare('UPDATE fechamentos_mensais SET referencia=?, fechado_em=? WHERE referencia=?').run('Janeiro/2025', '2030-01-01 10:00:00', month);
+    await db.prepare('INSERT INTO fechamentos_mensais (referencia, fechado_em) VALUES (?, ?)').run('Setembro/2026', '2030-01-01 10:00:00');
+    await db.prepare('INSERT INTO fechamentos_mensais (referencia, fechado_em) VALUES (?, ?)').run('Outubro/2026', '2000-01-01 10:00:00');
+    await db.prepare('INSERT INTO fechamentos_mensais (referencia, fechado_em) VALUES (?, ?)').run('Maio/2026', '2040-01-01 10:00:00');
+    await db.prepare('INSERT INTO fechamentos_mensais (referencia, fechado_em) VALUES (?, ?)').run('Junho/2026', '1990-01-01 10:00:00');
+    assert.deepEqual((await monthly.listarFechamentosMensais()).map(row => row.referencia), [
+      'Outubro/2026', 'Setembro/2026', 'Junho/2026', 'Maio/2026', 'Janeiro/2025',
+    ]);
     assert.ok(Array.isArray(await obterRecebimentosPendentes(month)));
     await db.prepare('INSERT INTO laudos_ranon_pendentes (registro_paciente,quantidade,valor_unitario,total,data) VALUES (?,1,2,2,?)').run('SINTETICO', today);
     const reference = `${month.slice(5)}/${month.slice(0, 4)}`;

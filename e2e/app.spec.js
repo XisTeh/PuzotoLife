@@ -275,10 +275,10 @@ test('reduced motion e fechamento do menu por teclado', async ({ page }, info) =
 });
 test('lista de meses fechados não corta a última linha no hover ou no celular', async ({ page }, info) => {
   const months = [
-    { id: 1, referencia: 'Maio/2026', fechado_em: '2026-06-01 08:00:00', total_global: 6096, qtd_global: 2152 },
-    { id: 2, referencia: 'Junho/2026', fechado_em: '2026-07-01 08:00:00', total_global: 6801, qtd_global: 2417 },
-    { id: 3, referencia: 'Julho/2026', fechado_em: '2026-08-01 08:00:00', total_global: 8084, qtd_global: 2856 },
-    { id: 4, referencia: 'Agosto/2026', fechado_em: '2026-09-01 08:00:00', total_global: 7961, qtd_global: 2740 },
+    { id: 2, referencia: 'Outubro/2026', fechado_em: '2026-11-02 08:00:00', total_global: 6527, qtd_global: 2342 },
+    { id: 1, referencia: 'Setembro/2026', fechado_em: '2026-10-01 08:00:00', total_global: 6905, qtd_global: 2466 },
+    { id: 4, referencia: 'Junho/2026', fechado_em: '2026-07-01 08:00:00', total_global: 6801, qtd_global: 2417 },
+    { id: 3, referencia: 'Maio/2026', fechado_em: '2026-06-01 08:00:00', total_global: 6096, qtd_global: 2152 },
   ];
   await page.route('**/api/fechamentos/mensais', (route) => route.fulfill({ json: { ok: true, data: months } }));
   await page.goto('/');
@@ -286,6 +286,10 @@ test('lista de meses fechados não corta a última linha no hover ou no celular'
   await page.locator('[data-page="fechamento_mes"]').click();
   const items = page.locator('.closed-month');
   await expect(items).toHaveCount(4);
+  await expect(items.nth(0).locator('.closed-month__date strong')).toHaveText('Outubro/2026');
+  await expect(items.nth(1).locator('.closed-month__date strong')).toHaveText('Setembro/2026');
+  await expect(items.nth(2).locator('.closed-month__date strong')).toHaveText('Junho/2026');
+  await expect(items.nth(3).locator('.closed-month__date strong')).toHaveText('Maio/2026');
   const last = items.last();
   await last.scrollIntoViewIfNeeded();
   if (info.project.name === 'desktop') await last.hover();
